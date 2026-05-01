@@ -1,6 +1,6 @@
-import { Outlet, Link, useLocation } from "react-router";
+import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
-import { useTheme } from "next-themes";
+import { useTheme } from "../../contexts/ThemeContext";
 import {
   Home,
   Music,
@@ -13,12 +13,25 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Eye,
+  User,
+  LogOut,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "../../lib/utils";
+import { toast } from "sonner";
+import { Avatar, AvatarFallback } from "../ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 
 export function RootLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showCollapseHint, setShowCollapseHint] = useState(false);
@@ -47,6 +60,24 @@ export function RootLayout() {
     return undefined;
   }, [location.pathname]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("welcome") !== "1") return;
+
+    const user = params.get("user") ?? "Demo User";
+    toast.success(`Welcome, ${user}!`);
+    params.delete("welcome");
+    params.delete("user");
+    const nextSearch = params.toString();
+    navigate(
+      {
+        pathname: location.pathname,
+        search: nextSearch ? `?${nextSearch}` : "",
+      },
+      { replace: true },
+    );
+  }, [location.pathname, location.search, navigate]);
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
@@ -57,12 +88,7 @@ export function RootLayout() {
         )}
       >
         <div className="p-4 border-b">
-          <div
-            className={cn(
-              "flex items-center",
-              isSidebarCollapsed ? "justify-center" : "justify-between",
-            )}
-          >
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="relative">
                 {showCollapseHint && (
@@ -86,7 +112,19 @@ export function RootLayout() {
               </div>
             </div>
             {!isSidebarCollapsed && (
-              <span className="text-xs text-muted-foreground">Collapse</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="h-8 w-8"
+                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {theme === "dark" ? (
+                  <Sun className="w-4 h-4" />
+                ) : (
+                  <Moon className="w-4 h-4" />
+                )}
+              </Button>
             )}
           </div>
           <div
@@ -136,32 +174,45 @@ export function RootLayout() {
         </nav>
 
         <div className="p-4 border-t">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className={cn(
-              "w-full",
-              isSidebarCollapsed
-                ? "justify-center px-2"
-                : "justify-start gap-2",
-            )}
-            title={
-              isSidebarCollapsed
-                ? theme === "dark"
-                  ? "Light Mode"
-                  : "Dark Mode"
-                : undefined
-            }
-          >
-            {theme === "dark" ? (
-              <Sun className="w-4 h-4" />
-            ) : (
-              <Moon className="w-4 h-4" />
-            )}
-            {!isSidebarCollapsed &&
-              (theme === "dark" ? "Light Mode" : "Dark Mode")}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "w-full",
+                  isSidebarCollapsed ? "justify-center px-2" : "justify-between",
+                )}
+                title={isSidebarCollapsed ? "Account" : undefined}
+              >
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <Avatar className="size-6">
+                    <AvatarFallback className="text-[11px]">DU</AvatarFallback>
+                  </Avatar>
+                  {!isSidebarCollapsed && <span className="truncate">Demo User</span>}
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align={isSidebarCollapsed ? "center" : "start"}
+              side="top"
+              className="w-48"
+            >
+              <DropdownMenuLabel>Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/profile")}>
+                <User className="h-4 w-4" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => navigate("/login")}
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
 

@@ -1,14 +1,14 @@
 "use client";
 
 import { RouterProvider } from "react-router";
-import { ThemeProvider } from "next-themes";
 import { AppProvider } from "./contexts/AppContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import { router } from "./routes";
 import { Toaster } from "./components/ui/sonner";
 
 export default function App() {
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+    <ThemeProvider>
       <AppProvider>
         <RouterProvider router={router} />
         <Toaster />
