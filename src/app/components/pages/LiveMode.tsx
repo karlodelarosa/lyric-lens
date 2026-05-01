@@ -106,6 +106,11 @@ export function LiveMode() {
   const [isSlidePreviewMode, setIsSlidePreviewMode] = useState(false);
   const [centerTab, setCenterTab] = useState<"preview" | "manual">("preview");
   const [isCompactMode, setIsCompactMode] = useState(false);
+  const [customColorInput, setCustomColorInput] = useState(
+    liveState.background.type === "color"
+      ? liveState.background.value
+      : "#000000",
+  );
   const [videoUrlInput, setVideoUrlInput] = useState(
     liveState.backgroundVideoUrl ?? "",
   );
@@ -166,6 +171,12 @@ export function LiveMode() {
   }, [liveState.backgroundVideoUrl]);
 
   useEffect(() => {
+    if (liveState.background.type === "color") {
+      setCustomColorInput(liveState.background.value);
+    }
+  }, [liveState.background.type, liveState.background.value]);
+
+  useEffect(() => {
     const calculateScale = () => {
       if (!previewFrameRef.current) return;
       const width = previewFrameRef.current.clientWidth;
@@ -218,6 +229,12 @@ export function LiveMode() {
     const firstSection = song?.sections[0];
     if (!song || !firstSection) return;
     setCurrentSlide(song.id, firstSection.id);
+  };
+
+  const applyCustomColor = () => {
+    updateLiveState({
+      background: { type: "color", value: customColorInput },
+    });
   };
 
   const getCurrentSectionIndex = () => {
@@ -586,6 +603,11 @@ export function LiveMode() {
                                                 textAlign: liveState.alignment,
                                                 lineHeight:
                                                   liveState.lineHeight,
+                                                paddingTop:
+                                                  liveState.verticalPosition ===
+                                                  "top"
+                                                    ? `${liveState.topPadding}px`
+                                                    : undefined,
                                                 textTransform:
                                                   liveState.textTransform,
                                                 fontWeight:
@@ -653,6 +675,10 @@ export function LiveMode() {
                               fontSize: `${scaledPreviewFontSize}px`,
                               textAlign: liveState.alignment,
                               lineHeight: liveState.lineHeight,
+                              paddingTop:
+                                liveState.verticalPosition === "top"
+                                  ? `${liveState.topPadding}px`
+                                  : undefined,
                               textTransform: liveState.textTransform,
                               fontWeight: liveState.fontWeight,
                               color: "white",
@@ -991,6 +1017,22 @@ export function LiveMode() {
                 </Button>
               </div>
             </div>
+            <div className="space-y-2">
+              <Label className="text-xs">
+                Top Padding: {liveState.topPadding}px
+              </Label>
+              <Slider
+                value={[liveState.topPadding]}
+                onValueChange={([value]) => updateLiveState({ topPadding: value })}
+                min={0}
+                max={200}
+                step={4}
+                disabled={liveState.verticalPosition !== "top"}
+              />
+              <p className="text-xs text-muted-foreground">
+                Adds extra spacing from the top edge when vertical position is Top.
+              </p>
+            </div>
           </div>
 
           <div className="rounded-lg border-2 border-primary/40 bg-primary/5 p-4 space-y-3 shadow-sm">
@@ -1101,18 +1143,16 @@ export function LiveMode() {
               <Label className="text-xs">Custom Color</Label>
               <Input
                 type="color"
-                value={
-                  liveState.background.type === "color"
-                    ? liveState.background.value
-                    : "#000000"
-                }
-                onChange={(e) =>
-                  updateLiveState({
-                    background: { type: "color", value: e.target.value },
-                  })
-                }
+                value={customColorInput}
+                onChange={(e) => setCustomColorInput(e.target.value)}
+                onMouseUp={applyCustomColor}
+                onTouchEnd={applyCustomColor}
+                onBlur={applyCustomColor}
                 className="h-10"
               />
+              <p className="text-xs text-muted-foreground">
+                Color applies when you release the picker to avoid preview flicker.
+              </p>
             </div>
 
             <div className="space-y-2">

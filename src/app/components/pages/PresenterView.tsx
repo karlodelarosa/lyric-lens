@@ -105,6 +105,10 @@ export function PresenterView() {
               fontSize: `${liveState.fontSize}px`,
               textAlign: liveState.alignment,
               lineHeight: liveState.lineHeight,
+              paddingTop:
+                liveState.verticalPosition === "top"
+                  ? `${liveState.topPadding}px`
+                  : undefined,
               textTransform: liveState.textTransform,
               fontWeight: liveState.fontWeight,
               color: "white",

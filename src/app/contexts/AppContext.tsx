@@ -47,6 +47,7 @@ interface LiveState {
   backgroundVideoUrl: string | null;
   alignment: "left" | "center" | "right";
   verticalPosition: "top" | "center" | "bottom";
+  topPadding: number;
   lineHeight: number;
   fontWeight: 400 | 500 | 600 | 700 | 800 | 900;
   manualLyrics: string | null;
@@ -219,6 +220,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       backgroundVideoUrl: null,
       alignment: "center",
       verticalPosition: "center",
+      topPadding: 24,
       lineHeight: 1.5,
       fontWeight: 600,
       manualLyrics: null,
