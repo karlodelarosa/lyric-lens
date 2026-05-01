@@ -21,7 +21,8 @@ export function Website() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Open your website to share livestreams, updates, and church information.
+            Open your website to share livestreams, updates, and church
+            information.
           </p>
           <Button asChild>
             <a href="https://elgchurch.com" target="_blank" rel="noreferrer">

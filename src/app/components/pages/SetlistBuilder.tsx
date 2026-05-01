@@ -31,12 +31,17 @@ interface DraggableSongProps {
   onRemove: (index: number) => void;
 }
 
-function DraggableSong({ songId, index, onMove, onRemove }: DraggableSongProps) {
+function DraggableSong({
+  songId,
+  index,
+  onMove,
+  onRemove,
+}: DraggableSongProps) {
   const { songs } = useApp();
   const song = songs.find((s) => s.id === songId);
 
   const [{ isDragging }, drag] = useDrag({
-    type: 'SONG',
+    type: "SONG",
     item: { index },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
@@ -44,7 +49,7 @@ function DraggableSong({ songId, index, onMove, onRemove }: DraggableSongProps) 
   });
 
   const [, drop] = useDrop({
-    accept: 'SONG',
+    accept: "SONG",
     hover: (item: { index: number }) => {
       if (item.index !== index) {
         onMove(item.index, index);
@@ -59,7 +64,7 @@ function DraggableSong({ songId, index, onMove, onRemove }: DraggableSongProps) 
     <div
       ref={(node) => drag(drop(node))}
       className={`p-4 rounded-lg border bg-card flex items-center gap-3 cursor-move ${
-        isDragging ? 'opacity-50' : ''
+        isDragging ? "opacity-50" : ""
       }`}
     >
       <GripVertical className="w-5 h-5 text-muted-foreground" />
@@ -74,11 +79,7 @@ function DraggableSong({ songId, index, onMove, onRemove }: DraggableSongProps) 
           </Badge>
         ))}
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => onRemove(index)}
-      >
+      <Button variant="ghost" size="icon" onClick={() => onRemove(index)}>
         <Trash2 className="w-4 h-4" />
       </Button>
     </div>
@@ -127,8 +128,8 @@ export function SetlistBuilder() {
       name: newSetlistName,
       songs: songOrder,
       flowSections: [
-        { name: 'Opening', songIds: songOrder.slice(0, 1) },
-        { name: 'Worship', songIds: songOrder.slice(1) },
+        { name: "Opening", songIds: songOrder.slice(0, 1) },
+        { name: "Worship", songIds: songOrder.slice(1) },
       ],
     });
 
@@ -144,7 +145,9 @@ export function SetlistBuilder() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Setlist Builder</h1>
-            <p className="text-muted-foreground mt-1">Create and manage song sequences</p>
+            <p className="text-muted-foreground mt-1">
+              Create and manage song sequences
+            </p>
           </div>
           <Dialog open={isCreatingNew} onOpenChange={setIsCreatingNew}>
             <DialogTrigger asChild>

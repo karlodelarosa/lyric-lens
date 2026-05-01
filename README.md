@@ -1,7 +1,7 @@
-
 # Lyric Lens (Next.js App Router + Supabase Boilerplate)
 
 This project now runs on **Next.js App Router** and includes a baseline setup for **Supabase** in:
+
 - Browser/client components
 - Server components and route handlers
 - Server-only admin usage
@@ -26,12 +26,14 @@ This project now runs on **Next.js App Router** and includes a baseline setup fo
 ## Supabase Usage Patterns
 
 ### 1) Browser/Client component
+
 - Utility: `lib/supabase/client.ts`
 - Example page: `app/supabase-client-example/page.tsx`
 
 Use this when querying from client-side UI interactions.
 
 ### 2) Server component or route handler
+
 - Utility: `lib/supabase/server.ts`
 - Example server page: `app/supabase-example/page.tsx`
 - Example API route: `app/api/songs/route.ts`
@@ -39,6 +41,7 @@ Use this when querying from client-side UI interactions.
 Use this for SSR queries and internal API routes with cookie-aware auth context.
 
 ### 3) Admin/server-only operations
+
 - Utility: `lib/supabase/admin.ts`
 
 Use this only for trusted server contexts (never expose service role key to browser code).
@@ -48,4 +51,3 @@ Use this only for trusted server contexts (never expose service role key to brow
 - `GET /api/songs` - queries top 20 songs from Supabase
 - `/supabase-example` - server component query demo
 - `/supabase-client-example` - browser query demo
-  

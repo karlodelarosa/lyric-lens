@@ -35,7 +35,11 @@ export default function SupabaseClientExamplePage() {
   return (
     <main style={{ padding: "2rem", fontFamily: "sans-serif" }}>
       <h1>Supabase Browser Query Example</h1>
-      {error ? <p>Query failed: {error}</p> : <pre>{JSON.stringify(songs, null, 2)}</pre>}
+      {error ? (
+        <p>Query failed: {error}</p>
+      ) : (
+        <pre>{JSON.stringify(songs, null, 2)}</pre>
+      )}
     </main>
   );
 }

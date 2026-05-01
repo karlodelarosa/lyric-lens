@@ -79,7 +79,9 @@ export function SongLibrary() {
     });
 
     setIsAddingNew(false);
-    setSections([{ id: Date.now().toString(), type: "verse", number: "1", lyrics: "" }]);
+    setSections([
+      { id: Date.now().toString(), type: "verse", number: "1", lyrics: "" },
+    ]);
   };
 
   const song = songs.find((s) => s.id === selectedSong);
@@ -90,7 +92,9 @@ export function SongLibrary() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Song Library</h1>
-          <p className="text-muted-foreground mt-1">{songs.length} songs in your collection</p>
+          <p className="text-muted-foreground mt-1">
+            {songs.length} songs in your collection
+          </p>
         </div>
         <Dialog open={isAddingNew} onOpenChange={setIsAddingNew}>
           <DialogTrigger asChild>
@@ -103,23 +107,38 @@ export function SongLibrary() {
             <DialogHeader>
               <DialogTitle>Add New Song</DialogTitle>
               <DialogDescription>
-                Add song metadata and section-based lyrics (verse, chorus, bridge, etc.)
+                Add song metadata and section-based lyrics (verse, chorus,
+                bridge, etc.)
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddSong} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">Song Title</Label>
-                  <Input id="title" name="title" required placeholder="Amazing Grace" />
+                  <Input
+                    id="title"
+                    name="title"
+                    required
+                    placeholder="Amazing Grace"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="artist">Artist</Label>
-                  <Input id="artist" name="artist" required placeholder="John Newton" />
+                  <Input
+                    id="artist"
+                    name="artist"
+                    required
+                    placeholder="John Newton"
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="tags">Tags (comma separated)</Label>
-                <Input id="tags" name="tags" placeholder="worship, slow, classic" />
+                <Input
+                  id="tags"
+                  name="tags"
+                  placeholder="worship, slow, classic"
+                />
               </div>
 
               <div className="space-y-3">
@@ -157,7 +176,9 @@ export function SongLibrary() {
                               onChange={(e) =>
                                 setSections((prev) =>
                                   prev.map((s) =>
-                                    s.id === section.id ? { ...s, type: e.target.value } : s,
+                                    s.id === section.id
+                                      ? { ...s, type: e.target.value }
+                                      : s,
                                   ),
                                 )
                               }
@@ -171,7 +192,9 @@ export function SongLibrary() {
                               onChange={(e) =>
                                 setSections((prev) =>
                                   prev.map((s) =>
-                                    s.id === section.id ? { ...s, number: e.target.value } : s,
+                                    s.id === section.id
+                                      ? { ...s, number: e.target.value }
+                                      : s,
                                   ),
                                 )
                               }
@@ -185,7 +208,9 @@ export function SongLibrary() {
                               className="w-full"
                               disabled={sections.length === 1}
                               onClick={() =>
-                                setSections((prev) => prev.filter((s) => s.id !== section.id))
+                                setSections((prev) =>
+                                  prev.filter((s) => s.id !== section.id),
+                                )
                               }
                             >
                               Remove
@@ -197,7 +222,9 @@ export function SongLibrary() {
                           onChange={(e) =>
                             setSections((prev) =>
                               prev.map((s) =>
-                                s.id === section.id ? { ...s, lyrics: e.target.value } : s,
+                                s.id === section.id
+                                  ? { ...s, lyrics: e.target.value }
+                                  : s,
                               ),
                             )
                           }
@@ -212,7 +239,11 @@ export function SongLibrary() {
                 </div>
               </div>
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setIsAddingNew(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsAddingNew(false)}
+                >
                   Cancel
                 </Button>
                 <Button type="submit">Add Song</Button>
@@ -287,7 +318,9 @@ export function SongLibrary() {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg">{song.title}</h3>
-                    <p className="text-sm text-muted-foreground">{song.artist}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {song.artist}
+                    </p>
                     <div className="flex gap-2 mt-2 flex-wrap">
                       {song.tags.map((tag) => (
                         <Badge key={tag} variant="secondary">
@@ -299,7 +332,9 @@ export function SongLibrary() {
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Used in services</p>
+                    <p className="text-sm text-muted-foreground">
+                      Used in services
+                    </p>
                     <p className="text-2xl font-bold">{song.usageCount}</p>
                   </div>
                   <div className="flex gap-2">
@@ -311,7 +346,7 @@ export function SongLibrary() {
                       size="icon"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm('Delete this song?')) {
+                        if (confirm("Delete this song?")) {
                           deleteSong(song.id);
                         }
                       }}
@@ -327,7 +362,10 @@ export function SongLibrary() {
       </div>
 
       {/* Song Detail Dialog */}
-      <Dialog open={selectedSong !== null} onOpenChange={() => setSelectedSong(null)}>
+      <Dialog
+        open={selectedSong !== null}
+        onOpenChange={() => setSelectedSong(null)}
+      >
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           {song && (
             <>
@@ -348,7 +386,7 @@ export function SongLibrary() {
                     <Card key={section.id}>
                       <CardHeader>
                         <CardTitle className="text-sm uppercase text-muted-foreground">
-                          {section.type} {section.number || ''}
+                          {section.type} {section.number || ""}
                         </CardTitle>
                       </CardHeader>
                       <CardContent>

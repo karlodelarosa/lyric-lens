@@ -55,10 +55,26 @@ const fontWeightOptions = [
 ];
 
 const backgroundPresets = [
-  { name: "Purple Gradient", type: "gradient", value: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" },
-  { name: "Blue Gradient", type: "gradient", value: "linear-gradient(135deg, #0093E9 0%, #80D0C7 100%)" },
-  { name: "Sunset", type: "gradient", value: "linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 50%, #2BFF88 100%)" },
-  { name: "Ocean", type: "gradient", value: "linear-gradient(135deg, #4158D0 0%, #C850C0 46%, #FFCC70 100%)" },
+  {
+    name: "Purple Gradient",
+    type: "gradient",
+    value: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+  },
+  {
+    name: "Blue Gradient",
+    type: "gradient",
+    value: "linear-gradient(135deg, #0093E9 0%, #80D0C7 100%)",
+  },
+  {
+    name: "Sunset",
+    type: "gradient",
+    value: "linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 50%, #2BFF88 100%)",
+  },
+  {
+    name: "Ocean",
+    type: "gradient",
+    value: "linear-gradient(135deg, #4158D0 0%, #C850C0 46%, #FFCC70 100%)",
+  },
   { name: "Dark", type: "color", value: "#1a1a1a" },
   { name: "Black", type: "color", value: "#000000" },
 ];
@@ -80,16 +96,19 @@ const getLyricChunks = (lyrics: string, linesPerSlide: number) => {
 };
 
 export function LiveMode() {
-  const { songs, setlists, liveState, updateLiveState, setCurrentSlide } = useApp();
+  const { songs, setlists, liveState, updateLiveState, setCurrentSlide } =
+    useApp();
   const [manualLyricsInput, setManualLyricsInput] = useState("");
   const [selectedSetlistId, setSelectedSetlistId] = useState<string | null>(
-    setlists[0]?.id || null
+    setlists[0]?.id || null,
   );
   const [songSearch, setSongSearch] = useState("");
   const [isSlidePreviewMode, setIsSlidePreviewMode] = useState(false);
   const [centerTab, setCenterTab] = useState<"preview" | "manual">("preview");
   const [isCompactMode, setIsCompactMode] = useState(false);
-  const [videoUrlInput, setVideoUrlInput] = useState(liveState.backgroundVideoUrl ?? "");
+  const [videoUrlInput, setVideoUrlInput] = useState(
+    liveState.backgroundVideoUrl ?? "",
+  );
   const [previewScale, setPreviewScale] = useState(1);
   const previewFrameRef = useRef<HTMLDivElement | null>(null);
 
@@ -108,14 +127,14 @@ export function LiveMode() {
     });
   const currentSong = songs.find((s) => s.id === liveState.currentSongId);
   const currentSection = currentSong?.sections.find(
-    (sec) => sec.id === liveState.currentSectionId
+    (sec) => sec.id === liveState.currentSectionId,
   );
   const currentSectionChunks = currentSection
     ? getLyricChunks(currentSection.lyrics, liveState.linesPerSlide)
     : [];
   const currentChunkIndex = Math.min(
     liveState.currentChunkIndex,
-    Math.max(currentSectionChunks.length - 1, 0)
+    Math.max(currentSectionChunks.length - 1, 0),
   );
   const sectionLyrics = currentSection
     ? liveState.useLineChunks
@@ -123,7 +142,10 @@ export function LiveMode() {
       : currentSection.lyrics
     : undefined;
   const liveLyrics = liveState.manualLyrics ?? sectionLyrics;
-  const scaledPreviewFontSize = Math.max(14, Math.round(liveState.fontSize * previewScale));
+  const scaledPreviewFontSize = Math.max(
+    14,
+    Math.round(liveState.fontSize * previewScale),
+  );
   const currentSongSectionChunks = currentSong
     ? currentSong.sections.map((section) => ({
         section,
@@ -178,7 +200,11 @@ export function LiveMode() {
     setCurrentSlide(songId, sectionId);
   };
 
-  const handleChunkClick = (songId: string, sectionId: string, chunkIndex: number) => {
+  const handleChunkClick = (
+    songId: string,
+    sectionId: string,
+    chunkIndex: number,
+  ) => {
     updateLiveState({
       currentSongId: songId,
       currentSectionId: sectionId,
@@ -196,7 +222,9 @@ export function LiveMode() {
 
   const getCurrentSectionIndex = () => {
     if (!currentSong || !liveState.currentSectionId) return -1;
-    return currentSong.sections.findIndex((s) => s.id === liveState.currentSectionId);
+    return currentSong.sections.findIndex(
+      (s) => s.id === liveState.currentSectionId,
+    );
   };
 
   const handleNext = () => {
@@ -234,7 +262,10 @@ export function LiveMode() {
     if (currentIndex > 0) {
       const prevSection = currentSong.sections[currentIndex - 1];
       if (liveState.useLineChunks && !liveState.manualLyrics) {
-        const prevSectionChunks = getLyricChunks(prevSection.lyrics, liveState.linesPerSlide);
+        const prevSectionChunks = getLyricChunks(
+          prevSection.lyrics,
+          liveState.linesPerSlide,
+        );
         updateLiveState({
           currentSongId: currentSong.id,
           currentSectionId: prevSection.id,
@@ -284,15 +315,20 @@ export function LiveMode() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
-              <div className={cn(
-                "w-3 h-3 rounded-full",
-                liveState.isLive ? "bg-red-500 animate-pulse" : "bg-gray-400"
-              )} />
+              <div
+                className={cn(
+                  "w-3 h-3 rounded-full",
+                  liveState.isLive ? "bg-red-500 animate-pulse" : "bg-gray-400",
+                )}
+              />
               <span className="font-semibold">
                 {liveState.isLive ? "LIVE" : "Not Live"}
               </span>
             </div>
-            <Select value={selectedSetlistId || ""} onValueChange={setSelectedSetlistId}>
+            <Select
+              value={selectedSetlistId || ""}
+              onValueChange={setSelectedSetlistId}
+            >
               <SelectTrigger className="w-64">
                 <SelectValue placeholder="Select a setlist" />
               </SelectTrigger>
@@ -313,7 +349,11 @@ export function LiveMode() {
             >
               Compact
             </Button>
-            <Button onClick={handleGoLive} size="lg" className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
+            <Button
+              onClick={handleGoLive}
+              size="lg"
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+            >
               <Play className="w-5 h-5 mr-2" />
               Go Live
             </Button>
@@ -323,7 +363,12 @@ export function LiveMode() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Song Navigator */}
-        <div className={cn("border-r bg-card/30 backdrop-blur-sm overflow-y-auto", isCompactMode ? "w-64" : "w-80")}>
+        <div
+          className={cn(
+            "border-r bg-card/30 backdrop-blur-sm overflow-y-auto",
+            isCompactMode ? "w-64" : "w-80",
+          )}
+        >
           <div className="p-4 space-y-2">
             <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-4">
               Song List
@@ -338,56 +383,65 @@ export function LiveMode() {
               />
             </div>
             <div className="space-y-2">
-            {setlistSongs.map((song) => {
-              const songId = song.id;
+              {setlistSongs.map((song) => {
+                const songId = song.id;
 
-              const isSongActive = liveState.currentSongId === songId;
+                const isSongActive = liveState.currentSongId === songId;
 
-              return (
-                <div key={songId} className="space-y-1">
-                  <div className={cn(
-                    "p-3 rounded-lg font-medium",
-                    isSongActive ? "bg-primary/20 border border-primary" : "bg-card border"
-                  )}>
-                    {song.title}
+                return (
+                  <div key={songId} className="space-y-1">
+                    <div
+                      className={cn(
+                        "p-3 rounded-lg font-medium",
+                        isSongActive
+                          ? "bg-primary/20 border border-primary"
+                          : "bg-card border",
+                      )}
+                    >
+                      {song.title}
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start mt-1"
+                      onClick={() => handleSongClick(songId)}
+                    >
+                      Start song from first slide
+                    </Button>
+
+                    <div className="ml-4 space-y-1">
+                      {song.sections.map((section) => {
+                        const isActive =
+                          isSongActive &&
+                          section.id === liveState.currentSectionId;
+                        const firstLine = section.lyrics.split("\n")[0];
+
+                        return (
+                          <button
+                            key={section.id}
+                            onClick={() =>
+                              handleSectionClick(songId, section.id)
+                            }
+                            className={cn(
+                              "w-full text-left p-2 rounded text-sm transition-colors",
+                              isActive
+                                ? "bg-primary text-primary-foreground font-semibold"
+                                : "hover:bg-accent",
+                            )}
+                          >
+                            <div className="text-xs opacity-80">
+                              {section.type.charAt(0).toUpperCase() +
+                                section.type.slice(1)}
+                              {section.number ? ` ${section.number}` : ""}
+                            </div>
+                            <div className="truncate">{firstLine}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start mt-1"
-                    onClick={() => handleSongClick(songId)}
-                  >
-                    Start song from first slide
-                  </Button>
-
-                  <div className="ml-4 space-y-1">
-                    {song.sections.map((section) => {
-                      const isActive = isSongActive && section.id === liveState.currentSectionId;
-                      const firstLine = section.lyrics.split("\n")[0];
-
-                      return (
-                        <button
-                          key={section.id}
-                          onClick={() => handleSectionClick(songId, section.id)}
-                          className={cn(
-                            "w-full text-left p-2 rounded text-sm transition-colors",
-                            isActive
-                              ? "bg-primary text-primary-foreground font-semibold"
-                              : "hover:bg-accent"
-                          )}
-                        >
-                          <div className="text-xs opacity-80">
-                            {section.type.charAt(0).toUpperCase() + section.type.slice(1)}
-                            {section.number ? ` ${section.number}` : ""}
-                          </div>
-                          <div className="truncate">{firstLine}</div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -398,7 +452,9 @@ export function LiveMode() {
           <div className={cn("flex-1 min-h-0", isCompactMode ? "p-3" : "p-6")}>
             <Tabs
               value={centerTab}
-              onValueChange={(value) => setCenterTab(value as "preview" | "manual")}
+              onValueChange={(value) =>
+                setCenterTab(value as "preview" | "manual")
+              }
               className="h-full"
             >
               <div className="mb-3 flex justify-end">
@@ -424,7 +480,12 @@ export function LiveMode() {
                       )}
                     </div>
                   </CardHeader>
-                  <CardContent className={cn("h-[calc(100%-80px)] overflow-y-auto", isCompactMode ? "p-3" : "p-6")}>
+                  <CardContent
+                    className={cn(
+                      "h-[calc(100%-80px)] overflow-y-auto",
+                      isCompactMode ? "p-3" : "p-6",
+                    )}
+                  >
                     {isSlidePreviewMode ? (
                       <div className="space-y-4 max-h-full overflow-y-auto pr-1 mx-auto w-full max-w-[1800px]">
                         {!currentSong ? (
@@ -432,91 +493,123 @@ export function LiveMode() {
                             Select a song to see clickable slides.
                           </div>
                         ) : (
-                          currentSongSectionChunks.map(({ section, chunks }) => {
-                            const isSectionActive = liveState.currentSectionId === section.id;
-                            return (
-                              <div key={section.id} className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <button
-                                    onClick={() => handleSectionClick(currentSong.id, section.id)}
-                                    className={cn(
-                                      "text-sm font-semibold transition-colors",
-                                      isSectionActive ? "text-primary" : "text-foreground/80 hover:text-foreground"
-                                    )}
-                                  >
-                                    {section.type.charAt(0).toUpperCase() + section.type.slice(1)}
-                                    {section.number ? ` ${section.number}` : ""}
-                                  </button>
-                                  <span className="text-xs text-muted-foreground">
-                                    {chunks.length} slide{chunks.length > 1 ? "s" : ""}
-                                  </span>
-                                </div>
-                                <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
-                                  {chunks.map((chunk, chunkIndex) => {
-                                    const isActiveSlide =
-                                      isSectionActive && currentChunkIndex === chunkIndex;
-                                    return (
-                                      <button
-                                        key={`${section.id}-${chunkIndex}`}
-                                        onClick={() =>
-                                          handleChunkClick(currentSong.id, section.id, chunkIndex)
-                                        }
-                                        className={cn(
-                                          "relative aspect-video overflow-hidden rounded-md border text-left",
-                                          isActiveSlide
-                                            ? "border-primary ring-2 ring-primary/50"
-                                            : "border-border hover:border-primary/40"
-                                        )}
-                                        style={{ background: liveState.background.value }}
-                                      >
-                                        {liveState.backgroundVideoUrl ? (
-                                          <>
-                                            <video
-                                              src={liveState.backgroundVideoUrl}
-                                              autoPlay
-                                              muted
-                                              loop
-                                              playsInline
-                                              className="absolute inset-0 w-full h-full object-cover"
-                                            />
-                                            <div className="absolute inset-0 bg-black/40" />
-                                          </>
-                                        ) : null}
-                                        <div
+                          currentSongSectionChunks.map(
+                            ({ section, chunks }) => {
+                              const isSectionActive =
+                                liveState.currentSectionId === section.id;
+                              return (
+                                <div key={section.id} className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <button
+                                      onClick={() =>
+                                        handleSectionClick(
+                                          currentSong.id,
+                                          section.id,
+                                        )
+                                      }
+                                      className={cn(
+                                        "text-sm font-semibold transition-colors",
+                                        isSectionActive
+                                          ? "text-primary"
+                                          : "text-foreground/80 hover:text-foreground",
+                                      )}
+                                    >
+                                      {section.type.charAt(0).toUpperCase() +
+                                        section.type.slice(1)}
+                                      {section.number
+                                        ? ` ${section.number}`
+                                        : ""}
+                                    </button>
+                                    <span className="text-xs text-muted-foreground">
+                                      {chunks.length} slide
+                                      {chunks.length > 1 ? "s" : ""}
+                                    </span>
+                                  </div>
+                                  <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
+                                    {chunks.map((chunk, chunkIndex) => {
+                                      const isActiveSlide =
+                                        isSectionActive &&
+                                        currentChunkIndex === chunkIndex;
+                                      return (
+                                        <button
+                                          key={`${section.id}-${chunkIndex}`}
+                                          onClick={() =>
+                                            handleChunkClick(
+                                              currentSong.id,
+                                              section.id,
+                                              chunkIndex,
+                                            )
+                                          }
                                           className={cn(
-                                            "relative z-[1] h-full p-3 flex",
-                                            liveState.verticalPosition === "top" && "items-start",
-                                            liveState.verticalPosition === "center" && "items-center",
-                                            liveState.verticalPosition === "bottom" && "items-end",
+                                            "relative aspect-video overflow-hidden rounded-md border text-left",
+                                            isActiveSlide
+                                              ? "border-primary ring-2 ring-primary/50"
+                                              : "border-border hover:border-primary/40",
                                           )}
+                                          style={{
+                                            background:
+                                              liveState.background.value,
+                                          }}
                                         >
+                                          {liveState.backgroundVideoUrl ? (
+                                            <>
+                                              <video
+                                                src={
+                                                  liveState.backgroundVideoUrl
+                                                }
+                                                autoPlay
+                                                muted
+                                                loop
+                                                playsInline
+                                                className="absolute inset-0 w-full h-full object-cover"
+                                              />
+                                              <div className="absolute inset-0 bg-black/40" />
+                                            </>
+                                          ) : null}
                                           <div
-                                            className="w-full"
-                                            style={{
-                                              fontFamily: liveState.fontFamily,
-                                              fontSize: `${Math.max(10, Math.round(scaledPreviewFontSize * 0.36))}px`,
-                                              textAlign: liveState.alignment,
-                                              lineHeight: liveState.lineHeight,
-                                              textTransform: liveState.textTransform,
-                                              fontWeight: liveState.fontWeight,
-                                              color: "white",
-                                              textShadow: "0 2px 8px rgba(0,0,0,0.5)",
-                                              whiteSpace: "pre-wrap",
-                                            }}
+                                            className={cn(
+                                              "relative z-[1] h-full p-3 flex",
+                                              liveState.verticalPosition ===
+                                                "top" && "items-start",
+                                              liveState.verticalPosition ===
+                                                "center" && "items-center",
+                                              liveState.verticalPosition ===
+                                                "bottom" && "items-end",
+                                            )}
                                           >
-                                            {chunk}
+                                            <div
+                                              className="w-full"
+                                              style={{
+                                                fontFamily:
+                                                  liveState.fontFamily,
+                                                fontSize: `${Math.max(10, Math.round(scaledPreviewFontSize * 0.36))}px`,
+                                                textAlign: liveState.alignment,
+                                                lineHeight:
+                                                  liveState.lineHeight,
+                                                textTransform:
+                                                  liveState.textTransform,
+                                                fontWeight:
+                                                  liveState.fontWeight,
+                                                color: "white",
+                                                textShadow:
+                                                  "0 2px 8px rgba(0,0,0,0.5)",
+                                                whiteSpace: "pre-wrap",
+                                              }}
+                                            >
+                                              {chunk}
+                                            </div>
                                           </div>
-                                        </div>
-                                        <span className="absolute top-2 right-2 z-[2] rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white">
-                                          {chunkIndex + 1}
-                                        </span>
-                                      </button>
-                                    );
-                                  })}
+                                          <span className="absolute top-2 right-2 z-[2] rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white">
+                                            {chunkIndex + 1}
+                                          </span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })
+                              );
+                            },
+                          )
                         )}
                       </div>
                     ) : (
@@ -526,8 +619,10 @@ export function LiveMode() {
                           "relative w-full mx-auto rounded-lg overflow-hidden shadow-2xl flex justify-center aspect-video",
                           isCompactMode ? "max-h-[34vh]" : "max-h-[42vh]",
                           liveState.verticalPosition === "top" && "items-start",
-                          liveState.verticalPosition === "center" && "items-center",
-                          liveState.verticalPosition === "bottom" && "items-end",
+                          liveState.verticalPosition === "center" &&
+                            "items-center",
+                          liveState.verticalPosition === "bottom" &&
+                            "items-end",
                         )}
                         style={{
                           background: liveState.background.value,
@@ -549,7 +644,10 @@ export function LiveMode() {
 
                         {liveLyrics ? (
                           <div
-                            className={cn("max-w-4xl relative z-[1]", isCompactMode ? "px-6 py-4" : "px-12 py-8")}
+                            className={cn(
+                              "max-w-4xl relative z-[1]",
+                              isCompactMode ? "px-6 py-4" : "px-12 py-8",
+                            )}
                             style={{
                               fontFamily: liveState.fontFamily,
                               fontSize: `${scaledPreviewFontSize}px`,
@@ -586,9 +684,16 @@ export function LiveMode() {
                   <CardHeader className="border-b">
                     <CardTitle>Manual Live Lyrics Override</CardTitle>
                   </CardHeader>
-                  <CardContent className={cn("h-[calc(100%-80px)] space-y-3", isCompactMode ? "p-3" : "p-6")}>
+                  <CardContent
+                    className={cn(
+                      "h-[calc(100%-80px)] space-y-3",
+                      isCompactMode ? "p-3" : "p-6",
+                    )}
+                  >
                     <div className="flex items-center justify-between">
-                      <Label className="font-semibold">Manual Live Lyrics Override</Label>
+                      <Label className="font-semibold">
+                        Manual Live Lyrics Override
+                      </Label>
                       <Button
                         variant="outline"
                         size="sm"
@@ -621,7 +726,12 @@ export function LiveMode() {
           </div>
 
           {/* Control Bar */}
-          <div className={cn("border-t bg-card/50 backdrop-blur-sm", isCompactMode ? "p-2" : "p-4")}>
+          <div
+            className={cn(
+              "border-t bg-card/50 backdrop-blur-sm",
+              isCompactMode ? "p-2" : "p-4",
+            )}
+          >
             <div className="flex items-center justify-between max-w-4xl mx-auto">
               <div className="flex-1">
                 {currentSong && (
@@ -630,13 +740,16 @@ export function LiveMode() {
                     <p className="text-sm text-muted-foreground">
                       {currentSection?.type.charAt(0).toUpperCase()}
                       {currentSection?.type.slice(1)}
-                      {currentSection?.number ? ` ${currentSection.number}` : ''}
+                      {currentSection?.number
+                        ? ` ${currentSection.number}`
+                        : ""}
                     </p>
                     {!liveState.manualLyrics &&
                       liveState.useLineChunks &&
                       currentSectionChunks.length > 1 && (
                         <p className="text-xs text-muted-foreground">
-                          Slide {currentChunkIndex + 1} / {currentSectionChunks.length}
+                          Slide {currentChunkIndex + 1} /{" "}
+                          {currentSectionChunks.length}
                         </p>
                       )}
                   </div>
@@ -665,11 +778,15 @@ export function LiveMode() {
               <div className="flex-1" />
             </div>
           </div>
-
         </div>
 
         {/* Right Panel - Settings */}
-        <div className={cn("border-l bg-card/30 backdrop-blur-sm overflow-y-auto p-4 space-y-6", isCompactMode ? "hidden" : "w-80")}>
+        <div
+          className={cn(
+            "border-l bg-card/30 backdrop-blur-sm overflow-y-auto p-4 space-y-6",
+            isCompactMode ? "hidden" : "w-80",
+          )}
+        >
           <div>
             <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-4">
               Live Settings
@@ -687,7 +804,9 @@ export function LiveMode() {
                 <Label className="text-xs">Font Family</Label>
                 <Select
                   value={liveState.fontFamily}
-                  onValueChange={(value) => updateLiveState({ fontFamily: value })}
+                  onValueChange={(value) =>
+                    updateLiveState({ fontFamily: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -703,10 +822,14 @@ export function LiveMode() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs">Font Size: {liveState.fontSize}px</Label>
+                <Label className="text-xs">
+                  Font Size: {liveState.fontSize}px
+                </Label>
                 <Slider
                   value={[liveState.fontSize]}
-                  onValueChange={([value]) => updateLiveState({ fontSize: value })}
+                  onValueChange={([value]) =>
+                    updateLiveState({ fontSize: value })
+                  }
                   min={24}
                   max={96}
                   step={2}
@@ -714,10 +837,14 @@ export function LiveMode() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs">Line Height: {liveState.lineHeight}</Label>
+                <Label className="text-xs">
+                  Line Height: {liveState.lineHeight}
+                </Label>
                 <Slider
                   value={[liveState.lineHeight]}
-                  onValueChange={([value]) => updateLiveState({ lineHeight: value })}
+                  onValueChange={([value]) =>
+                    updateLiveState({ lineHeight: value })
+                  }
                   min={1}
                   max={2.5}
                   step={0.1}
@@ -728,7 +855,9 @@ export function LiveMode() {
                 <Label className="text-xs">Text Transform</Label>
                 <Select
                   value={liveState.textTransform}
-                  onValueChange={(value: any) => updateLiveState({ textTransform: value })}
+                  onValueChange={(value: any) =>
+                    updateLiveState({ textTransform: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -743,11 +872,17 @@ export function LiveMode() {
               </div>
 
               <Button
-                variant={liveState.textTransform === "uppercase" ? "default" : "outline"}
+                variant={
+                  liveState.textTransform === "uppercase"
+                    ? "default"
+                    : "outline"
+                }
                 onClick={() =>
                   updateLiveState({
                     textTransform:
-                      liveState.textTransform === "uppercase" ? "none" : "uppercase",
+                      liveState.textTransform === "uppercase"
+                        ? "none"
+                        : "uppercase",
                   })
                 }
               >
@@ -760,7 +895,13 @@ export function LiveMode() {
                   value={String(liveState.fontWeight)}
                   onValueChange={(value) =>
                     updateLiveState({
-                      fontWeight: Number(value) as 400 | 500 | 600 | 700 | 800 | 900,
+                      fontWeight: Number(value) as
+                        | 400
+                        | 500
+                        | 600
+                        | 700
+                        | 800
+                        | 900,
                     })
                   }
                 >
@@ -794,14 +935,18 @@ export function LiveMode() {
                 <AlignLeft className="w-4 h-4" />
               </Button>
               <Button
-                variant={liveState.alignment === "center" ? "default" : "outline"}
+                variant={
+                  liveState.alignment === "center" ? "default" : "outline"
+                }
                 size="icon"
                 onClick={() => updateLiveState({ alignment: "center" })}
               >
                 <AlignCenter className="w-4 h-4" />
               </Button>
               <Button
-                variant={liveState.alignment === "right" ? "default" : "outline"}
+                variant={
+                  liveState.alignment === "right" ? "default" : "outline"
+                }
                 size="icon"
                 onClick={() => updateLiveState({ alignment: "right" })}
               >
@@ -813,20 +958,34 @@ export function LiveMode() {
               <Label className="text-xs">Vertical Position</Label>
               <div className="grid grid-cols-3 gap-2">
                 <Button
-                  variant={liveState.verticalPosition === "top" ? "default" : "outline"}
+                  variant={
+                    liveState.verticalPosition === "top" ? "default" : "outline"
+                  }
                   onClick={() => updateLiveState({ verticalPosition: "top" })}
                 >
                   Top
                 </Button>
                 <Button
-                  variant={liveState.verticalPosition === "center" ? "default" : "outline"}
-                  onClick={() => updateLiveState({ verticalPosition: "center" })}
+                  variant={
+                    liveState.verticalPosition === "center"
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={() =>
+                    updateLiveState({ verticalPosition: "center" })
+                  }
                 >
                   Center
                 </Button>
                 <Button
-                  variant={liveState.verticalPosition === "bottom" ? "default" : "outline"}
-                  onClick={() => updateLiveState({ verticalPosition: "bottom" })}
+                  variant={
+                    liveState.verticalPosition === "bottom"
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={() =>
+                    updateLiveState({ verticalPosition: "bottom" })
+                  }
                 >
                   Bottom
                 </Button>
@@ -838,7 +997,9 @@ export function LiveMode() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Rows3 className="w-4 h-4 text-primary" />
-                <Label className="text-base font-semibold text-primary">Slide Options</Label>
+                <Label className="text-base font-semibold text-primary">
+                  Slide Options
+                </Label>
               </div>
               <Badge variant="secondary">Important</Badge>
             </div>
@@ -886,7 +1047,9 @@ export function LiveMode() {
                     key={value}
                     type="button"
                     size="sm"
-                    variant={liveState.linesPerSlide === value ? "default" : "outline"}
+                    variant={
+                      liveState.linesPerSlide === value ? "default" : "outline"
+                    }
                     onClick={() =>
                       updateLiveState({
                         linesPerSlide: value,
@@ -916,14 +1079,17 @@ export function LiveMode() {
                   key={preset.name}
                   onClick={() =>
                     updateLiveState({
-                      background: { type: preset.type as any, value: preset.value },
+                      background: {
+                        type: preset.type as any,
+                        value: preset.value,
+                      },
                     })
                   }
                   className={cn(
                     "h-16 rounded-lg border-2 transition-all",
                     liveState.background.value === preset.value
                       ? "border-primary ring-2 ring-primary/50"
-                      : "border-border hover:border-primary/50"
+                      : "border-border hover:border-primary/50",
                   )}
                   style={{ background: preset.value }}
                 >
@@ -936,7 +1102,9 @@ export function LiveMode() {
               <Input
                 type="color"
                 value={
-                  liveState.background.type === "color" ? liveState.background.value : "#000000"
+                  liveState.background.type === "color"
+                    ? liveState.background.value
+                    : "#000000"
                 }
                 onChange={(e) =>
                   updateLiveState({
@@ -980,7 +1148,8 @@ export function LiveMode() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Recommended: use a short looping MP4 hosted on a fast CDN for smoother playback.
+                Recommended: use a short looping MP4 hosted on a fast CDN for
+                smoother playback.
               </p>
             </div>
           </div>

@@ -2,14 +2,20 @@ import { useApp } from "../../contexts/AppContext";
 import { Link } from "react-router";
 import { Calendar, Music, List, ArrowRight, Plus } from "lucide-react";
 import { Button } from "../ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
 import { format } from "date-fns";
 
 export function Dashboard() {
   const { schedules, setlists, songs } = useApp();
 
   const upcomingSchedules = schedules
-    .filter(s => new Date(s.date) >= new Date())
+    .filter((s) => new Date(s.date) >= new Date())
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 3);
 
@@ -23,7 +29,9 @@ export function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Welcome back to LiveLyrics</p>
+          <p className="text-muted-foreground mt-1">
+            Welcome back to LiveLyrics
+          </p>
         </div>
         <div className="flex gap-3">
           <Link to="/setlists">
@@ -50,7 +58,9 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{songs.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">In your library</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              In your library
+            </p>
           </CardContent>
         </Card>
 
@@ -61,7 +71,9 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{setlists.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Ready to present</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Ready to present
+            </p>
           </CardContent>
         </Card>
 
@@ -72,7 +84,9 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{upcomingSchedules.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Scheduled events</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Scheduled events
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -102,7 +116,9 @@ export function Dashboard() {
               </p>
             ) : (
               upcomingSchedules.map((schedule) => {
-                const setlist = setlists.find(sl => sl.id === schedule.setlistId);
+                const setlist = setlists.find(
+                  (sl) => sl.id === schedule.setlistId,
+                );
                 return (
                   <div
                     key={schedule.id}
@@ -111,19 +127,23 @@ export function Dashboard() {
                     <div className="flex items-start gap-3">
                       <div className="w-12 h-12 rounded-lg bg-primary/10 flex flex-col items-center justify-center">
                         <div className="text-xs font-medium text-muted-foreground">
-                          {format(new Date(schedule.date), 'MMM')}
+                          {format(new Date(schedule.date), "MMM")}
                         </div>
-                        <div className="text-lg font-bold">{format(new Date(schedule.date), 'd')}</div>
+                        <div className="text-lg font-bold">
+                          {format(new Date(schedule.date), "d")}
+                        </div>
                       </div>
                       <div>
                         <p className="font-medium">{schedule.title}</p>
                         <p className="text-sm text-muted-foreground">
-                          {setlist ? setlist.name : 'No setlist assigned'}
+                          {setlist ? setlist.name : "No setlist assigned"}
                         </p>
                       </div>
                     </div>
                     <Link to="/live">
-                      <Button size="sm" variant="outline">Go Live</Button>
+                      <Button size="sm" variant="outline">
+                        Go Live
+                      </Button>
                     </Link>
                   </div>
                 );
@@ -183,7 +203,9 @@ export function Dashboard() {
                 <Calendar className="w-6 h-6 text-white" />
               </div>
               <h3 className="font-semibold mb-1">Go to Live Mode</h3>
-              <p className="text-sm text-muted-foreground">Start presenting lyrics</p>
+              <p className="text-sm text-muted-foreground">
+                Start presenting lyrics
+              </p>
             </div>
           </Link>
           <Link to="/setlists" className="group">
@@ -192,7 +214,9 @@ export function Dashboard() {
                 <List className="w-6 h-6 text-white" />
               </div>
               <h3 className="font-semibold mb-1">Build Setlist</h3>
-              <p className="text-sm text-muted-foreground">Create song sequences</p>
+              <p className="text-sm text-muted-foreground">
+                Create song sequences
+              </p>
             </div>
           </Link>
           <Link to="/songs" className="group">
@@ -201,7 +225,9 @@ export function Dashboard() {
                 <Music className="w-6 h-6 text-white" />
               </div>
               <h3 className="font-semibold mb-1">Manage Songs</h3>
-              <p className="text-sm text-muted-foreground">Add or edit lyrics</p>
+              <p className="text-sm text-muted-foreground">
+                Add or edit lyrics
+              </p>
             </div>
           </Link>
         </CardContent>

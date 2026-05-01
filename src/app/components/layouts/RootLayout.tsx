@@ -24,16 +24,16 @@ export function RootLayout() {
   const [showCollapseHint, setShowCollapseHint] = useState(false);
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: Home },
-    { name: 'Songs', href: '/songs', icon: Music },
-    { name: 'Setlists', href: '/setlists', icon: List },
-    { name: 'Schedule', href: '/schedule', icon: Calendar },
-    { name: 'Live Mode', href: '/live', icon: Radio },
-    { name: 'Website', href: '/website', icon: Globe },
+    { name: "Dashboard", href: "/", icon: Home },
+    { name: "Songs", href: "/songs", icon: Music },
+    { name: "Setlists", href: "/setlists", icon: List },
+    { name: "Schedule", href: "/schedule", icon: Calendar },
+    { name: "Live Mode", href: "/live", icon: Radio },
+    { name: "Website", href: "/website", icon: Globe },
   ];
 
   const isActive = (href: string) => {
-    if (href === '/') return location.pathname === '/';
+    if (href === "/") return location.pathname === "/";
     return location.pathname.startsWith(href);
   };
 
@@ -53,11 +53,16 @@ export function RootLayout() {
       <aside
         className={cn(
           "border-r bg-card/50 backdrop-blur-sm flex flex-col transition-all duration-300",
-          isSidebarCollapsed ? "w-20" : "w-64"
+          isSidebarCollapsed ? "w-20" : "w-64",
         )}
       >
         <div className="p-4 border-b">
-          <div className={cn("flex items-center", isSidebarCollapsed ? "justify-center" : "justify-between")}>
+          <div
+            className={cn(
+              "flex items-center",
+              isSidebarCollapsed ? "justify-center" : "justify-between",
+            )}
+          >
             <div className="flex items-center gap-2">
               <div className="relative">
                 {showCollapseHint && (
@@ -84,14 +89,21 @@ export function RootLayout() {
               <span className="text-xs text-muted-foreground">Collapse</span>
             )}
           </div>
-          <div className={cn("flex items-center gap-2 mt-3", isSidebarCollapsed && "justify-center")}>
+          <div
+            className={cn(
+              "flex items-center gap-2 mt-3",
+              isSidebarCollapsed && "justify-center",
+            )}
+          >
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
               <Eye className="w-5 h-5 text-white" />
             </div>
             {!isSidebarCollapsed && (
               <div>
                 <h1 className="font-semibold text-lg">Lyric Lens</h1>
-                <p className="text-xs text-muted-foreground">Worship Platform</p>
+                <p className="text-xs text-muted-foreground">
+                  Worship Platform
+                </p>
               </div>
             )}
           </div>
@@ -110,12 +122,14 @@ export function RootLayout() {
                   isSidebarCollapsed ? "justify-center" : "gap-3",
                   active
                     ? "bg-primary text-primary-foreground shadow-md"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                 )}
                 title={isSidebarCollapsed ? item.name : undefined}
               >
                 <Icon className="w-5 h-5" />
-                {!isSidebarCollapsed && <span className="font-medium">{item.name}</span>}
+                {!isSidebarCollapsed && (
+                  <span className="font-medium">{item.name}</span>
+                )}
               </Link>
             );
           })}
@@ -125,12 +139,28 @@ export function RootLayout() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className={cn("w-full", isSidebarCollapsed ? "justify-center px-2" : "justify-start gap-2")}
-            title={isSidebarCollapsed ? (theme === 'dark' ? 'Light Mode' : 'Dark Mode') : undefined}
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className={cn(
+              "w-full",
+              isSidebarCollapsed
+                ? "justify-center px-2"
+                : "justify-start gap-2",
+            )}
+            title={
+              isSidebarCollapsed
+                ? theme === "dark"
+                  ? "Light Mode"
+                  : "Dark Mode"
+                : undefined
+            }
           >
-            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            {!isSidebarCollapsed && (theme === 'dark' ? 'Light Mode' : 'Dark Mode')}
+            {theme === "dark" ? (
+              <Sun className="w-4 h-4" />
+            ) : (
+              <Moon className="w-4 h-4" />
+            )}
+            {!isSidebarCollapsed &&
+              (theme === "dark" ? "Light Mode" : "Dark Mode")}
           </Button>
         </div>
       </aside>

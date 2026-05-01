@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { useApp } from "../../contexts/AppContext";
-import { Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
@@ -20,13 +25,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths } from "date-fns";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameDay,
+  isSameMonth,
+  addMonths,
+  subMonths,
+} from "date-fns";
 
 export function Schedule() {
   const { songs, schedules, setlists, addSchedule, updateSchedule } = useApp();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isAddingSchedule, setIsAddingSchedule] = useState(false);
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
+    null,
+  );
   const [newSchedule, setNewSchedule] = useState({
     title: "",
     date: "",
@@ -43,8 +59,8 @@ export function Schedule() {
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   const getSchedulesForDay = (day: Date) => {
-    return schedules.filter(schedule =>
-      isSameDay(new Date(schedule.date), day)
+    return schedules.filter((schedule) =>
+      isSameDay(new Date(schedule.date), day),
     );
   };
 
@@ -75,11 +91,13 @@ export function Schedule() {
 
   const selectedSchedule = schedules.find((s) => s.id === selectedScheduleId);
   const selectedScheduleSetlist = setlists.find(
-    (setlist) => setlist.id === (selectedSchedule?.setlistId || editingSchedule.setlistId),
+    (setlist) =>
+      setlist.id === (selectedSchedule?.setlistId || editingSchedule.setlistId),
   );
 
   const handleUpdateSchedule = () => {
-    if (!selectedScheduleId || !editingSchedule.title || !editingSchedule.date) return;
+    if (!selectedScheduleId || !editingSchedule.title || !editingSchedule.date)
+      return;
     updateSchedule(selectedScheduleId, {
       title: editingSchedule.title,
       date: editingSchedule.date,
@@ -94,7 +112,9 @@ export function Schedule() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Schedule</h1>
-          <p className="text-muted-foreground mt-1">Plan your services and events</p>
+          <p className="text-muted-foreground mt-1">
+            Plan your services and events
+          </p>
         </div>
         <Dialog open={isAddingSchedule} onOpenChange={setIsAddingSchedule}>
           <DialogTrigger asChild>
@@ -106,7 +126,9 @@ export function Schedule() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Schedule New Event</DialogTitle>
-              <DialogDescription>Create a service or event schedule</DialogDescription>
+              <DialogDescription>
+                Create a service or event schedule
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -114,7 +136,9 @@ export function Schedule() {
                 <Input
                   id="eventTitle"
                   value={newSchedule.title}
-                  onChange={(e) => setNewSchedule({ ...newSchedule, title: e.target.value })}
+                  onChange={(e) =>
+                    setNewSchedule({ ...newSchedule, title: e.target.value })
+                  }
                   placeholder="Sunday Service"
                 />
               </div>
@@ -124,14 +148,18 @@ export function Schedule() {
                   id="eventDate"
                   type="date"
                   value={newSchedule.date}
-                  onChange={(e) => setNewSchedule({ ...newSchedule, date: e.target.value })}
+                  onChange={(e) =>
+                    setNewSchedule({ ...newSchedule, date: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="setlist">Setlist (Optional)</Label>
                 <Select
                   value={newSchedule.setlistId}
-                  onValueChange={(value) => setNewSchedule({ ...newSchedule, setlistId: value })}
+                  onValueChange={(value) =>
+                    setNewSchedule({ ...newSchedule, setlistId: value })
+                  }
                 >
                   <SelectTrigger id="setlist">
                     <SelectValue placeholder="Select a setlist" />
@@ -157,7 +185,7 @@ export function Schedule() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>{format(currentMonth, 'MMMM yyyy')}</CardTitle>
+            <CardTitle>{format(currentMonth, "MMMM yyyy")}</CardTitle>
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -187,8 +215,11 @@ export function Schedule() {
           {/* Calendar Grid */}
           <div className="grid grid-cols-7 gap-2">
             {/* Day headers */}
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-              <div key={day} className="text-center text-sm font-medium text-muted-foreground p-2">
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+              <div
+                key={day}
+                className="text-center text-sm font-medium text-muted-foreground p-2"
+              >
                 {day}
               </div>
             ))}
@@ -207,24 +238,32 @@ export function Schedule() {
                 <div
                   key={day.toISOString()}
                   className={`min-h-24 p-2 rounded-lg border ${
-                    isToday ? 'border-primary bg-primary/5' : 'border-border'
-                  } ${isSameMonth(day, currentMonth) ? '' : 'opacity-40'}`}
+                    isToday ? "border-primary bg-primary/5" : "border-border"
+                  } ${isSameMonth(day, currentMonth) ? "" : "opacity-40"}`}
                 >
-                  <div className={`text-sm font-medium mb-1 ${isToday ? 'text-primary' : ''}`}>
-                    {format(day, 'd')}
+                  <div
+                    className={`text-sm font-medium mb-1 ${isToday ? "text-primary" : ""}`}
+                  >
+                    {format(day, "d")}
                   </div>
                   <div className="space-y-1">
                     {daySchedules.map((schedule) => {
-                      const setlist = setlists.find(sl => sl.id === schedule.setlistId);
+                      const setlist = setlists.find(
+                        (sl) => sl.id === schedule.setlistId,
+                      );
                       return (
                         <div
                           key={schedule.id}
                           className="text-xs p-1.5 rounded bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/30 cursor-pointer hover:shadow-sm"
                           onClick={() => openScheduleEditor(schedule.id)}
                         >
-                          <p className="font-medium truncate">{schedule.title}</p>
+                          <p className="font-medium truncate">
+                            {schedule.title}
+                          </p>
                           {setlist && (
-                            <p className="text-muted-foreground truncate">{setlist.name}</p>
+                            <p className="text-muted-foreground truncate">
+                              {setlist.name}
+                            </p>
                           )}
                         </div>
                       );
@@ -244,10 +283,14 @@ export function Schedule() {
         </CardHeader>
         <CardContent className="space-y-3">
           {schedules
-            .filter(s => new Date(s.date) >= new Date())
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .filter((s) => new Date(s.date) >= new Date())
+            .sort(
+              (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+            )
             .map((schedule) => {
-              const setlist = setlists.find(sl => sl.id === schedule.setlistId);
+              const setlist = setlists.find(
+                (sl) => sl.id === schedule.setlistId,
+              );
               return (
                 <div
                   key={schedule.id}
@@ -255,13 +298,17 @@ export function Schedule() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex flex-col items-center justify-center text-white">
-                      <div className="text-xs font-medium">{format(new Date(schedule.date), 'MMM')}</div>
-                      <div className="text-xl font-bold">{format(new Date(schedule.date), 'd')}</div>
+                      <div className="text-xs font-medium">
+                        {format(new Date(schedule.date), "MMM")}
+                      </div>
+                      <div className="text-xl font-bold">
+                        {format(new Date(schedule.date), "d")}
+                      </div>
                     </div>
                     <div>
                       <p className="font-semibold">{schedule.title}</p>
                       <p className="text-sm text-muted-foreground">
-                        {format(new Date(schedule.date), 'EEEE, MMMM d, yyyy')}
+                        {format(new Date(schedule.date), "EEEE, MMMM d, yyyy")}
                       </p>
                       {setlist && (
                         <p className="text-sm text-muted-foreground mt-1">
@@ -270,7 +317,11 @@ export function Schedule() {
                       )}
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => openScheduleEditor(schedule.id)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openScheduleEditor(schedule.id)}
+                  >
                     Edit
                   </Button>
                 </div>
@@ -279,7 +330,10 @@ export function Schedule() {
         </CardContent>
       </Card>
 
-      <Dialog open={selectedScheduleId !== null} onOpenChange={() => setSelectedScheduleId(null)}>
+      <Dialog
+        open={selectedScheduleId !== null}
+        onOpenChange={() => setSelectedScheduleId(null)}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Scheduled Event</DialogTitle>
@@ -294,7 +348,10 @@ export function Schedule() {
                 id="edit-event-title"
                 value={editingSchedule.title}
                 onChange={(e) =>
-                  setEditingSchedule((prev) => ({ ...prev, title: e.target.value }))
+                  setEditingSchedule((prev) => ({
+                    ...prev,
+                    title: e.target.value,
+                  }))
                 }
               />
             </div>
@@ -305,7 +362,10 @@ export function Schedule() {
                 type="date"
                 value={editingSchedule.date}
                 onChange={(e) =>
-                  setEditingSchedule((prev) => ({ ...prev, date: e.target.value }))
+                  setEditingSchedule((prev) => ({
+                    ...prev,
+                    date: e.target.value,
+                  }))
                 }
               />
             </div>
@@ -336,10 +396,14 @@ export function Schedule() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {!selectedScheduleSetlist ? (
-                  <p className="text-sm text-muted-foreground">No setlist linked yet.</p>
+                  <p className="text-sm text-muted-foreground">
+                    No setlist linked yet.
+                  </p>
                 ) : (
                   <>
-                    <p className="font-medium">{selectedScheduleSetlist.name}</p>
+                    <p className="font-medium">
+                      {selectedScheduleSetlist.name}
+                    </p>
                     <div className="space-y-1 max-h-40 overflow-y-auto">
                       {selectedScheduleSetlist.songs.map((songId, index) => {
                         const song = songs.find((s) => s.id === songId);
@@ -360,7 +424,10 @@ export function Schedule() {
             </Card>
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setSelectedScheduleId(null)}>
+              <Button
+                variant="outline"
+                onClick={() => setSelectedScheduleId(null)}
+              >
                 Cancel
               </Button>
               <Button onClick={handleUpdateSchedule}>Save changes</Button>

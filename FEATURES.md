@@ -3,12 +3,14 @@
 ## 🎯 Core Features
 
 ### 1. Dashboard
+
 - Overview of upcoming services and schedules
 - Quick stats (total songs, setlists, upcoming events)
 - Recently used songs ranked by popularity
 - Quick action cards to jump into any workflow
 
 ### 2. Song Library
+
 - Full song management with search and filters
 - Add/edit/delete songs with lyrics
 - Tag-based organization (worship, slow, fast, etc.)
@@ -16,6 +18,7 @@
 - Detailed lyric view with sections (verse, chorus, bridge)
 
 ### 3. Setlist Builder
+
 - Drag-and-drop song ordering
 - Visual setlist construction
 - Organize songs into flow sections (Opening, Worship, Response, Closing)
@@ -23,6 +26,7 @@
 - Assign setlists to scheduled events
 
 ### 4. Schedule Page
+
 - Calendar-based service planner
 - Create and manage service schedules
 - Attach setlists to specific dates
@@ -30,9 +34,11 @@
 - Upcoming events list view
 
 ### 5. **Live Mode** (Main Control Center)
+
 The heart of the application - designed for real-time worship presentation control.
 
 **Layout:**
+
 - **Left Panel**: Song/Slide Navigator
   - Displays active setlist songs
   - Expandable sections per song (verse, chorus, bridge)
@@ -52,10 +58,8 @@ The heart of the application - designed for real-time worship presentation contr
     - Font size adjuster (24px - 96px)
     - Line height control
     - Text transform (uppercase, lowercase, title case)
-  
   - **Alignment:**
     - Left, Center, Right text alignment
-  
   - **Background Controls:**
     - Preset gradients (Purple, Blue, Sunset, Ocean)
     - Solid colors (Dark, Black)
@@ -68,9 +72,11 @@ The heart of the application - designed for real-time worship presentation contr
   - Premium gradient styling
 
 ### 6. **Presenter View** (Full-Screen Projection)
+
 Clean, distraction-free projection output for audiences.
 
 **Features:**
+
 - Full-screen display (auto-requests fullscreen on open)
 - Ultra-minimal design - only lyrics visible
 - High-contrast text with shadow for readability
@@ -79,6 +85,7 @@ Clean, distraction-free projection output for audiences.
 - No admin UI visible - theater-like presentation
 
 **Updates in real-time when:**
+
 - Operator changes slides in Live Mode
 - Typography settings are adjusted
 - Background is changed
@@ -87,6 +94,7 @@ Clean, distraction-free projection output for audiences.
 ## 🎨 Design Features
 
 ### Premium SaaS UI
+
 - Clean, modern interface with soft shadows
 - Glass-morphism effects on panels (backdrop-blur)
 - Smooth transitions and animations
@@ -94,12 +102,14 @@ Clean, distraction-free projection output for audiences.
 - Professional color palette (purple/indigo theme)
 
 ### Dark Mode First
+
 - Optimized for live projection environments
 - Light mode available for admin tasks
 - Smooth theme toggle in sidebar
 - Consistent colors across all components
 
 ### Responsive & Accessible
+
 - Works on various screen sizes
 - Keyboard shortcuts ready (Previous/Next controls)
 - High-contrast text for readability
@@ -108,6 +118,7 @@ Clean, distraction-free projection output for audiences.
 ## 🚀 How to Use
 
 ### Basic Workflow
+
 1. **Setup**: Add songs to your library (Songs page)
 2. **Organize**: Create setlists from your songs (Setlists page)
 3. **Schedule**: Plan services and attach setlists (Schedule page)
@@ -115,6 +126,7 @@ Clean, distraction-free projection output for audiences.
 5. **Control**: Use the song navigator to switch slides during service
 
 ### Live Presentation
+
 1. Navigate to Live Mode
 2. Select your setlist from dropdown
 3. Customize typography and background settings
@@ -126,7 +138,9 @@ Clean, distraction-free projection output for audiences.
 ## 🎭 Key Concepts
 
 ### Sections
+
 Songs are broken into sections:
+
 - **Verse** (numbered: Verse 1, Verse 2, etc.)
 - **Chorus**
 - **Bridge**
@@ -134,14 +148,18 @@ Songs are broken into sections:
 - **Outro**
 
 ### Flow Sections
+
 Setlists can be organized into flow sections:
+
 - Opening
 - Worship
 - Response
 - Closing
 
 ### Live State
+
 The application maintains real-time state including:
+
 - Current setlist being presented
 - Active song and section
 - Typography settings (font, size, transform)

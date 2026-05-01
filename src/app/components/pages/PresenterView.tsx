@@ -24,14 +24,14 @@ export function PresenterView() {
 
   const currentSong = songs.find((s) => s.id === liveState.currentSongId);
   const currentSection = currentSong?.sections.find(
-    (sec) => sec.id === liveState.currentSectionId
+    (sec) => sec.id === liveState.currentSectionId,
   );
   const currentSectionChunks = currentSection
     ? getLyricChunks(currentSection.lyrics, liveState.linesPerSlide)
     : [];
   const currentChunkIndex = Math.min(
     liveState.currentChunkIndex,
-    Math.max(currentSectionChunks.length - 1, 0)
+    Math.max(currentSectionChunks.length - 1, 0),
   );
   const sectionLyrics = currentSection
     ? liveState.useLineChunks
