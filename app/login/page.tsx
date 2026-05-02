@@ -10,8 +10,15 @@ import {
 } from "../../src/app/components/ui/card";
 import { Input } from "../../src/app/components/ui/input";
 import { Label } from "../../src/app/components/ui/label";
+import { login, signup } from "./actions";
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams: Promise<{ error?: string; message?: string }>;
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+
   return (
     <main
       className="bg-background flex items-center justify-center"
@@ -34,29 +41,69 @@ export default function LoginPage() {
           <p className="text-sm text-muted-foreground">Lyric Lens Account</p>
           <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
-            This is a placeholder login screen for the future SaaS account flow.
+            Sign in or create your account with Supabase email/password auth.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="name@company.com" />
-          </div>
+          <form className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="name@company.com"
+                required
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" placeholder="********" />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="********"
+                required
+              />
+            </div>
 
-          <Button
-            asChild
-            className="transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
-          >
-            <Link href="/?welcome=1&user=Demo%20User">Login and Continue</Link>
-          </Button>
+            {params.error ? (
+              <p className="text-sm text-red-500">{params.error}</p>
+            ) : null}
+
+            {params.message ? (
+              <p className="text-sm text-green-600">{params.message}</p>
+            ) : null}
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="submit"
+                formAction={login}
+                className="transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+              >
+                Login
+              </Button>
+              <Button
+                type="submit"
+                formAction={signup}
+                variant="secondary"
+                className="transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+              >
+                Sign Up
+              </Button>
+            </div>
+          </form>
 
           <p className="text-sm text-muted-foreground">
-            Organization setup will be handled in a separate flow later.
+            Enable Email provider in Supabase Auth settings before testing signup.
+          </p>
+
+          <p className="text-sm text-muted-foreground">
+            Continue browsing without auth:{" "}
+            <Link href="/?welcome=1&user=Demo%20User" className="underline">
+              Use demo mode
+            </Link>
           </p>
         </CardContent>
       </Card>

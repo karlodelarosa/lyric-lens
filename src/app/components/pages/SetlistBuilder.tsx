@@ -62,7 +62,9 @@ function DraggableSong({
 
   return (
     <div
-      ref={(node) => drag(drop(node))}
+      ref={(node) => {
+        drag(drop(node));
+      }}
       className={`p-4 rounded-lg border bg-card flex items-center gap-3 cursor-move ${
         isDragging ? "opacity-50" : ""
       }`}

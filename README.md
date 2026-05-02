@@ -12,9 +12,17 @@ This project now runs on **Next.js App Router** and includes a baseline setup fo
    - `npm install`
 2. Copy env file:
    - `cp .env.example .env.local`
-3. Fill in your Supabase values in `.env.local`.
+3. Fill in your Supabase values in `.env.local` (at minimum `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`).
 4. Start dev server:
    - `npm run dev`
+
+### Login fails with “Missing Supabase URL”
+
+That means the dev server process does not see your env vars. Fix:
+
+- Ensure the file is named **`.env.local`** in the **project root** (same folder as `package.json`), not only `.env.example`.
+- Restart `npm run dev` after editing env files.
+- For production (e.g. Vercel), add the same `NEXT_PUBLIC_*` variables in the host’s Environment Variables UI.
 
 ## App Router Entry Point
 
