@@ -17,7 +17,11 @@
       {
         "name": "next"
       }
-    ]
+    ],
+    "paths": {
+      "@backend/*": ["./backend/*"],
+      "@frontend/*": ["./frontend/*"]
+    }
   },
   "include": [
     "next-env.d.ts",

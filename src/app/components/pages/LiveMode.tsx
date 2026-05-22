@@ -1023,14 +1023,17 @@ export function LiveMode() {
               </Label>
               <Slider
                 value={[liveState.topPadding]}
-                onValueChange={([value]) => updateLiveState({ topPadding: value })}
+                onValueChange={([value]) =>
+                  updateLiveState({ topPadding: value })
+                }
                 min={0}
                 max={200}
                 step={4}
                 disabled={liveState.verticalPosition !== "top"}
               />
               <p className="text-xs text-muted-foreground">
-                Adds extra spacing from the top edge when vertical position is Top.
+                Adds extra spacing from the top edge when vertical position is
+                Top.
               </p>
             </div>
           </div>
@@ -1151,7 +1154,8 @@ export function LiveMode() {
                 className="h-10"
               />
               <p className="text-xs text-muted-foreground">
-                Color applies when you release the picker to avoid preview flicker.
+                Color applies when you release the picker to avoid preview
+                flicker.
               </p>
             </div>
 

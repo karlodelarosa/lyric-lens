@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
+import { useAuth } from "@frontend/contexts/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
   Home,
@@ -29,10 +30,22 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 export function RootLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
+  const displayName = user?.displayName ?? "User";
+  const initials = getInitials(displayName);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showCollapseHint, setShowCollapseHint] = useState(false);
 
@@ -117,7 +130,11 @@ export function RootLayout() {
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 className="h-8 w-8"
-                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                title={
+                  theme === "dark"
+                    ? "Switch to light mode"
+                    : "Switch to dark mode"
+                }
               >
                 {theme === "dark" ? (
                   <Sun className="w-4 h-4" />
@@ -181,15 +198,21 @@ export function RootLayout() {
                 size="sm"
                 className={cn(
                   "w-full",
-                  isSidebarCollapsed ? "justify-center px-2" : "justify-between",
+                  isSidebarCollapsed
+                    ? "justify-center px-2"
+                    : "justify-between",
                 )}
                 title={isSidebarCollapsed ? "Account" : undefined}
               >
                 <div className="flex items-center gap-2 overflow-hidden">
                   <Avatar className="size-6">
-                    <AvatarFallback className="text-[11px]">DU</AvatarFallback>
+                    <AvatarFallback className="text-[11px]">
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
-                  {!isSidebarCollapsed && <span className="truncate">Demo User</span>}
+                  {!isSidebarCollapsed && (
+                    <span className="truncate">{displayName}</span>
+                  )}
                 </div>
               </Button>
             </DropdownMenuTrigger>
@@ -204,10 +227,7 @@ export function RootLayout() {
                 <User className="h-4 w-4" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => navigate("/login")}
-              >
+              <DropdownMenuItem variant="destructive" onClick={() => logout()}>
                 <LogOut className="h-4 w-4" />
                 Logout
               </DropdownMenuItem>
