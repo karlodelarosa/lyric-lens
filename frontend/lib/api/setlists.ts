@@ -1,9 +1,15 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
 
+export type SetlistFlowSectionDto = {
+  name: string;
+  songIds: string[];
+};
+
 export type SetlistDto = {
   id: string;
   name: string;
   songs: string[];
+  flowSections?: SetlistFlowSectionDto[];
 };
 
 export type SetlistsResponse = {
@@ -13,11 +19,13 @@ export type SetlistsResponse = {
 export type CreateSetlistPayload = {
   title: string;
   songIds: string[];
+  flowSections?: SetlistFlowSectionDto[];
 };
 
 export type UpdateSetlistPayload = {
   title?: string;
   songIds?: string[];
+  flowSections?: SetlistFlowSectionDto[];
 };
 
 export async function getSetlists(

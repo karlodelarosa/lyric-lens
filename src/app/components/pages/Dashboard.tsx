@@ -1,4 +1,5 @@
 import { useApp } from "../../contexts/AppContext";
+import { buildLiveUrl } from "../../lib/liveStateSync";
 import { Link } from "react-router";
 import { Calendar, Music, List, ArrowRight, Plus } from "lucide-react";
 import { Button } from "../ui/button";
@@ -140,8 +141,15 @@ export function Dashboard() {
                         </p>
                       </div>
                     </div>
-                    <Link to="/live">
-                      <Button size="sm" variant="outline">
+                    <Link
+                      to={buildLiveUrl(schedule.setlistId)}
+                      state={{ eventTitle: schedule.title }}
+                    >
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!schedule.setlistId}
+                      >
                         Go Live
                       </Button>
                     </Link>

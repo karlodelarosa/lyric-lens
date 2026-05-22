@@ -114,7 +114,7 @@ export function LoginForm() {
             </Button>
 
             <p className="text-sm text-muted-foreground">
-              Organization setup will be handled in a separate flow later.
+              After sign-in, create or join an organization from your profile.
             </p>
 
             {process.env.NODE_ENV === "development" && <SupabaseHealthStatus />}

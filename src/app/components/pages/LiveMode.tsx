@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router";
 import { useApp } from "../../contexts/AppContext";
 import {
   ChevronRight,
@@ -96,11 +97,14 @@ const getLyricChunks = (lyrics: string, linesPerSlide: number) => {
 };
 
 export function LiveMode() {
+  const [searchParams] = useSearchParams();
   const { songs, setlists, liveState, updateLiveState, setCurrentSlide } =
     useApp();
   const [manualLyricsInput, setManualLyricsInput] = useState("");
+  const initialSetlistId =
+    searchParams.get("setlistId") || setlists[0]?.id || null;
   const [selectedSetlistId, setSelectedSetlistId] = useState<string | null>(
-    setlists[0]?.id || null,
+    initialSetlistId,
   );
   const [songSearch, setSongSearch] = useState("");
   const [isSlidePreviewMode, setIsSlidePreviewMode] = useState(false);
@@ -161,10 +165,17 @@ export function LiveMode() {
     : [];
 
   useEffect(() => {
+    const setlistFromUrl = searchParams.get("setlistId");
+    if (setlistFromUrl && setlists.some((sl) => sl.id === setlistFromUrl)) {
+      setSelectedSetlistId(setlistFromUrl);
+      updateLiveState({ currentSetlistId: setlistFromUrl });
+      return;
+    }
+
     if (selectedSetlistId && !liveState.currentSetlistId) {
       updateLiveState({ currentSetlistId: selectedSetlistId });
     }
-  }, [selectedSetlistId]);
+  }, [searchParams, setlists, selectedSetlistId, liveState.currentSetlistId]);
 
   useEffect(() => {
     setVideoUrlInput(liveState.backgroundVideoUrl ?? "");
@@ -324,6 +335,39 @@ export function LiveMode() {
     }
     return currentIndex < currentSong.sections.length - 1;
   };
+
+  const isEditableTarget = useCallback((target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return false;
+    const tag = target.tagName.toLowerCase();
+    return (
+      tag === "input" ||
+      tag === "textarea" ||
+      tag === "select" ||
+      target.isContentEditable
+    );
+  }, []);
+
+  const handleNextRef = useRef(handleNext);
+  const handlePreviousRef = useRef(handlePrevious);
+  handleNextRef.current = handleNext;
+  handlePreviousRef.current = handlePrevious;
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return;
+
+      if (event.key === "ArrowRight" || event.key === " ") {
+        event.preventDefault();
+        handleNextRef.current();
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        handlePreviousRef.current();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isEditableTarget]);
 
   return (
     <div className="h-screen flex flex-col bg-background">

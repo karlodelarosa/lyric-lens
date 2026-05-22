@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useOrganization } from "@frontend/contexts/OrganizationContext";
-import { useApp } from "../../contexts/AppContext";
+import { useApp, type SetlistFlowSectionInput } from "../../contexts/AppContext";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { GripVertical, Plus, Trash2, Save, Search } from "lucide-react";
@@ -104,6 +104,11 @@ export function SetlistBuilder() {
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [librarySearch, setLibrarySearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [flowSections, setFlowSections] = useState<SetlistFlowSectionInput[]>(
+    [],
+  );
+
+  const FLOW_PRESETS = ["Opening", "Worship", "Response", "Closing"];
 
   const filteredLibrarySongs = songs.filter((song) => {
     const keyword = librarySearch.trim().toLowerCase();
@@ -136,7 +141,31 @@ export function SetlistBuilder() {
     setEditingSetlistId(null);
     setNewSetlistName("");
     setSongOrder([]);
+    setFlowSections([]);
     setIsCreatingNew(false);
+  };
+
+  const toggleFlowSectionSong = (
+    sectionName: string,
+    songId: string,
+    checked: boolean,
+  ) => {
+    setFlowSections((prev) => {
+      const existing = prev.find((s) => s.name === sectionName);
+      if (!existing) {
+        return checked
+          ? [...prev, { name: sectionName, songIds: [songId] }]
+          : prev;
+      }
+
+      return prev.map((section) => {
+        if (section.name !== sectionName) return section;
+        const songIds = checked
+          ? [...new Set([...section.songIds, songId])]
+          : section.songIds.filter((id) => id !== songId);
+        return { ...section, songIds };
+      });
+    });
   };
 
   const handleSaveSetlist = async () => {
@@ -153,12 +182,14 @@ export function SetlistBuilder() {
         await updateSetlist(editingSetlistId, {
           name: newSetlistName.trim(),
           songs: songOrder,
+          flowSections,
         });
         toast.success("Setlist updated");
       } else {
         await addSetlist({
           name: newSetlistName.trim(),
           songs: songOrder,
+          flowSections,
         });
         toast.success("Setlist created");
       }
@@ -181,6 +212,7 @@ export function SetlistBuilder() {
     setEditingSetlistId(setlist.id);
     setNewSetlistName(setlist.name);
     setSongOrder([...setlist.songs]);
+    setFlowSections([...setlist.flowSections]);
     setIsCreatingNew(false);
   };
 
@@ -370,6 +402,51 @@ export function SetlistBuilder() {
                   />
                 ))
               )}
+
+              {songOrder.length > 0 && (
+                <div className="space-y-3 pt-4 border-t">
+                  <Label>Flow sections</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Assign songs to service flow blocks (Opening, Worship, etc.)
+                  </p>
+                  {FLOW_PRESETS.map((preset) => {
+                    const section = flowSections.find((s) => s.name === preset);
+                    return (
+                      <div key={preset} className="rounded-lg border p-3 space-y-2">
+                        <p className="text-sm font-medium">{preset}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {songOrder.map((songId) => {
+                            const song = songs.find((s) => s.id === songId);
+                            if (!song) return null;
+                            const checked =
+                              section?.songIds.includes(songId) ?? false;
+                            return (
+                              <label
+                                key={`${preset}-${songId}`}
+                                className="flex items-center gap-1 text-xs border rounded px-2 py-1 cursor-pointer"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(e) =>
+                                    toggleFlowSectionSong(
+                                      preset,
+                                      songId,
+                                      e.target.checked,
+                                    )
+                                  }
+                                />
+                                {song.title}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {editingSetlistId && (
                 <Button
                   variant="outline"

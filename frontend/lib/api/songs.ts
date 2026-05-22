@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost } from "./client";
+import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
 
 export type SongSectionDto = {
   id: string;
@@ -35,6 +35,12 @@ export type CreateSongResponse = {
   song: SongDto;
 };
 
+export type UpdateSongPayload = CreateSongPayload;
+
+export type UpdateSongResponse = {
+  song: SongDto;
+};
+
 export async function getSongs(organizationId: string): Promise<SongsResponse> {
   return apiGet<SongsResponse>(`/api/organizations/${organizationId}/songs`);
 }
@@ -45,6 +51,17 @@ export async function createSong(
 ): Promise<CreateSongResponse> {
   return apiPost<CreateSongResponse>(
     `/api/organizations/${organizationId}/songs`,
+    payload,
+  );
+}
+
+export async function updateSong(
+  organizationId: string,
+  songId: string,
+  payload: UpdateSongPayload,
+): Promise<UpdateSongResponse> {
+  return apiPatch<UpdateSongResponse>(
+    `/api/organizations/${organizationId}/songs/${songId}`,
     payload,
   );
 }

@@ -4,7 +4,7 @@ import {
   parseCreateSongBody,
   songToDto,
 } from "@backend/infrastructure/api/songMappers";
-import { requireUser } from "@backend/infrastructure/api/requireUser";
+import { requireOrgMember } from "@backend/infrastructure/api/requireOrgAdmin";
 import { createSongRepository } from "@backend/infrastructure/supabase/factory";
 import { NextResponse } from "next/server";
 
@@ -14,12 +14,12 @@ type RouteContext = {
 
 export async function GET(_request: Request, context: RouteContext) {
   try {
-    const user = await requireUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { orgId } = await context.params;
+    const member = await requireOrgMember(orgId);
+    if (!member) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { orgId } = await context.params;
     const repository = await createSongRepository();
     const songs = await new ListSongs(repository).execute(orgId);
 
@@ -36,12 +36,12 @@ export async function GET(_request: Request, context: RouteContext) {
 
 export async function POST(request: Request, context: RouteContext) {
   try {
-    const user = await requireUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { orgId } = await context.params;
+    const member = await requireOrgMember(orgId);
+    if (!member) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { orgId } = await context.params;
     const body = await request.json();
     const input = parseCreateSongBody(body);
 
@@ -55,7 +55,7 @@ export async function POST(request: Request, context: RouteContext) {
     const repository = await createSongRepository();
     const song = await new CreateSong(repository).execute(
       orgId,
-      user.id,
+      member.userId,
       input,
     );
 

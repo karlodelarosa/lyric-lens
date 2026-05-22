@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@frontend/contexts/AuthContext";
+import { useOrganization } from "@frontend/contexts/OrganizationContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
   Home,
@@ -18,6 +19,13 @@ import {
   LogOut,
 } from "lucide-react";
 import { Button } from "../ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { cn } from "../../lib/utils";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "../ui/avatar";
@@ -43,6 +51,12 @@ export function RootLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const {
+    organizations,
+    activeOrganization,
+    activeOrganizationId,
+    setActiveOrganizationId,
+  } = useOrganization();
   const { theme, setTheme } = useTheme();
   const displayName = user?.displayName ?? "User";
   const initials = getInitials(displayName);
@@ -189,6 +203,31 @@ export function RootLayout() {
             );
           })}
         </nav>
+
+        {organizations.length > 1 && !isSidebarCollapsed && (
+          <div className="px-4 pb-2">
+            <Select
+              value={activeOrganizationId ?? undefined}
+              onValueChange={setActiveOrganizationId}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Organization" />
+              </SelectTrigger>
+              <SelectContent>
+                {organizations.map((org) => (
+                  <SelectItem key={org.id} value={org.id}>
+                    {org.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {activeOrganization && (
+              <p className="text-xs text-muted-foreground mt-1 truncate">
+                {activeOrganization.name}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="p-4 border-t">
           <DropdownMenu>

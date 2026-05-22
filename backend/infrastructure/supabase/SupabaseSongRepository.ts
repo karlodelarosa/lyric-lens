@@ -3,6 +3,7 @@ import {
   Song,
   type CreateSongInput,
   type SongListRow,
+  type UpdateSongInput,
 } from "../../domain/song/Song";
 import type { SongRepository } from "../../domain/song/SongRepository";
 import type { Database } from "./database.types";
@@ -39,7 +40,42 @@ export class SupabaseSongRepository implements SongRepository {
       throw new Error("Failed to load songs");
     }
 
-    return (data ?? []).map((row) => Song.fromListRow(row as SongListRow));
+    const usageCounts = await this.loadUsageCounts(organizationId);
+
+    return (data ?? []).map((row) => {
+      const song = Song.fromListRow(row as SongListRow);
+      return Song.withUsageCount(song, usageCounts.get(song.id) ?? 0);
+    });
+  }
+
+  private async loadUsageCounts(
+    organizationId: string,
+  ): Promise<Map<string, number>> {
+    const { data: setlists, error: setlistsError } = await this.client
+      .from("setlists")
+      .select("id")
+      .eq("organization_id", organizationId);
+
+    if (setlistsError || !setlists?.length) {
+      return new Map();
+    }
+
+    const setlistIds = setlists.map((row) => row.id);
+    const { data: links, error: linksError } = await this.client
+      .from("setlist_songs")
+      .select("song_id")
+      .in("setlist_id", setlistIds);
+
+    if (linksError) {
+      return new Map();
+    }
+
+    const counts = new Map<string, number>();
+    for (const link of links ?? []) {
+      counts.set(link.song_id, (counts.get(link.song_id) ?? 0) + 1);
+    }
+
+    return counts;
   }
 
   async create(
@@ -122,6 +158,99 @@ export class SupabaseSongRepository implements SongRepository {
     }
 
     return created;
+  }
+
+  async update(
+    organizationId: string,
+    songId: string,
+    input: UpdateSongInput,
+  ): Promise<Song> {
+    const { error: songError } = await this.client
+      .from("songs")
+      .update({
+        title: input.title.trim(),
+        artist: input.artist.trim() || null,
+      })
+      .eq("id", songId)
+      .eq("organization_id", organizationId);
+
+    if (songError) {
+      throw new Error("Failed to update song");
+    }
+
+    const { error: deleteSectionsError } = await this.client
+      .from("song_sections")
+      .delete()
+      .eq("song_id", songId);
+
+    if (deleteSectionsError) {
+      throw new Error("Failed to update song sections");
+    }
+
+    const sectionRows = input.sections.map((section, index) => ({
+      song_id: songId,
+      section_type: section.type,
+      section_number: section.number ?? null,
+      content: section.lyrics.trim(),
+      position: index,
+    }));
+
+    const { error: sectionsError } = await this.client
+      .from("song_sections")
+      .insert(sectionRows);
+
+    if (sectionsError) {
+      throw new Error("Failed to update song sections");
+    }
+
+    const { error: deleteLinksError } = await this.client
+      .from("song_tag_links")
+      .delete()
+      .eq("song_id", songId);
+
+    if (deleteLinksError) {
+      throw new Error("Failed to update song tags");
+    }
+
+    const tagNames = [
+      ...new Set(
+        input.tags.map((tag) => tag.trim()).filter((tag) => tag.length > 0),
+      ),
+    ];
+
+    if (tagNames.length > 0) {
+      const { data: tagRows, error: tagsError } = await this.client
+        .from("song_tags")
+        .upsert(
+          tagNames.map((name) => ({
+            organization_id: organizationId,
+            name,
+          })),
+          { onConflict: "organization_id,name" },
+        )
+        .select("id");
+
+      if (tagsError || !tagRows?.length) {
+        throw new Error("Failed to update song tags");
+      }
+
+      const { error: linksError } = await this.client
+        .from("song_tag_links")
+        .insert(tagRows.map((tag) => ({ song_id: songId, tag_id: tag.id })));
+
+      if (linksError) {
+        throw new Error("Failed to link song tags");
+      }
+    }
+
+    const songs = await this.listByOrganization(organizationId);
+    const updated = songs.find((song) => song.id === songId);
+
+    if (!updated) {
+      throw new Error("Failed to load updated song");
+    }
+
+    return updated;
   }
 
   async delete(organizationId: string, songId: string): Promise<void> {

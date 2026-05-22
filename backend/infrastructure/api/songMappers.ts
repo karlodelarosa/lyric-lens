@@ -77,3 +77,5 @@ export function parseCreateSongBody(body: unknown): CreateSongInput | null {
 
   return { title, artist, tags, sections };
 }
+
+export const parseUpdateSongBody = parseCreateSongBody;

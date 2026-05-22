@@ -11,6 +11,16 @@ import type { Database } from "./database.types";
 const SETLIST_LIST_SELECT = `
   id,
   title,
+  flow_sections,
+  setlist_songs (
+    song_id,
+    position
+  )
+`;
+
+const SETLIST_LIST_SELECT_LEGACY = `
+  id,
+  title,
   setlist_songs (
     song_id,
     position
@@ -20,19 +30,42 @@ const SETLIST_LIST_SELECT = `
 export class SupabaseSetlistRepository implements SetlistRepository {
   constructor(private readonly client: SupabaseClient<Database>) {}
 
-  async listByOrganization(organizationId: string): Promise<Setlist[]> {
-    const { data, error } = await this.client
+  private async querySetlists(organizationId: string, select: string) {
+    return this.client
       .from("setlists")
-      .select(SETLIST_LIST_SELECT)
+      .select(select)
       .eq("organization_id", organizationId)
       .order("title");
+  }
+
+  private isMissingFlowSectionsColumn(error: { message?: string } | null) {
+    const message = error?.message?.toLowerCase() ?? "";
+    return (
+      message.includes("flow_sections") &&
+      (message.includes("does not exist") ||
+        message.includes("could not find"))
+    );
+  }
+
+  async listByOrganization(organizationId: string): Promise<Setlist[]> {
+    let { data, error } = await this.querySetlists(
+      organizationId,
+      SETLIST_LIST_SELECT,
+    );
+
+    if (error && this.isMissingFlowSectionsColumn(error)) {
+      ({ data, error } = await this.querySetlists(
+        organizationId,
+        SETLIST_LIST_SELECT_LEGACY,
+      ));
+    }
 
     if (error) {
-      throw new Error("Failed to load setlists");
+      throw new Error(`Failed to load setlists: ${error.message}`);
     }
 
     return (data ?? []).map((row) =>
-      Setlist.fromListRow(row as SetlistListRow),
+      Setlist.fromListRow(row as unknown as SetlistListRow),
     );
   }
 
@@ -41,18 +74,33 @@ export class SupabaseSetlistRepository implements SetlistRepository {
     createdBy: string,
     input: CreateSetlistInput,
   ): Promise<Setlist> {
-    const { data: setlistRow, error: setlistError } = await this.client
+    const baseInsert = {
+      organization_id: organizationId,
+      title: input.title.trim(),
+      created_by: createdBy,
+    };
+
+    let { data: setlistRow, error: setlistError } = await this.client
       .from("setlists")
       .insert({
-        organization_id: organizationId,
-        title: input.title.trim(),
-        created_by: createdBy,
+        ...baseInsert,
+        flow_sections: input.flowSections ?? [],
       })
       .select("id")
       .single();
 
+    if (setlistError && this.isMissingFlowSectionsColumn(setlistError)) {
+      ({ data: setlistRow, error: setlistError } = await this.client
+        .from("setlists")
+        .insert(baseInsert)
+        .select("id")
+        .single());
+    }
+
     if (setlistError || !setlistRow) {
-      throw new Error("Failed to create setlist");
+      throw new Error(
+        `Failed to create setlist: ${setlistError?.message ?? "unknown"}`,
+      );
     }
 
     await this.replaceSongs(setlistRow.id, input.songIds);
@@ -72,15 +120,37 @@ export class SupabaseSetlistRepository implements SetlistRepository {
     setlistId: string,
     input: UpdateSetlistInput,
   ): Promise<Setlist> {
-    if (input.title !== undefined) {
-      const { error } = await this.client
+    if (input.title !== undefined || input.flowSections !== undefined) {
+      const patch = {
+        ...(input.title !== undefined ? { title: input.title.trim() } : {}),
+        ...(input.flowSections !== undefined
+          ? { flow_sections: input.flowSections }
+          : {}),
+      };
+
+      let { error } = await this.client
         .from("setlists")
-        .update({ title: input.title.trim() })
+        .update(patch)
         .eq("id", setlistId)
         .eq("organization_id", organizationId);
 
+      if (error && this.isMissingFlowSectionsColumn(error)) {
+        const legacyPatch =
+          input.title !== undefined ? { title: input.title.trim() } : null;
+
+        if (legacyPatch) {
+          ({ error } = await this.client
+            .from("setlists")
+            .update(legacyPatch)
+            .eq("id", setlistId)
+            .eq("organization_id", organizationId));
+        } else {
+          error = null;
+        }
+      }
+
       if (error) {
-        throw new Error("Failed to update setlist");
+        throw new Error(`Failed to update setlist: ${error.message}`);
       }
     }
 

@@ -59,10 +59,12 @@ export function SongLibrary() {
     isLoading: isOrgLoading,
     loadError: orgLoadError,
   } = useOrganization();
-  const { songs, songsLoading, songsError, addSong, deleteSong } = useApp();
+  const { songs, songsLoading, songsError, addSong, updateSong, deleteSong } =
+    useApp();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSong, setSelectedSong] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
+  const [editingSongId, setEditingSongId] = useState<string | null>(null);
   const [tagFilter, setTagFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"title" | "usage">("title");
   const [isSaving, setIsSaving] = useState(false);
@@ -134,6 +136,56 @@ export function SongLibrary() {
       toast.success("Song added");
     } catch {
       toast.error("Failed to add song");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const openEditSong = (songId: string) => {
+    const target = songs.find((s) => s.id === songId);
+    if (!target) return;
+
+    setEditingSongId(songId);
+    setSections(
+      target.sections.map((section, index) => ({
+        id: `${sectionIdPrefix}-edit-${section.id}`,
+        type: section.type,
+        number: section.number ? String(section.number) : String(index + 1),
+        lyrics: section.lyrics,
+      })),
+    );
+  };
+
+  const handleUpdateSong = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingSongId || !activeOrganizationId) return;
+
+    const formData = new FormData(e.currentTarget);
+    const validSections = sections
+      .map((section) => ({
+        type: section.type,
+        number: section.number ? Number(section.number) : undefined,
+        lyrics: section.lyrics.trim(),
+      }))
+      .filter((section) => section.lyrics.length > 0);
+
+    if (validSections.length === 0) return;
+
+    setIsSaving(true);
+    try {
+      await updateSong(editingSongId, {
+        title: formData.get("title") as string,
+        artist: formData.get("artist") as string,
+        tags: (formData.get("tags") as string)
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        sections: validSections,
+      });
+      setEditingSongId(null);
+      toast.success("Song updated");
+    } catch {
+      toast.error("Failed to update song");
     } finally {
       setIsSaving(false);
     }
@@ -457,7 +509,14 @@ export function SongLibrary() {
                     <p className="text-2xl font-bold">{song.usageCount}</p>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="ghost" size="icon">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditSong(song.id);
+                      }}
+                    >
                       <Edit className="w-4 h-4" />
                     </Button>
                     <Button
@@ -477,6 +536,184 @@ export function SongLibrary() {
           </Card>
         ))}
       </div>
+
+      {/* Edit Song Dialog */}
+      <Dialog
+        open={editingSongId !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditingSongId(null);
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          {editingSongId && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Edit Song</DialogTitle>
+                <DialogDescription>
+                  Update song metadata and section-based lyrics.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleUpdateSong} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-title">Song Title</Label>
+                    <Input
+                      id="edit-title"
+                      name="title"
+                      required
+                      defaultValue={
+                        songs.find((s) => s.id === editingSongId)?.title
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-artist">Artist</Label>
+                    <Input
+                      id="edit-artist"
+                      name="artist"
+                      required
+                      defaultValue={
+                        songs.find((s) => s.id === editingSongId)?.artist
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-tags">Tags (comma separated)</Label>
+                  <Input
+                    id="edit-tags"
+                    name="tags"
+                    defaultValue={songs
+                      .find((s) => s.id === editingSongId)
+                      ?.tags.join(", ")}
+                  />
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Song Sections</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setSections((prev) => [
+                          ...prev,
+                          createEmptySection(
+                            `${sectionIdPrefix}-edit-${nextSectionId.current++}`,
+                            String(prev.length + 1),
+                          ),
+                        ])
+                      }
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Section
+                    </Button>
+                  </div>
+                  <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                    {sections.map((section, index) => (
+                      <Card key={section.id}>
+                        <CardContent className="p-4 space-y-3">
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Type</Label>
+                              <Select
+                                value={section.type}
+                                onValueChange={(value) =>
+                                  setSections((prev) =>
+                                    prev.map((s) =>
+                                      s.id === section.id
+                                        ? {
+                                            ...s,
+                                            type: value as SongSectionType,
+                                          }
+                                        : s,
+                                    ),
+                                  )
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {SECTION_TYPES.map((option) => (
+                                    <SelectItem
+                                      key={option.value}
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Number</Label>
+                              <Input
+                                value={section.number}
+                                onChange={(e) =>
+                                  setSections((prev) =>
+                                    prev.map((s) =>
+                                      s.id === section.id
+                                        ? { ...s, number: e.target.value }
+                                        : s,
+                                    ),
+                                  )
+                                }
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="w-full"
+                                disabled={sections.length === 1}
+                                onClick={() =>
+                                  setSections((prev) =>
+                                    prev.filter((s) => s.id !== section.id),
+                                  )
+                                }
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          </div>
+                          <Textarea
+                            value={section.lyrics}
+                            onChange={(e) =>
+                              setSections((prev) =>
+                                prev.map((s) =>
+                                  s.id === section.id
+                                    ? { ...s, lyrics: e.target.value }
+                                    : s,
+                                ),
+                              )
+                            }
+                            rows={5}
+                            required={index === 0}
+                            className="font-mono"
+                          />
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setEditingSongId(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSaving}>
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
+              </form>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Song Detail Dialog */}
       <Dialog

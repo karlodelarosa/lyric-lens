@@ -24,6 +24,7 @@ import {
   createSong as createSongApi,
   deleteSong as deleteSongApi,
   getSongs,
+  updateSong as updateSongApi,
   type SongDto,
 } from "@frontend/lib/api/songs";
 
@@ -75,14 +76,21 @@ interface Setlist {
   scheduleId?: string;
 }
 
+export type SetlistFlowSectionInput = {
+  name: string;
+  songIds: string[];
+};
+
 export type NewSetlistInput = {
   name: string;
   songs: string[];
+  flowSections?: SetlistFlowSectionInput[];
 };
 
 export type UpdateSetlistInput = {
   name?: string;
   songs?: string[];
+  flowSections?: SetlistFlowSectionInput[];
 };
 
 interface Schedule {
@@ -143,7 +151,7 @@ interface AppContextType {
   refreshSetlists: () => Promise<void>;
   refreshSchedules: () => Promise<void>;
   addSong: (song: NewSongInput) => Promise<void>;
-  updateSong: (id: string, song: Partial<Song>) => void;
+  updateSong: (id: string, song: NewSongInput) => Promise<void>;
   deleteSong: (id: string) => Promise<void>;
   addSetlist: (input: NewSetlistInput) => Promise<void>;
   updateSetlist: (id: string, input: UpdateSetlistInput) => Promise<void>;
@@ -155,8 +163,14 @@ interface AppContextType {
   setCurrentSlide: (songId: string, sectionId: string) => void;
 }
 
+import {
+  createLiveStateChannel,
+  LIVE_STATE_STORAGE_KEY,
+  publishLiveState,
+  readLiveStateFromStorage,
+} from "../lib/liveStateSync";
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
-const LIVE_STATE_STORAGE_KEY = "lyric-lens-live-state";
 
 function getDefaultLiveState(): LiveState {
   return {
@@ -205,7 +219,7 @@ function mapSetlistDto(dto: SetlistDto): Setlist {
     id: dto.id,
     name: dto.name,
     songs: dto.songs,
-    flowSections: [],
+    flowSections: dto.flowSections ?? [],
   };
 }
 
@@ -231,6 +245,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [schedulesError, setSchedulesError] = useState<string | null>(null);
   const [liveState, setLiveState] = useState<LiveState>(getDefaultLiveState);
   const [liveStateHydrated, setLiveStateHydrated] = useState(false);
+  const liveStateChannelRef = React.useRef<ReturnType<
+    typeof createLiveStateChannel
+  > | null>(null);
 
   const refreshSongs = useCallback(async () => {
     if (!activeOrganizationId) {
@@ -245,9 +262,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const { songs: loaded } = await getSongs(activeOrganizationId);
       setSongs(loaded.map(mapSongDto));
-    } catch {
+    } catch (error) {
       setSongs([]);
-      setSongsError("Failed to load songs");
+      setSongsError(
+        error instanceof Error ? error.message : "Failed to load songs",
+      );
     } finally {
       setSongsLoading(false);
     }
@@ -266,9 +285,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const { setlists: loaded } = await getSetlists(activeOrganizationId);
       setSetlists(loaded.map(mapSetlistDto));
-    } catch {
+    } catch (error) {
       setSetlists([]);
-      setSetlistsError("Failed to load setlists");
+      setSetlistsError(
+        error instanceof Error ? error.message : "Failed to load setlists",
+      );
     } finally {
       setSetlistsLoading(false);
     }
@@ -287,9 +308,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const { events: loaded } = await getEvents(activeOrganizationId);
       setSchedules(loaded.map(mapEventDto));
-    } catch {
+    } catch (error) {
       setSchedules([]);
-      setSchedulesError("Failed to load events");
+      setSchedulesError(
+        error instanceof Error ? error.message : "Failed to load events",
+      );
     } finally {
       setSchedulesLoading(false);
     }
@@ -303,27 +326,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [isOrgLoading, refreshSongs, refreshSetlists, refreshSchedules]);
 
   React.useEffect(() => {
-    const saved = window.localStorage.getItem(LIVE_STATE_STORAGE_KEY);
+    const saved = readLiveStateFromStorage();
     if (saved) {
-      try {
-        setLiveState((prev) => ({ ...prev, ...JSON.parse(saved) }));
-      } catch {
-        // Ignore malformed storage payloads.
-      }
+      setLiveState((prev) => ({ ...prev, ...saved }) as LiveState);
     }
     setLiveStateHydrated(true);
-  }, []);
 
-  React.useEffect(() => {
-    if (!liveStateHydrated) return;
+    const channel = createLiveStateChannel();
+    liveStateChannelRef.current = channel;
 
-    window.localStorage.setItem(
-      LIVE_STATE_STORAGE_KEY,
-      JSON.stringify(liveState),
-    );
-  }, [liveState, liveStateHydrated]);
+    const onChannelMessage = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== "object") return;
+      setLiveState((prev) => ({ ...prev, ...event.data }) as LiveState);
+    };
 
-  React.useEffect(() => {
+    channel?.addEventListener("message", onChannelMessage);
+
     const onStorage = (event: StorageEvent) => {
       if (event.key !== LIVE_STATE_STORAGE_KEY || !event.newValue) return;
 
@@ -331,15 +349,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setLiveState((prev) => ({
           ...prev,
           ...JSON.parse(event.newValue || "{}"),
-        }));
+        }) as LiveState);
       } catch {
         // Ignore malformed storage payloads.
       }
     };
 
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+
+    return () => {
+      channel?.removeEventListener("message", onChannelMessage);
+      channel?.close();
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
+
+  React.useEffect(() => {
+    if (!liveStateHydrated) return;
+
+    publishLiveState(
+      liveStateChannelRef.current,
+      liveState as unknown as Record<string, unknown>,
+    );
+  }, [liveState, liveStateHydrated]);
 
   const addSong = async (song: NewSongInput) => {
     if (!activeOrganizationId) {
@@ -360,8 +392,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSongs((prev) => [...prev, mapSongDto(created)]);
   };
 
-  const updateSong = (id: string, updates: Partial<Song>) => {
-    setSongs(songs.map((s) => (s.id === id ? { ...s, ...updates } : s)));
+  const updateSong = async (id: string, song: NewSongInput) => {
+    if (!activeOrganizationId) {
+      throw new Error("No organization selected");
+    }
+
+    const { song: updated } = await updateSongApi(activeOrganizationId, id, {
+      title: song.title,
+      artist: song.artist,
+      tags: song.tags,
+      sections: song.sections.map((section) => ({
+        type: section.type,
+        number: section.number,
+        lyrics: section.lyrics,
+      })),
+    });
+
+    setSongs((prev) =>
+      prev.map((s) => (s.id === id ? mapSongDto(updated) : s)),
+    );
   };
 
   const deleteSong = async (id: string) => {
@@ -381,6 +430,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { setlist: created } = await createSetlistApi(activeOrganizationId, {
       title: input.name,
       songIds: input.songs,
+      flowSections: input.flowSections,
     });
 
     setSetlists((prev) => [...prev, mapSetlistDto(created)]);
@@ -391,9 +441,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw new Error("No organization selected");
     }
 
-    const payload: { title?: string; songIds?: string[] } = {};
+    const payload: {
+      title?: string;
+      songIds?: string[];
+      flowSections?: SetlistFlowSectionInput[];
+    } = {};
     if (input.name !== undefined) payload.title = input.name;
     if (input.songs !== undefined) payload.songIds = input.songs;
+    if (input.flowSections !== undefined) {
+      payload.flowSections = input.flowSections;
+    }
 
     const { setlist: updated } = await updateSetlistApi(
       activeOrganizationId,

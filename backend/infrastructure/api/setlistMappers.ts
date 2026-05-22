@@ -1,4 +1,4 @@
-import type { Setlist } from "../../domain/setlist/Setlist";
+import type { Setlist, SetlistFlowSection } from "../../domain/setlist/Setlist";
 import type {
   CreateSetlistInput,
   UpdateSetlistInput,
@@ -9,7 +9,26 @@ export function setlistToDto(setlist: Setlist) {
     id: setlist.id,
     name: setlist.name,
     songs: setlist.songs,
+    flowSections: setlist.flowSections,
   };
+}
+
+function parseFlowSections(value: unknown): SetlistFlowSection[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+
+  const sections: SetlistFlowSection[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") return undefined;
+    const record = item as Record<string, unknown>;
+    const name = typeof record.name === "string" ? record.name.trim() : "";
+    const songIds = Array.isArray(record.songIds)
+      ? record.songIds.filter((id): id is string => typeof id === "string")
+      : [];
+    if (!name) return undefined;
+    sections.push({ name, songIds });
+  }
+
+  return sections;
 }
 
 export function parseCreateSetlistBody(
@@ -26,7 +45,9 @@ export function parseCreateSetlistBody(
     ? record.songIds.filter((id): id is string => typeof id === "string")
     : [];
 
-  return { title, songIds };
+  const flowSections = parseFlowSections(record.flowSections);
+
+  return { title, songIds, flowSections };
 }
 
 export function parseUpdateSetlistBody(
@@ -49,7 +70,16 @@ export function parseUpdateSetlistBody(
     );
   }
 
-  if (input.title === undefined && input.songIds === undefined) {
+  const flowSections = parseFlowSections(record.flowSections);
+  if (flowSections !== undefined) {
+    input.flowSections = flowSections;
+  }
+
+  if (
+    input.title === undefined &&
+    input.songIds === undefined &&
+    input.flowSections === undefined
+  ) {
     return null;
   }
 

@@ -135,6 +135,7 @@ export type Database = {
         Row: {
           created_at: string;
           created_by: string | null;
+          flow_sections: Json;
           id: string;
           organization_id: string;
           title: string;
@@ -143,6 +144,7 @@ export type Database = {
         Insert: {
           created_at?: string;
           created_by?: string | null;
+          flow_sections?: Json;
           id?: string;
           organization_id: string;
           title: string;
@@ -151,6 +153,7 @@ export type Database = {
         Update: {
           created_at?: string;
           created_by?: string | null;
+          flow_sections?: Json;
           id?: string;
           organization_id?: string;
           title?: string;

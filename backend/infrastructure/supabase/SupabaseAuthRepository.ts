@@ -3,6 +3,7 @@ import { AuthUser } from "../../domain/auth/AuthUser";
 import type {
   AuthRepository,
   SignInCredentials,
+  UpdateProfileInput,
 } from "../../domain/auth/AuthRepository";
 import type { Database } from "./database.types";
 
@@ -34,6 +35,23 @@ export class SupabaseAuthRepository implements AuthRepository {
     if (error) {
       throw new AuthError("Sign out failed");
     }
+  }
+
+  async updateProfile(input: UpdateProfileInput): Promise<AuthUser> {
+    const displayName = input.displayName.trim();
+    if (!displayName) {
+      throw new AuthError("Display name is required");
+    }
+
+    const { data, error } = await this.client.auth.updateUser({
+      data: { full_name: displayName, name: displayName },
+    });
+
+    if (error || !data.user) {
+      throw new AuthError("Failed to update profile");
+    }
+
+    return this.toAuthUser(data.user);
   }
 
   async getCurrentUser(): Promise<AuthUser | null> {

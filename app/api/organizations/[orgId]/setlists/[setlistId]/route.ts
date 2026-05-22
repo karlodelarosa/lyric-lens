@@ -4,7 +4,7 @@ import {
   parseUpdateSetlistBody,
   setlistToDto,
 } from "@backend/infrastructure/api/setlistMappers";
-import { requireUser } from "@backend/infrastructure/api/requireUser";
+import { requireOrgMember } from "@backend/infrastructure/api/requireOrgAdmin";
 import { createSetlistRepository } from "@backend/infrastructure/supabase/factory";
 import { NextResponse } from "next/server";
 
@@ -14,12 +14,12 @@ type RouteContext = {
 
 export async function PATCH(request: Request, context: RouteContext) {
   try {
-    const user = await requireUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { orgId, setlistId } = await context.params;
+    const member = await requireOrgMember(orgId);
+    if (!member) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { orgId, setlistId } = await context.params;
     const body = await request.json();
     const input = parseUpdateSetlistBody(body);
 
@@ -38,22 +38,21 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
 
     return NextResponse.json({ setlist: setlistToDto(setlist) });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to update setlist" },
-      { status: 500 },
-    );
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to update setlist";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
   try {
-    const user = await requireUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { orgId, setlistId } = await context.params;
+    const member = await requireOrgMember(orgId);
+    if (!member) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { orgId, setlistId } = await context.params;
     const repository = await createSetlistRepository();
     await new DeleteSetlist(repository).execute(orgId, setlistId);
 

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { useOrganization } from "@frontend/contexts/OrganizationContext";
 import { useApp } from "../../contexts/AppContext";
+import { buildLiveUrl } from "../../lib/liveStateSync";
 import { toast } from "sonner";
 import {
   Calendar as CalendarIcon,
@@ -52,6 +54,7 @@ export function Schedule() {
     setlists,
     addSchedule,
     updateSchedule,
+    deleteSchedule,
   } = useApp();
   const [isSaving, setIsSaving] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -128,6 +131,22 @@ export function Schedule() {
     (setlist) =>
       setlist.id === (selectedSchedule?.setlistId || editingSchedule.setlistId),
   );
+
+  const handleDeleteSchedule = async () => {
+    if (!selectedScheduleId) return;
+    if (!confirm("Delete this scheduled event?")) return;
+
+    setIsSaving(true);
+    try {
+      await deleteSchedule(selectedScheduleId);
+      setSelectedScheduleId(null);
+      toast.success("Event deleted");
+    } catch {
+      toast.error("Failed to delete event");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleUpdateSchedule = async () => {
     if (!selectedScheduleId || !editingSchedule.title || !editingSchedule.date)
@@ -374,13 +393,23 @@ export function Schedule() {
                       )}
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openScheduleEditor(schedule.id)}
-                  >
-                    Edit
-                  </Button>
+                  <div className="flex gap-2">
+                    <Link to={buildLiveUrl(schedule.setlistId)}>
+                      <Button
+                        size="sm"
+                        disabled={!schedule.setlistId}
+                      >
+                        Go Live
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openScheduleEditor(schedule.id)}
+                    >
+                      Edit
+                    </Button>
+                  </div>
                 </div>
               );
             })}
@@ -480,19 +509,28 @@ export function Schedule() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-between gap-2">
               <Button
-                variant="outline"
-                onClick={() => setSelectedScheduleId(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => void handleUpdateSchedule()}
+                variant="destructive"
+                onClick={() => void handleDeleteSchedule()}
                 disabled={isSaving}
               >
-                {isSaving ? "Saving..." : "Save changes"}
+                Delete event
               </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedScheduleId(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => void handleUpdateSchedule()}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save changes"}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>

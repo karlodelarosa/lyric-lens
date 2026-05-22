@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "./client";
+import { apiGet, apiPatch, apiPost } from "./client";
 
 export type AuthUserDto = {
   id: string;
@@ -27,4 +27,10 @@ export async function login(
 
 export async function logout(): Promise<{ ok: boolean }> {
   return apiPost<{ ok: boolean }>("/api/auth/logout");
+}
+
+export async function updateProfile(
+  displayName: string,
+): Promise<LoginResponse> {
+  return apiPatch<LoginResponse>("/api/auth/profile", { displayName });
 }
