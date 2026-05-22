@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useOrganization } from "@frontend/contexts/OrganizationContext";
 import { useApp } from "../../contexts/AppContext";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -16,13 +17,7 @@ import {
   DialogTrigger,
 } from "../ui/dialog";
 import { Label } from "../ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
+import { toast } from "sonner";
 
 interface DraggableSongProps {
   songId: string;
@@ -89,12 +84,23 @@ function DraggableSong({
 }
 
 export function SetlistBuilder() {
-  const { songs, setlists, addSetlist } = useApp();
-  const [selectedSetlist, setSelectedSetlist] = useState<string | null>(null);
+  const { activeOrganizationId, isLoading: isOrgLoading, loadError: orgLoadError } =
+    useOrganization();
+  const {
+    songs,
+    setlists,
+    setlistsLoading,
+    setlistsError,
+    addSetlist,
+    updateSetlist,
+    deleteSetlist,
+  } = useApp();
+  const [editingSetlistId, setEditingSetlistId] = useState<string | null>(null);
   const [newSetlistName, setNewSetlistName] = useState("");
   const [songOrder, setSongOrder] = useState<string[]>([]);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [librarySearch, setLibrarySearch] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const filteredLibrarySongs = songs.filter((song) => {
     const keyword = librarySearch.trim().toLowerCase();
@@ -123,37 +129,98 @@ export function SetlistBuilder() {
     }
   };
 
-  const handleSaveSetlist = () => {
-    if (!newSetlistName) return;
-
-    addSetlist({
-      name: newSetlistName,
-      songs: songOrder,
-      flowSections: [
-        { name: "Opening", songIds: songOrder.slice(0, 1) },
-        { name: "Worship", songIds: songOrder.slice(1) },
-      ],
-    });
-
+  const resetBuilder = () => {
+    setEditingSetlistId(null);
     setNewSetlistName("");
     setSongOrder([]);
     setIsCreatingNew(false);
   };
 
+  const handleSaveSetlist = async () => {
+    if (!newSetlistName.trim()) return;
+
+    if (!activeOrganizationId) {
+      toast.error("Select an organization before saving setlists");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      if (editingSetlistId) {
+        await updateSetlist(editingSetlistId, {
+          name: newSetlistName.trim(),
+          songs: songOrder,
+        });
+        toast.success("Setlist updated");
+      } else {
+        await addSetlist({
+          name: newSetlistName.trim(),
+          songs: songOrder,
+        });
+        toast.success("Setlist created");
+      }
+      resetBuilder();
+    } catch {
+      toast.error(
+        editingSetlistId ? "Failed to update setlist" : "Failed to create setlist",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleEditSetlist = (setlistId: string) => {
+    const setlist = setlists.find((entry) => entry.id === setlistId);
+    if (!setlist) return;
+
+    setEditingSetlistId(setlist.id);
+    setNewSetlistName(setlist.name);
+    setSongOrder([...setlist.songs]);
+    setIsCreatingNew(false);
+  };
+
+  const handleDeleteSetlist = async (setlistId: string) => {
+    if (!confirm("Delete this setlist?")) return;
+
+    try {
+      await deleteSetlist(setlistId);
+      if (editingSetlistId === setlistId) resetBuilder();
+      toast.success("Setlist deleted");
+    } catch {
+      toast.error("Failed to delete setlist");
+    }
+  };
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="p-8 space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Setlist Builder</h1>
             <p className="text-muted-foreground mt-1">
-              Create and manage song sequences
+              {setlistsLoading
+                ? "Loading setlists..."
+                : "Create and manage song sequences"}
             </p>
           </div>
-          <Dialog open={isCreatingNew} onOpenChange={setIsCreatingNew}>
+          <Dialog
+            open={isCreatingNew}
+            onOpenChange={(open) => {
+              setIsCreatingNew(open);
+              if (!open && !editingSetlistId) {
+                setNewSetlistName("");
+              }
+            }}
+          >
             <DialogTrigger asChild>
-              <Button>
+              <Button
+                disabled={!activeOrganizationId || isOrgLoading}
+                onClick={() => {
+                  setEditingSetlistId(null);
+                  setSongOrder([]);
+                  setNewSetlistName("");
+                }}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 New Setlist
               </Button>
@@ -161,7 +228,9 @@ export function SetlistBuilder() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Create New Setlist</DialogTitle>
-                <DialogDescription>Give your setlist a name</DialogDescription>
+                <DialogDescription>
+                  Name your setlist, then add songs in the builder panel.
+                </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -173,16 +242,46 @@ export function SetlistBuilder() {
                     placeholder="Sunday Morning Worship - May 3"
                   />
                 </div>
-                <Button onClick={handleSaveSetlist} className="w-full">
-                  Create Setlist
-                </Button>
+                <p className="text-sm text-muted-foreground">
+                  You can add songs now in the builder, or create the setlist and
+                  edit it later.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCreatingNew(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => void handleSaveSetlist()}
+                    disabled={!newSetlistName.trim() || isSaving}
+                  >
+                    {isSaving ? "Saving..." : "Create Setlist"}
+                  </Button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
         </div>
 
+        {orgLoadError && (
+          <p className="text-sm text-destructive">{orgLoadError}</p>
+        )}
+
+        {!isOrgLoading && !orgLoadError && !activeOrganizationId && (
+          <p className="text-sm text-muted-foreground">
+            Select an organization to manage setlists.
+          </p>
+        )}
+
+        {setlistsError && (
+          <p className="text-sm text-destructive">{setlistsError}</p>
+        )}
+
         <div className="grid grid-cols-2 gap-6">
-          {/* Song Pool */}
           <Card>
             <CardHeader>
               <CardTitle>Song Library</CardTitle>
@@ -197,33 +296,53 @@ export function SetlistBuilder() {
                   onChange={(e) => setLibrarySearch(e.target.value)}
                 />
               </div>
-              {filteredLibrarySongs.map((song) => (
-                <div
-                  key={song.id}
-                  className="p-3 rounded-lg border bg-card hover:bg-accent transition-colors cursor-pointer"
-                  onClick={() => handleAddSongToSetlist(song.id)}
-                >
-                  <p className="font-medium">{song.title}</p>
-                  <p className="text-sm text-muted-foreground">{song.artist}</p>
-                </div>
-              ))}
+              {filteredLibrarySongs.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">
+                  No songs in your library yet. Add songs first.
+                </p>
+              ) : (
+                filteredLibrarySongs.map((song) => (
+                  <div
+                    key={song.id}
+                    className="p-3 rounded-lg border bg-card hover:bg-accent transition-colors cursor-pointer"
+                    onClick={() => handleAddSongToSetlist(song.id)}
+                  >
+                    <p className="font-medium">{song.title}</p>
+                    <p className="text-sm text-muted-foreground">{song.artist}</p>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
 
-          {/* Setlist Builder */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Current Setlist</CardTitle>
-                {songOrder.length > 0 && (
-                  <Button size="sm" onClick={handleSaveSetlist}>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle>
+                  {editingSetlistId ? "Editing Setlist" : "Current Setlist"}
+                </CardTitle>
+                {(songOrder.length > 0 || editingSetlistId) && (
+                  <Button
+                    size="sm"
+                    onClick={handleSaveSetlist}
+                    disabled={!newSetlistName.trim() || isSaving}
+                  >
                     <Save className="w-4 h-4 mr-2" />
-                    Save
+                    {isSaving ? "Saving..." : editingSetlistId ? "Update" : "Save"}
                   </Button>
                 )}
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="setlist-name">Setlist Name</Label>
+                <Input
+                  id="setlist-name"
+                  value={newSetlistName}
+                  onChange={(e) => setNewSetlistName(e.target.value)}
+                  placeholder="Sunday Morning Worship - May 3"
+                />
+              </div>
               {songOrder.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <p>Click songs from the library to add them</p>
@@ -240,34 +359,57 @@ export function SetlistBuilder() {
                   />
                 ))
               )}
+              {editingSetlistId && (
+                <Button variant="outline" className="w-full" onClick={resetBuilder}>
+                  Cancel editing
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Saved Setlists */}
         <Card>
           <CardHeader>
             <CardTitle>Saved Setlists</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {setlists.map((setlist) => (
-              <div
-                key={setlist.id}
-                className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold">{setlist.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {setlist.songs.length} songs
-                    </p>
+            {setlists.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No saved setlists yet.
+              </p>
+            ) : (
+              setlists.map((setlist) => (
+                <div
+                  key={setlist.id}
+                  className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold">{setlist.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {setlist.songs.length} songs
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditSetlist(setlist.id)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void handleDeleteSetlist(setlist.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <Button variant="outline" size="sm">
-                    Edit
-                  </Button>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
       </div>

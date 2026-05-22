@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { useApp } from "../../contexts/AppContext";
+import { useOrganization } from "@frontend/contexts/OrganizationContext";
+import { useApp, type SongSectionType } from "../../contexts/AppContext";
 import { Search, Plus, Edit, Trash2, Music, Filter } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -15,16 +16,44 @@ import {
 } from "../ui/dialog";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { toast } from "sonner";
+
+const SECTION_TYPES: { value: SongSectionType; label: string }[] = [
+  { value: "verse", label: "Verse" },
+  { value: "chorus", label: "Chorus" },
+  { value: "bridge", label: "Bridge" },
+  { value: "pre_chorus", label: "Pre-chorus" },
+  { value: "intro", label: "Intro" },
+  { value: "outro", label: "Outro" },
+  { value: "tag", label: "Tag" },
+  { value: "custom", label: "Custom" },
+];
 
 export function SongLibrary() {
-  const { songs, addSong, deleteSong } = useApp();
+  const {
+    organizations,
+    activeOrganization,
+    activeOrganizationId,
+    setActiveOrganizationId,
+    isLoading: isOrgLoading,
+    loadError: orgLoadError,
+  } = useOrganization();
+  const { songs, songsLoading, songsError, addSong, deleteSong } = useApp();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSong, setSelectedSong] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [tagFilter, setTagFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"title" | "usage">("title");
+  const [isSaving, setIsSaving] = useState(false);
   const [sections, setSections] = useState([
-    { id: Date.now().toString(), type: "verse", number: "1", lyrics: "" },
+    { id: Date.now().toString(), type: "verse" as SongSectionType, number: "1", lyrics: "" },
   ]);
 
   const availableTags = useMemo(
@@ -53,14 +82,19 @@ export function SongLibrary() {
     });
   }, [songs, searchTerm, tagFilter, sortBy]);
 
-  const handleAddSong = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAddSong = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!activeOrganizationId) {
+      toast.error("Select an organization before adding songs");
+      return;
+    }
+
     const formData = new FormData(e.currentTarget);
 
     const validSections = sections
       .map((section) => ({
-        id: section.id,
-        type: section.type as "verse" | "chorus" | "bridge" | "intro" | "outro",
+        type: section.type,
         number: section.number ? Number(section.number) : undefined,
         lyrics: section.lyrics.trim(),
       }))
@@ -68,20 +102,40 @@ export function SongLibrary() {
 
     if (validSections.length === 0) return;
 
-    addSong({
-      title: formData.get("title") as string,
-      artist: formData.get("artist") as string,
-      tags: (formData.get("tags") as string)
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
-      sections: validSections,
-    });
+    setIsSaving(true);
+    try {
+      await addSong({
+        title: formData.get("title") as string,
+        artist: formData.get("artist") as string,
+        tags: (formData.get("tags") as string)
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        sections: validSections,
+      });
 
-    setIsAddingNew(false);
-    setSections([
-      { id: Date.now().toString(), type: "verse", number: "1", lyrics: "" },
-    ]);
+      setIsAddingNew(false);
+      setSections([
+        { id: Date.now().toString(), type: "verse", number: "1", lyrics: "" },
+      ]);
+      toast.success("Song added");
+    } catch {
+      toast.error("Failed to add song");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteSong = async (songId: string) => {
+    if (!confirm("Delete this song?")) return;
+
+    try {
+      await deleteSong(songId);
+      if (selectedSong === songId) setSelectedSong(null);
+      toast.success("Song deleted");
+    } catch {
+      toast.error("Failed to delete song");
+    }
   };
 
   const song = songs.find((s) => s.id === selectedSong);
@@ -89,16 +143,37 @@ export function SongLibrary() {
   return (
     <div className="p-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold">Song Library</h1>
           <p className="text-muted-foreground mt-1">
-            {songs.length} songs in your collection
+            {songsLoading
+              ? "Loading songs..."
+              : `${songs.length} songs in your collection`}
+            {activeOrganization ? ` · ${activeOrganization.name}` : ""}
           </p>
         </div>
-        <Dialog open={isAddingNew} onOpenChange={setIsAddingNew}>
+        <div className="flex items-center gap-2 flex-wrap">
+          {organizations.length > 1 && (
+            <Select
+              value={activeOrganizationId ?? undefined}
+              onValueChange={setActiveOrganizationId}
+            >
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Select organization" />
+              </SelectTrigger>
+              <SelectContent>
+                {organizations.map((org) => (
+                  <SelectItem key={org.id} value={org.id}>
+                    {org.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Dialog open={isAddingNew} onOpenChange={setIsAddingNew}>
           <DialogTrigger asChild>
-            <Button>
+            <Button disabled={!activeOrganizationId || isOrgLoading}>
               <Plus className="w-4 h-4 mr-2" />
               Add Song
             </Button>
@@ -171,19 +246,35 @@ export function SongLibrary() {
                         <div className="grid grid-cols-3 gap-2">
                           <div className="space-y-1">
                             <Label className="text-xs">Type</Label>
-                            <Input
+                            <Select
                               value={section.type}
-                              onChange={(e) =>
+                              onValueChange={(value) =>
                                 setSections((prev) =>
                                   prev.map((s) =>
                                     s.id === section.id
-                                      ? { ...s, type: e.target.value }
+                                      ? {
+                                          ...s,
+                                          type: value as SongSectionType,
+                                        }
                                       : s,
                                   ),
                                 )
                               }
-                              placeholder="verse"
-                            />
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SECTION_TYPES.map((option) => (
+                                  <SelectItem
+                                    key={option.value}
+                                    value={option.value}
+                                  >
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div className="space-y-1">
                             <Label className="text-xs">Number</Label>
@@ -246,12 +337,31 @@ export function SongLibrary() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit">Add Song</Button>
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? "Saving..." : "Add Song"}
+                </Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {orgLoadError && (
+        <p className="text-sm text-destructive">{orgLoadError}</p>
+      )}
+
+      {!isOrgLoading && !orgLoadError && !activeOrganizationId && (
+        <p className="text-sm text-muted-foreground">
+          {organizations.length === 0
+            ? "No organization is linked to your account yet. Your user must appear in organization_members with the same id as your Supabase auth user."
+            : "Select an organization to manage songs."}
+        </p>
+      )}
+
+      {songsError && (
+        <p className="text-sm text-destructive">{songsError}</p>
+      )}
 
       {/* Search */}
       <div className="relative">
@@ -346,9 +456,7 @@ export function SongLibrary() {
                       size="icon"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm("Delete this song?")) {
-                          deleteSong(song.id);
-                        }
+                        void handleDeleteSong(song.id);
                       }}
                     >
                       <Trash2 className="w-4 h-4" />
