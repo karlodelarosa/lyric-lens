@@ -77,13 +77,6 @@ export class Song {
       .filter((name): name is string => Boolean(name))
       .sort((a, b) => a.localeCompare(b));
 
-    return new Song(
-      row.id,
-      row.title,
-      row.artist ?? "",
-      sections,
-      tags,
-      0,
-    );
+    return new Song(row.id, row.title, row.artist ?? "", sections, tags, 0);
   }
 }

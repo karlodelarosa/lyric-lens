@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useOrganization } from "@frontend/contexts/OrganizationContext";
 import { useApp } from "../../contexts/AppContext";
+import { toast } from "sonner";
 import {
   Calendar as CalendarIcon,
   Plus,
@@ -37,7 +39,21 @@ import {
 } from "date-fns";
 
 export function Schedule() {
-  const { songs, schedules, setlists, addSchedule, updateSchedule } = useApp();
+  const {
+    activeOrganizationId,
+    isLoading: isOrgLoading,
+    loadError: orgLoadError,
+  } = useOrganization();
+  const {
+    songs,
+    schedules,
+    schedulesLoading,
+    schedulesError,
+    setlists,
+    addSchedule,
+    updateSchedule,
+  } = useApp();
+  const [isSaving, setIsSaving] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isAddingSchedule, setIsAddingSchedule] = useState(false);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
@@ -53,6 +69,11 @@ export function Schedule() {
     date: "",
     setlistId: "",
   });
+  const [today, setToday] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setToday(new Date());
+  }, []);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -64,17 +85,30 @@ export function Schedule() {
     );
   };
 
-  const handleAddSchedule = () => {
+  const handleAddSchedule = async () => {
     if (!newSchedule.title || !newSchedule.date) return;
 
-    addSchedule({
-      title: newSchedule.title,
-      date: newSchedule.date,
-      setlistId: newSchedule.setlistId || undefined,
-    });
+    if (!activeOrganizationId) {
+      toast.error("Select an organization before creating events");
+      return;
+    }
 
-    setNewSchedule({ title: "", date: "", setlistId: "" });
-    setIsAddingSchedule(false);
+    setIsSaving(true);
+    try {
+      await addSchedule({
+        title: newSchedule.title,
+        date: newSchedule.date,
+        setlistId: newSchedule.setlistId || undefined,
+      });
+
+      setNewSchedule({ title: "", date: "", setlistId: "" });
+      setIsAddingSchedule(false);
+      toast.success("Event created");
+    } catch {
+      toast.error("Failed to create event");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const openScheduleEditor = (scheduleId: string) => {
@@ -95,15 +129,24 @@ export function Schedule() {
       setlist.id === (selectedSchedule?.setlistId || editingSchedule.setlistId),
   );
 
-  const handleUpdateSchedule = () => {
+  const handleUpdateSchedule = async () => {
     if (!selectedScheduleId || !editingSchedule.title || !editingSchedule.date)
       return;
-    updateSchedule(selectedScheduleId, {
-      title: editingSchedule.title,
-      date: editingSchedule.date,
-      setlistId: editingSchedule.setlistId || undefined,
-    });
-    setSelectedScheduleId(null);
+
+    setIsSaving(true);
+    try {
+      await updateSchedule(selectedScheduleId, {
+        title: editingSchedule.title,
+        date: editingSchedule.date,
+        setlistId: editingSchedule.setlistId || null,
+      });
+      setSelectedScheduleId(null);
+      toast.success("Event updated");
+    } catch {
+      toast.error("Failed to update event");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -113,12 +156,14 @@ export function Schedule() {
         <div>
           <h1 className="text-3xl font-bold">Schedule</h1>
           <p className="text-muted-foreground mt-1">
-            Plan your services and events
+            {schedulesLoading
+              ? "Loading events..."
+              : "Plan your services and events"}
           </p>
         </div>
         <Dialog open={isAddingSchedule} onOpenChange={setIsAddingSchedule}>
           <DialogTrigger asChild>
-            <Button>
+            <Button disabled={!activeOrganizationId || isOrgLoading}>
               <Plus className="w-4 h-4 mr-2" />
               Add Event
             </Button>
@@ -173,13 +218,25 @@ export function Schedule() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={handleAddSchedule} className="w-full">
-                Create Event
+              <Button
+                onClick={() => void handleAddSchedule()}
+                className="w-full"
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Create Event"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
+
+      {orgLoadError && (
+        <p className="text-sm text-destructive">{orgLoadError}</p>
+      )}
+
+      {schedulesError && (
+        <p className="text-sm text-destructive">{schedulesError}</p>
+      )}
 
       {/* Calendar Navigation */}
       <Card>
@@ -232,7 +289,7 @@ export function Schedule() {
             {/* Calendar days */}
             {days.map((day) => {
               const daySchedules = getSchedulesForDay(day);
-              const isToday = isSameDay(day, new Date());
+              const isToday = today ? isSameDay(day, today) : false;
 
               return (
                 <div
@@ -430,7 +487,12 @@ export function Schedule() {
               >
                 Cancel
               </Button>
-              <Button onClick={handleUpdateSchedule}>Save changes</Button>
+              <Button
+                onClick={() => void handleUpdateSchedule()}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save changes"}
+              </Button>
             </div>
           </div>
         </DialogContent>

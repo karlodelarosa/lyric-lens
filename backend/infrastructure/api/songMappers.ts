@@ -1,4 +1,8 @@
-import type { CreateSongInput, Song, SongSectionType } from "../../domain/song/Song";
+import type {
+  CreateSongInput,
+  Song,
+  SongSectionType,
+} from "../../domain/song/Song";
 import { SONG_SECTION_TYPES } from "../../domain/song/Song";
 
 export function songToDto(song: Song) {

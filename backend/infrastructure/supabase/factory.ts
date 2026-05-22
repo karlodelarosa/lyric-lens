@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "./server-client";
 import { SupabaseAuthRepository } from "./SupabaseAuthRepository";
 import { SupabaseOrganizationRepository } from "./SupabaseOrganizationRepository";
+import { SupabaseEventRepository } from "./SupabaseEventRepository";
 import { SupabaseSetlistRepository } from "./SupabaseSetlistRepository";
 import { SupabaseSongRepository } from "./SupabaseSongRepository";
 
@@ -22,4 +23,9 @@ export async function createSongRepository() {
 export async function createSetlistRepository() {
   const client = await createSupabaseServerClient();
   return new SupabaseSetlistRepository(client);
+}
+
+export async function createEventRepository() {
+  const client = await createSupabaseServerClient();
+  return new SupabaseEventRepository(client);
 }

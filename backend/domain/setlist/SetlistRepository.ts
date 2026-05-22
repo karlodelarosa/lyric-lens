@@ -1,4 +1,8 @@
-import type { CreateSetlistInput, Setlist, UpdateSetlistInput } from "./Setlist";
+import type {
+  CreateSetlistInput,
+  Setlist,
+  UpdateSetlistInput,
+} from "./Setlist";
 
 export interface SetlistRepository {
   listByOrganization(organizationId: string): Promise<Setlist[]>;

@@ -44,6 +44,54 @@ export type Database = {
           },
         ];
       };
+      events: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          event_date: string;
+          id: string;
+          organization_id: string;
+          setlist_id: string | null;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          event_date: string;
+          id?: string;
+          organization_id: string;
+          setlist_id?: string | null;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          event_date?: string;
+          id?: string;
+          organization_id?: string;
+          setlist_id?: string | null;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "events_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "events_setlist_id_fkey";
+            columns: ["setlist_id"];
+            isOneToOne: false;
+            referencedRelation: "setlists";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       setlist_songs: {
         Row: {
           created_at: string;

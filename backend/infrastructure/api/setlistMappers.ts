@@ -12,7 +12,9 @@ export function setlistToDto(setlist: Setlist) {
   };
 }
 
-export function parseCreateSetlistBody(body: unknown): CreateSetlistInput | null {
+export function parseCreateSetlistBody(
+  body: unknown,
+): CreateSetlistInput | null {
   if (!body || typeof body !== "object") return null;
 
   const record = body as Record<string, unknown>;
@@ -27,7 +29,9 @@ export function parseCreateSetlistBody(body: unknown): CreateSetlistInput | null
   return { title, songIds };
 }
 
-export function parseUpdateSetlistBody(body: unknown): UpdateSetlistInput | null {
+export function parseUpdateSetlistBody(
+  body: unknown,
+): UpdateSetlistInput | null {
   if (!body || typeof body !== "object") return null;
 
   const record = body as Record<string, unknown>;

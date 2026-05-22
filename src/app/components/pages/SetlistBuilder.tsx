@@ -84,8 +84,11 @@ function DraggableSong({
 }
 
 export function SetlistBuilder() {
-  const { activeOrganizationId, isLoading: isOrgLoading, loadError: orgLoadError } =
-    useOrganization();
+  const {
+    activeOrganizationId,
+    isLoading: isOrgLoading,
+    loadError: orgLoadError,
+  } = useOrganization();
   const {
     songs,
     setlists,
@@ -162,7 +165,9 @@ export function SetlistBuilder() {
       resetBuilder();
     } catch {
       toast.error(
-        editingSetlistId ? "Failed to update setlist" : "Failed to create setlist",
+        editingSetlistId
+          ? "Failed to update setlist"
+          : "Failed to create setlist",
       );
     } finally {
       setIsSaving(false);
@@ -243,8 +248,8 @@ export function SetlistBuilder() {
                   />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  You can add songs now in the builder, or create the setlist and
-                  edit it later.
+                  You can add songs now in the builder, or create the setlist
+                  and edit it later.
                 </p>
                 <div className="flex justify-end gap-2">
                   <Button
@@ -308,7 +313,9 @@ export function SetlistBuilder() {
                     onClick={() => handleAddSongToSetlist(song.id)}
                   >
                     <p className="font-medium">{song.title}</p>
-                    <p className="text-sm text-muted-foreground">{song.artist}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {song.artist}
+                    </p>
                   </div>
                 ))
               )}
@@ -328,7 +335,11 @@ export function SetlistBuilder() {
                     disabled={!newSetlistName.trim() || isSaving}
                   >
                     <Save className="w-4 h-4 mr-2" />
-                    {isSaving ? "Saving..." : editingSetlistId ? "Update" : "Save"}
+                    {isSaving
+                      ? "Saving..."
+                      : editingSetlistId
+                        ? "Update"
+                        : "Save"}
                   </Button>
                 )}
               </div>
@@ -360,7 +371,11 @@ export function SetlistBuilder() {
                 ))
               )}
               {editingSetlistId && (
-                <Button variant="outline" className="w-full" onClick={resetBuilder}>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={resetBuilder}
+                >
                   Cancel editing
                 </Button>
               )}

@@ -36,9 +36,7 @@ export type CreateSongResponse = {
 };
 
 export async function getSongs(organizationId: string): Promise<SongsResponse> {
-  return apiGet<SongsResponse>(
-    `/api/organizations/${organizationId}/songs`,
-  );
+  return apiGet<SongsResponse>(`/api/organizations/${organizationId}/songs`);
 }
 
 export async function createSong(

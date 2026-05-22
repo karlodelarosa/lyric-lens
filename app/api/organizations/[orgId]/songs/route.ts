@@ -46,11 +46,18 @@ export async function POST(request: Request, context: RouteContext) {
     const input = parseCreateSongBody(body);
 
     if (!input) {
-      return NextResponse.json({ error: "Invalid song payload" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid song payload" },
+        { status: 400 },
+      );
     }
 
     const repository = await createSongRepository();
-    const song = await new CreateSong(repository).execute(orgId, user.id, input);
+    const song = await new CreateSong(repository).execute(
+      orgId,
+      user.id,
+      input,
+    );
 
     return NextResponse.json({ song: songToDto(song) }, { status: 201 });
   } catch {

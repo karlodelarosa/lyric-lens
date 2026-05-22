@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { useOrganization } from "@frontend/contexts/OrganizationContext";
 import { useApp, type SongSectionType } from "../../contexts/AppContext";
 import { Search, Plus, Edit, Trash2, Music, Filter } from "lucide-react";
@@ -36,7 +36,21 @@ const SECTION_TYPES: { value: SongSectionType; label: string }[] = [
   { value: "custom", label: "Custom" },
 ];
 
+function createEmptySection(
+  id: string,
+  number = "1",
+): {
+  id: string;
+  type: SongSectionType;
+  number: string;
+  lyrics: string;
+} {
+  return { id, type: "verse", number, lyrics: "" };
+}
+
 export function SongLibrary() {
+  const sectionIdPrefix = useId();
+  const nextSectionId = useRef(1);
   const {
     organizations,
     activeOrganization,
@@ -52,8 +66,8 @@ export function SongLibrary() {
   const [tagFilter, setTagFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"title" | "usage">("title");
   const [isSaving, setIsSaving] = useState(false);
-  const [sections, setSections] = useState([
-    { id: Date.now().toString(), type: "verse" as SongSectionType, number: "1", lyrics: "" },
+  const [sections, setSections] = useState(() => [
+    createEmptySection(`${sectionIdPrefix}-0`),
   ]);
 
   const availableTags = useMemo(
@@ -115,9 +129,8 @@ export function SongLibrary() {
       });
 
       setIsAddingNew(false);
-      setSections([
-        { id: Date.now().toString(), type: "verse", number: "1", lyrics: "" },
-      ]);
+      nextSectionId.current = 1;
+      setSections([createEmptySection(`${sectionIdPrefix}-0`)]);
       toast.success("Song added");
     } catch {
       toast.error("Failed to add song");
@@ -172,178 +185,176 @@ export function SongLibrary() {
             </Select>
           )}
           <Dialog open={isAddingNew} onOpenChange={setIsAddingNew}>
-          <DialogTrigger asChild>
-            <Button disabled={!activeOrganizationId || isOrgLoading}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Song
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Add New Song</DialogTitle>
-              <DialogDescription>
-                Add song metadata and section-based lyrics (verse, chorus,
-                bridge, etc.)
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleAddSong} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Song Title</Label>
-                  <Input
-                    id="title"
-                    name="title"
-                    required
-                    placeholder="Amazing Grace"
-                  />
+            <DialogTrigger asChild>
+              <Button disabled={!activeOrganizationId || isOrgLoading}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Song
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Add New Song</DialogTitle>
+                <DialogDescription>
+                  Add song metadata and section-based lyrics (verse, chorus,
+                  bridge, etc.)
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleAddSong} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Song Title</Label>
+                    <Input
+                      id="title"
+                      name="title"
+                      required
+                      placeholder="Amazing Grace"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="artist">Artist</Label>
+                    <Input
+                      id="artist"
+                      name="artist"
+                      required
+                      placeholder="John Newton"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="artist">Artist</Label>
+                  <Label htmlFor="tags">Tags (comma separated)</Label>
                   <Input
-                    id="artist"
-                    name="artist"
-                    required
-                    placeholder="John Newton"
+                    id="tags"
+                    name="tags"
+                    placeholder="worship, slow, classic"
                   />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tags">Tags (comma separated)</Label>
-                <Input
-                  id="tags"
-                  name="tags"
-                  placeholder="worship, slow, classic"
-                />
-              </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Song Sections</Label>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Song Sections</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setSections((prev) => [
+                          ...prev,
+                          createEmptySection(
+                            `${sectionIdPrefix}-${nextSectionId.current++}`,
+                            String(prev.length + 1),
+                          ),
+                        ])
+                      }
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Section
+                    </Button>
+                  </div>
+                  <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                    {sections.map((section, index) => (
+                      <Card key={section.id}>
+                        <CardContent className="p-4 space-y-3">
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Type</Label>
+                              <Select
+                                value={section.type}
+                                onValueChange={(value) =>
+                                  setSections((prev) =>
+                                    prev.map((s) =>
+                                      s.id === section.id
+                                        ? {
+                                            ...s,
+                                            type: value as SongSectionType,
+                                          }
+                                        : s,
+                                    ),
+                                  )
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {SECTION_TYPES.map((option) => (
+                                    <SelectItem
+                                      key={option.value}
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Number</Label>
+                              <Input
+                                value={section.number}
+                                onChange={(e) =>
+                                  setSections((prev) =>
+                                    prev.map((s) =>
+                                      s.id === section.id
+                                        ? { ...s, number: e.target.value }
+                                        : s,
+                                    ),
+                                  )
+                                }
+                                placeholder="1"
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="w-full"
+                                disabled={sections.length === 1}
+                                onClick={() =>
+                                  setSections((prev) =>
+                                    prev.filter((s) => s.id !== section.id),
+                                  )
+                                }
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          </div>
+                          <Textarea
+                            value={section.lyrics}
+                            onChange={(e) =>
+                              setSections((prev) =>
+                                prev.map((s) =>
+                                  s.id === section.id
+                                    ? { ...s, lyrics: e.target.value }
+                                    : s,
+                                ),
+                              )
+                            }
+                            rows={5}
+                            required={index === 0}
+                            placeholder="Enter section lyrics..."
+                            className="font-mono"
+                          />
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setSections((prev) => [
-                        ...prev,
-                        {
-                          id: `${Date.now()}-${prev.length}`,
-                          type: "verse",
-                          number: String(prev.length + 1),
-                          lyrics: "",
-                        },
-                      ])
-                    }
+                    onClick={() => setIsAddingNew(false)}
                   >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Section
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSaving}>
+                    {isSaving ? "Saving..." : "Add Song"}
                   </Button>
                 </div>
-                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                  {sections.map((section, index) => (
-                    <Card key={section.id}>
-                      <CardContent className="p-4 space-y-3">
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Type</Label>
-                            <Select
-                              value={section.type}
-                              onValueChange={(value) =>
-                                setSections((prev) =>
-                                  prev.map((s) =>
-                                    s.id === section.id
-                                      ? {
-                                          ...s,
-                                          type: value as SongSectionType,
-                                        }
-                                      : s,
-                                  ),
-                                )
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {SECTION_TYPES.map((option) => (
-                                  <SelectItem
-                                    key={option.value}
-                                    value={option.value}
-                                  >
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Number</Label>
-                            <Input
-                              value={section.number}
-                              onChange={(e) =>
-                                setSections((prev) =>
-                                  prev.map((s) =>
-                                    s.id === section.id
-                                      ? { ...s, number: e.target.value }
-                                      : s,
-                                  ),
-                                )
-                              }
-                              placeholder="1"
-                            />
-                          </div>
-                          <div className="flex items-end">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              className="w-full"
-                              disabled={sections.length === 1}
-                              onClick={() =>
-                                setSections((prev) =>
-                                  prev.filter((s) => s.id !== section.id),
-                                )
-                              }
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        </div>
-                        <Textarea
-                          value={section.lyrics}
-                          onChange={(e) =>
-                            setSections((prev) =>
-                              prev.map((s) =>
-                                s.id === section.id
-                                  ? { ...s, lyrics: e.target.value }
-                                  : s,
-                              ),
-                            )
-                          }
-                          rows={5}
-                          required={index === 0}
-                          placeholder="Enter section lyrics..."
-                          className="font-mono"
-                        />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsAddingNew(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? "Saving..." : "Add Song"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -359,9 +370,7 @@ export function SongLibrary() {
         </p>
       )}
 
-      {songsError && (
-        <p className="text-sm text-destructive">{songsError}</p>
-      )}
+      {songsError && <p className="text-sm text-destructive">{songsError}</p>}
 
       {/* Search */}
       <div className="relative">

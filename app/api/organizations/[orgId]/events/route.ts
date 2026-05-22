@@ -1,11 +1,11 @@
-import { CreateSetlist } from "@backend/application/setlist/CreateSetlist";
-import { ListSetlists } from "@backend/application/setlist/ListSetlists";
+import { CreateEvent } from "@backend/application/event/CreateEvent";
+import { ListEvents } from "@backend/application/event/ListEvents";
 import {
-  parseCreateSetlistBody,
-  setlistToDto,
-} from "@backend/infrastructure/api/setlistMappers";
+  eventToDto,
+  parseCreateEventBody,
+} from "@backend/infrastructure/api/eventMappers";
 import { requireUser } from "@backend/infrastructure/api/requireUser";
-import { createSetlistRepository } from "@backend/infrastructure/supabase/factory";
+import { createEventRepository } from "@backend/infrastructure/supabase/factory";
 import { NextResponse } from "next/server";
 
 type RouteContext = {
@@ -20,15 +20,15 @@ export async function GET(_request: Request, context: RouteContext) {
     }
 
     const { orgId } = await context.params;
-    const repository = await createSetlistRepository();
-    const setlists = await new ListSetlists(repository).execute(orgId);
+    const repository = await createEventRepository();
+    const events = await new ListEvents(repository).execute(orgId);
 
     return NextResponse.json({
-      setlists: setlists.map(setlistToDto),
+      events: events.map(eventToDto),
     });
   } catch {
     return NextResponse.json(
-      { error: "Failed to load setlists" },
+      { error: "Failed to load events" },
       { status: 500 },
     );
   }
@@ -43,29 +43,26 @@ export async function POST(request: Request, context: RouteContext) {
 
     const { orgId } = await context.params;
     const body = await request.json();
-    const input = parseCreateSetlistBody(body);
+    const input = parseCreateEventBody(body);
 
     if (!input) {
       return NextResponse.json(
-        { error: "Invalid setlist payload" },
+        { error: "Invalid event payload" },
         { status: 400 },
       );
     }
 
-    const repository = await createSetlistRepository();
-    const setlist = await new CreateSetlist(repository).execute(
+    const repository = await createEventRepository();
+    const event = await new CreateEvent(repository).execute(
       orgId,
       user.id,
       input,
     );
 
-    return NextResponse.json(
-      { setlist: setlistToDto(setlist) },
-      { status: 201 },
-    );
+    return NextResponse.json({ event: eventToDto(event) }, { status: 201 });
   } catch {
     return NextResponse.json(
-      { error: "Failed to create setlist" },
+      { error: "Failed to create event" },
       { status: 500 },
     );
   }

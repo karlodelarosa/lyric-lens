@@ -1,5 +1,18 @@
-import React, { createContext, useCallback, useContext, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  ReactNode,
+} from "react";
 import { useOrganization } from "@frontend/contexts/OrganizationContext";
+import {
+  createEvent as createEventApi,
+  deleteEvent as deleteEventApi,
+  getEvents,
+  updateEvent as updateEventApi,
+  type EventDto,
+} from "@frontend/lib/api/events";
 import {
   createSetlist as createSetlistApi,
   deleteSetlist as deleteSetlistApi,
@@ -79,6 +92,18 @@ interface Schedule {
   setlistId?: string;
 }
 
+export type NewScheduleInput = {
+  title: string;
+  date: string;
+  setlistId?: string;
+};
+
+export type UpdateScheduleInput = {
+  title?: string;
+  date?: string;
+  setlistId?: string | null;
+};
+
 interface LiveState {
   isLive: boolean;
   currentSetlistId: string | null;
@@ -111,24 +136,53 @@ interface AppContextType {
   setlistsLoading: boolean;
   setlistsError: string | null;
   schedules: Schedule[];
+  schedulesLoading: boolean;
+  schedulesError: string | null;
   liveState: LiveState;
   refreshSongs: () => Promise<void>;
   refreshSetlists: () => Promise<void>;
+  refreshSchedules: () => Promise<void>;
   addSong: (song: NewSongInput) => Promise<void>;
   updateSong: (id: string, song: Partial<Song>) => void;
   deleteSong: (id: string) => Promise<void>;
   addSetlist: (input: NewSetlistInput) => Promise<void>;
   updateSetlist: (id: string, input: UpdateSetlistInput) => Promise<void>;
   deleteSetlist: (id: string) => Promise<void>;
-  addSchedule: (schedule: Omit<Schedule, "id">) => void;
-  updateSchedule: (id: string, schedule: Partial<Schedule>) => void;
-  deleteSchedule: (id: string) => void;
+  addSchedule: (schedule: NewScheduleInput) => Promise<void>;
+  updateSchedule: (id: string, schedule: UpdateScheduleInput) => Promise<void>;
+  deleteSchedule: (id: string) => Promise<void>;
   updateLiveState: (state: Partial<LiveState>) => void;
   setCurrentSlide: (songId: string, sectionId: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 const LIVE_STATE_STORAGE_KEY = "lyric-lens-live-state";
+
+function getDefaultLiveState(): LiveState {
+  return {
+    isLive: false,
+    currentSetlistId: null,
+    currentSongId: null,
+    currentSectionId: null,
+    fontSize: 48,
+    fontFamily: "Inter",
+    textTransform: "none",
+    background: {
+      type: "gradient",
+      value: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    },
+    backgroundVideoUrl: null,
+    alignment: "center",
+    verticalPosition: "center",
+    topPadding: 24,
+    lineHeight: 1.5,
+    fontWeight: 600,
+    manualLyrics: null,
+    useLineChunks: true,
+    linesPerSlide: 2,
+    currentChunkIndex: 0,
+  };
+}
 
 function mapSongDto(dto: SongDto): Song {
   return {
@@ -155,13 +209,14 @@ function mapSetlistDto(dto: SetlistDto): Setlist {
   };
 }
 
-const mockSchedules: Schedule[] = [
-  {
-    id: "sch2",
-    title: "Wednesday Night Worship",
-    date: "2026-04-29",
-  },
-];
+function mapEventDto(dto: EventDto): Schedule {
+  return {
+    id: dto.id,
+    title: dto.title,
+    date: dto.date,
+    setlistId: dto.setlistId,
+  };
+}
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const { activeOrganizationId, isLoading: isOrgLoading } = useOrganization();
@@ -171,43 +226,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [setlists, setSetlists] = useState<Setlist[]>([]);
   const [setlistsLoading, setSetlistsLoading] = useState(false);
   const [setlistsError, setSetlistsError] = useState<string | null>(null);
-  const [schedules, setSchedules] = useState<Schedule[]>(mockSchedules);
-  const [liveState, setLiveState] = useState<LiveState>(() => {
-    const defaultLiveState: LiveState = {
-      isLive: false,
-      currentSetlistId: null,
-      currentSongId: null,
-      currentSectionId: null,
-      fontSize: 48,
-      fontFamily: "Inter",
-      textTransform: "none",
-      background: {
-        type: "gradient",
-        value: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      },
-      backgroundVideoUrl: null,
-      alignment: "center",
-      verticalPosition: "center",
-      topPadding: 24,
-      lineHeight: 1.5,
-      fontWeight: 600,
-      manualLyrics: null,
-      useLineChunks: true,
-      linesPerSlide: 2,
-      currentChunkIndex: 0,
-    };
-
-    if (typeof window === "undefined") return defaultLiveState;
-
-    const saved = window.localStorage.getItem(LIVE_STATE_STORAGE_KEY);
-    if (!saved) return defaultLiveState;
-
-    try {
-      return { ...defaultLiveState, ...JSON.parse(saved) };
-    } catch {
-      return defaultLiveState;
-    }
-  });
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
+  const [schedulesError, setSchedulesError] = useState<string | null>(null);
+  const [liveState, setLiveState] = useState<LiveState>(getDefaultLiveState);
+  const [liveStateHydrated, setLiveStateHydrated] = useState(false);
 
   const refreshSongs = useCallback(async () => {
     if (!activeOrganizationId) {
@@ -251,18 +274,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [activeOrganizationId]);
 
+  const refreshSchedules = useCallback(async () => {
+    if (!activeOrganizationId) {
+      setSchedules([]);
+      setSchedulesError(null);
+      return;
+    }
+
+    setSchedulesLoading(true);
+    setSchedulesError(null);
+
+    try {
+      const { events: loaded } = await getEvents(activeOrganizationId);
+      setSchedules(loaded.map(mapEventDto));
+    } catch {
+      setSchedules([]);
+      setSchedulesError("Failed to load events");
+    } finally {
+      setSchedulesLoading(false);
+    }
+  }, [activeOrganizationId]);
+
   React.useEffect(() => {
     if (isOrgLoading) return;
     refreshSongs();
     refreshSetlists();
-  }, [isOrgLoading, refreshSongs, refreshSetlists]);
+    refreshSchedules();
+  }, [isOrgLoading, refreshSongs, refreshSetlists, refreshSchedules]);
 
   React.useEffect(() => {
+    const saved = window.localStorage.getItem(LIVE_STATE_STORAGE_KEY);
+    if (saved) {
+      try {
+        setLiveState((prev) => ({ ...prev, ...JSON.parse(saved) }));
+      } catch {
+        // Ignore malformed storage payloads.
+      }
+    }
+    setLiveStateHydrated(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (!liveStateHydrated) return;
+
     window.localStorage.setItem(
       LIVE_STATE_STORAGE_KEY,
       JSON.stringify(liveState),
     );
-  }, [liveState]);
+  }, [liveState, liveStateHydrated]);
 
   React.useEffect(() => {
     const onStorage = (event: StorageEvent) => {
@@ -358,22 +417,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSetlists((prev) => prev.filter((setlist) => setlist.id !== id));
   };
 
-  const addSchedule = (schedule: Omit<Schedule, "id">) => {
-    const newSchedule: Schedule = {
-      ...schedule,
-      id: Date.now().toString(),
-    };
-    setSchedules([...schedules, newSchedule]);
+  const addSchedule = async (schedule: NewScheduleInput) => {
+    if (!activeOrganizationId) {
+      throw new Error("No organization selected");
+    }
+
+    const { event: created } = await createEventApi(activeOrganizationId, {
+      title: schedule.title,
+      date: schedule.date,
+      setlistId: schedule.setlistId ?? null,
+    });
+
+    setSchedules((prev) => [...prev, mapEventDto(created)]);
   };
 
-  const updateSchedule = (id: string, updates: Partial<Schedule>) => {
-    setSchedules(
-      schedules.map((sch) => (sch.id === id ? { ...sch, ...updates } : sch)),
+  const updateSchedule = async (id: string, updates: UpdateScheduleInput) => {
+    if (!activeOrganizationId) {
+      throw new Error("No organization selected");
+    }
+
+    const payload: {
+      title?: string;
+      date?: string;
+      setlistId?: string | null;
+    } = {};
+
+    if (updates.title !== undefined) payload.title = updates.title;
+    if (updates.date !== undefined) payload.date = updates.date;
+    if (updates.setlistId !== undefined) payload.setlistId = updates.setlistId;
+
+    const { event: updated } = await updateEventApi(
+      activeOrganizationId,
+      id,
+      payload,
+    );
+
+    setSchedules((prev) =>
+      prev.map((schedule) =>
+        schedule.id === id ? mapEventDto(updated) : schedule,
+      ),
     );
   };
 
-  const deleteSchedule = (id: string) => {
-    setSchedules(schedules.filter((sch) => sch.id !== id));
+  const deleteSchedule = async (id: string) => {
+    if (!activeOrganizationId) {
+      throw new Error("No organization selected");
+    }
+
+    await deleteEventApi(activeOrganizationId, id);
+    setSchedules((prev) => prev.filter((schedule) => schedule.id !== id));
   };
 
   const updateLiveState = (state: Partial<LiveState>) => {
@@ -400,9 +492,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setlistsLoading,
         setlistsError,
         schedules,
+        schedulesLoading,
+        schedulesError,
         liveState,
         refreshSongs,
         refreshSetlists,
+        refreshSchedules,
         addSong,
         updateSong,
         deleteSong,

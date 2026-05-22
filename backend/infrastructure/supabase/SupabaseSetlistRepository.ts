@@ -31,7 +31,9 @@ export class SupabaseSetlistRepository implements SetlistRepository {
       throw new Error("Failed to load setlists");
     }
 
-    return (data ?? []).map((row) => Setlist.fromListRow(row as SetlistListRow));
+    return (data ?? []).map((row) =>
+      Setlist.fromListRow(row as SetlistListRow),
+    );
   }
 
   async create(
@@ -121,13 +123,15 @@ export class SupabaseSetlistRepository implements SetlistRepository {
     const uniqueSongIds = [...new Set(songIds)];
     if (uniqueSongIds.length === 0) return;
 
-    const { error: insertError } = await this.client.from("setlist_songs").insert(
-      uniqueSongIds.map((songId, index) => ({
-        setlist_id: setlistId,
-        song_id: songId,
-        position: index,
-      })),
-    );
+    const { error: insertError } = await this.client
+      .from("setlist_songs")
+      .insert(
+        uniqueSongIds.map((songId, index) => ({
+          setlist_id: setlistId,
+          song_id: songId,
+          position: index,
+        })),
+      );
 
     if (insertError) {
       throw new Error("Failed to update setlist songs");

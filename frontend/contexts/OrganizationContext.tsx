@@ -74,7 +74,9 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       .catch(() => {
         setOrganizations([]);
         setActiveOrganizationIdState(null);
-        setLoadError("Could not load your organizations. Try signing out and back in.");
+        setLoadError(
+          "Could not load your organizations. Try signing out and back in.",
+        );
       })
       .finally(() => setIsLoading(false));
   }, [isAuthLoading, refresh]);
