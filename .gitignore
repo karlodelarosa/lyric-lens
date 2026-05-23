@@ -31,3 +31,11 @@ pnpm-debug.log*
 *.tsbuildinfo
 coverage/
 .vercel/
+
+# OpenNext
+.open-next
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example

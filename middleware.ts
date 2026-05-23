@@ -9,7 +9,7 @@ function isPublicPath(pathname: string) {
   );
 }
 
-export default async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
