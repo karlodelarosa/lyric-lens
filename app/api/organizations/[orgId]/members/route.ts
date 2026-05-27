@@ -20,7 +20,9 @@ export async function GET(_request: Request, context: RouteContext) {
     }
 
     const repository = await createOrganizationRepository();
-    const members = await new ListOrganizationMembers(repository).execute(orgId);
+    const members = await new ListOrganizationMembers(repository).execute(
+      orgId,
+    );
 
     return NextResponse.json({
       members: members.map((m) => ({

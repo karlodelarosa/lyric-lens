@@ -21,7 +21,10 @@ export function writeLiveStateToStorage(state: Record<string, unknown>) {
 }
 
 export function createLiveStateChannel(): BroadcastChannel | null {
-  if (typeof window === "undefined" || typeof BroadcastChannel === "undefined") {
+  if (
+    typeof window === "undefined" ||
+    typeof BroadcastChannel === "undefined"
+  ) {
     return null;
   }
 
@@ -36,7 +39,28 @@ export function publishLiveState(
   channel?.postMessage(state);
 }
 
-export function buildLiveUrl(setlistId?: string | null) {
-  if (!setlistId) return "/live";
-  return `/live?setlistId=${encodeURIComponent(setlistId)}`;
+export type BuildLiveUrlOptions = {
+  setlistId?: string | null;
+  serviceFlowId?: string | null;
+};
+
+export function buildLiveUrl(options?: string | null | BuildLiveUrlOptions) {
+  if (
+    typeof options === "string" ||
+    options === null ||
+    options === undefined
+  ) {
+    if (!options) return "/live";
+    return `/live?setlistId=${encodeURIComponent(options)}`;
+  }
+
+  const params = new URLSearchParams();
+  if (options.serviceFlowId) {
+    params.set("serviceFlowId", options.serviceFlowId);
+  } else if (options.setlistId) {
+    params.set("setlistId", options.setlistId);
+  }
+
+  const query = params.toString();
+  return query ? `/live?${query}` : "/live";
 }

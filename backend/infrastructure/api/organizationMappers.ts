@@ -35,10 +35,11 @@ export function parseInviteMemberBody(body: unknown): {
   if (!body || typeof body !== "object") return null;
 
   const record = body as Record<string, unknown>;
-  const userId =
-    typeof record.userId === "string" ? record.userId.trim() : "";
+  const userId = typeof record.userId === "string" ? record.userId.trim() : "";
   const role =
-    typeof record.role === "string" ? (record.role as OrganizationRole) : "viewer";
+    typeof record.role === "string"
+      ? (record.role as OrganizationRole)
+      : "viewer";
 
   if (!userId) return null;
   if (role !== "admin" && role !== "operator" && role !== "viewer") {

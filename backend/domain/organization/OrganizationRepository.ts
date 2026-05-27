@@ -1,5 +1,8 @@
 import type { Organization } from "./Organization";
-import type { OrganizationMember, OrganizationRole } from "./OrganizationMember";
+import type {
+  OrganizationMember,
+  OrganizationRole,
+} from "./OrganizationMember";
 
 export type CreateOrganizationInput = {
   name: string;
@@ -8,7 +11,10 @@ export type CreateOrganizationInput = {
 
 export interface OrganizationRepository {
   list(): Promise<Organization[]>;
-  create(createdBy: string, input: CreateOrganizationInput): Promise<Organization>;
+  create(
+    createdBy: string,
+    input: CreateOrganizationInput,
+  ): Promise<Organization>;
   getMemberRole(
     organizationId: string,
     userId: string,

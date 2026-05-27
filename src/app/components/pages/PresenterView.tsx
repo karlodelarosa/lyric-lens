@@ -41,7 +41,6 @@ export function PresenterView() {
   const liveLyrics = liveState.manualLyrics ?? sectionLyrics;
 
   useEffect(() => {
-    // Request fullscreen on mount
     const requestFullscreen = () => {
       const elem = document.documentElement;
       if (elem.requestFullscreen) {
@@ -49,7 +48,6 @@ export function PresenterView() {
       }
     };
 
-    // Small delay to ensure the window is ready
     setTimeout(requestFullscreen, 100);
   }, []);
 
@@ -58,6 +56,79 @@ export function PresenterView() {
     if (elem.requestFullscreen) {
       void elem.requestFullscreen();
     }
+  };
+
+  const textStyle = {
+    fontFamily: liveState.fontFamily,
+    fontSize: `${liveState.fontSize}px`,
+    textAlign: liveState.alignment as "left" | "center" | "right",
+    lineHeight: liveState.lineHeight,
+    paddingTop:
+      liveState.verticalPosition === "top"
+        ? `${liveState.topPadding}px`
+        : undefined,
+    textTransform: liveState.textTransform,
+    fontWeight: liveState.fontWeight,
+    color: "white",
+    textShadow: "0 4px 12px rgba(0,0,0,0.8)",
+    whiteSpace: "pre-wrap" as const,
+  };
+
+  const renderContent = () => {
+    if (liveState.slideMode === "announcement") {
+      return (
+        <div className="w-full px-16 py-12 max-w-7xl relative z-[1] text-white">
+          {liveState.currentAnnouncementTitle && (
+            <h2 className="font-bold mb-6" style={textStyle}>
+              {liveState.currentAnnouncementTitle}
+            </h2>
+          )}
+          <p
+            style={{
+              ...textStyle,
+              fontSize: `${Math.max(28, liveState.fontSize * 0.7)}px`,
+            }}
+          >
+            {liveState.currentAnnouncementBody}
+          </p>
+        </div>
+      );
+    }
+
+    if (liveState.slideMode === "cue") {
+      return (
+        <div className="w-full px-16 py-12 max-w-5xl relative z-[1] text-center text-white">
+          <p style={textStyle}>{liveState.currentCueLabel}</p>
+          {liveState.currentCueNotes && (
+            <p
+              className="mt-6 text-white/85"
+              style={{
+                ...textStyle,
+                fontSize: `${Math.max(24, liveState.fontSize * 0.55)}px`,
+              }}
+            >
+              {liveState.currentCueNotes}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    if (liveLyrics) {
+      return (
+        <div className="w-full px-16 py-12 max-w-7xl relative z-[1]">
+          <div className="w-full" style={textStyle}>
+            {liveLyrics}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="text-white/30 text-4xl text-center">
+        <p>Waiting for content...</p>
+      </div>
+    );
   };
 
   return (
@@ -96,34 +167,7 @@ export function PresenterView() {
         <Maximize2 className="w-5 h-5" />
       </Button>
 
-      {liveLyrics ? (
-        <div className="w-full px-16 py-12 max-w-7xl relative z-[1]">
-          <div
-            className="w-full"
-            style={{
-              fontFamily: liveState.fontFamily,
-              fontSize: `${liveState.fontSize}px`,
-              textAlign: liveState.alignment,
-              lineHeight: liveState.lineHeight,
-              paddingTop:
-                liveState.verticalPosition === "top"
-                  ? `${liveState.topPadding}px`
-                  : undefined,
-              textTransform: liveState.textTransform,
-              fontWeight: liveState.fontWeight,
-              color: "white",
-              textShadow: "0 4px 12px rgba(0,0,0,0.8)",
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            {liveLyrics}
-          </div>
-        </div>
-      ) : (
-        <div className="text-white/30 text-4xl text-center">
-          <p>Waiting for content...</p>
-        </div>
-      )}
+      {renderContent()}
     </div>
   );
 }

@@ -21,6 +21,23 @@ import {
   type SetlistDto,
 } from "@frontend/lib/api/setlists";
 import {
+  createAnnouncement as createAnnouncementApi,
+  deleteAnnouncement as deleteAnnouncementApi,
+  getAnnouncements,
+  updateAnnouncement as updateAnnouncementApi,
+  type AnnouncementDto,
+} from "@frontend/lib/api/announcements";
+import {
+  createServiceFlow as createServiceFlowApi,
+  deleteServiceFlow as deleteServiceFlowApi,
+  duplicateServiceFlow as duplicateServiceFlowApi,
+  getServiceFlows,
+  updateServiceFlow as updateServiceFlowApi,
+  type ServiceFlowDto,
+  type ServiceFlowListItemDto,
+  type ServiceFlowSegmentInput,
+} from "@frontend/lib/api/serviceFlows";
+import {
   createSong as createSongApi,
   deleteSong as deleteSongApi,
   getSongs,
@@ -112,8 +129,79 @@ export type UpdateScheduleInput = {
   setlistId?: string | null;
 };
 
+export type Announcement = {
+  id: string;
+  title: string;
+  body: string;
+  category: string | null;
+  expiresAt: string | null;
+};
+
+export type NewAnnouncementInput = {
+  title: string;
+  body: string;
+  category?: string | null;
+  expiresAt?: string | null;
+};
+
+export type UpdateAnnouncementInput = {
+  title?: string;
+  body?: string;
+  category?: string | null;
+  expiresAt?: string | null;
+};
+
+export type ServiceFlowSegmentKind = "music" | "announcements" | "cue";
+
+export type ServiceFlowSegment = {
+  id: string;
+  position: number;
+  label: string;
+  kind: ServiceFlowSegmentKind;
+  notes: string | null;
+  setlistId: string | null;
+  setlistName: string | null;
+  announcements: Announcement[];
+};
+
+export type ServiceFlowListItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  segmentCount: number;
+};
+
+export type ServiceFlow = {
+  id: string;
+  title: string;
+  description: string | null;
+  segments: ServiceFlowSegment[];
+};
+
+export type NewServiceFlowInput = {
+  title: string;
+  description?: string | null;
+  segments: ServiceFlowSegmentInput[];
+};
+
+export type UpdateServiceFlowInput = {
+  title?: string;
+  description?: string | null;
+  segments?: ServiceFlowSegmentInput[];
+};
+
+export type SlideMode = "lyrics" | "announcement" | "cue";
+
 interface LiveState {
   isLive: boolean;
+  slideMode: SlideMode;
+  currentServiceFlowId: string | null;
+  currentSegmentId: string | null;
+  currentAnnouncementId: string | null;
+  currentAnnouncementTitle: string | null;
+  currentAnnouncementBody: string | null;
+  currentCueLabel: string | null;
+  currentCueNotes: string | null;
   currentSetlistId: string | null;
   currentSongId: string | null;
   currentSectionId: string | null;
@@ -146,10 +234,18 @@ interface AppContextType {
   schedules: Schedule[];
   schedulesLoading: boolean;
   schedulesError: string | null;
+  announcements: Announcement[];
+  announcementsLoading: boolean;
+  announcementsError: string | null;
+  serviceFlowList: ServiceFlowListItem[];
+  serviceFlowsLoading: boolean;
+  serviceFlowsError: string | null;
   liveState: LiveState;
   refreshSongs: () => Promise<void>;
   refreshSetlists: () => Promise<void>;
   refreshSchedules: () => Promise<void>;
+  refreshAnnouncements: () => Promise<void>;
+  refreshServiceFlows: () => Promise<void>;
   addSong: (song: NewSongInput) => Promise<void>;
   updateSong: (id: string, song: NewSongInput) => Promise<void>;
   deleteSong: (id: string) => Promise<void>;
@@ -159,8 +255,23 @@ interface AppContextType {
   addSchedule: (schedule: NewScheduleInput) => Promise<void>;
   updateSchedule: (id: string, schedule: UpdateScheduleInput) => Promise<void>;
   deleteSchedule: (id: string) => Promise<void>;
+  addAnnouncement: (input: NewAnnouncementInput) => Promise<void>;
+  updateAnnouncement: (
+    id: string,
+    input: UpdateAnnouncementInput,
+  ) => Promise<void>;
+  deleteAnnouncement: (id: string) => Promise<void>;
+  addServiceFlow: (input: NewServiceFlowInput) => Promise<ServiceFlow>;
+  updateServiceFlow: (
+    id: string,
+    input: UpdateServiceFlowInput,
+  ) => Promise<ServiceFlow>;
+  deleteServiceFlow: (id: string) => Promise<void>;
+  duplicateServiceFlow: (id: string) => Promise<ServiceFlow>;
   updateLiveState: (state: Partial<LiveState>) => void;
   setCurrentSlide: (songId: string, sectionId: string) => void;
+  setCurrentAnnouncement: (announcement: Announcement) => void;
+  setCurrentCue: (label: string, notes: string | null) => void;
 }
 
 import {
@@ -172,9 +283,56 @@ import {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+function mapAnnouncementDto(dto: AnnouncementDto): Announcement {
+  return {
+    id: dto.id,
+    title: dto.title,
+    body: dto.body,
+    category: dto.category,
+    expiresAt: dto.expiresAt,
+  };
+}
+
+function mapServiceFlowListItemDto(
+  dto: ServiceFlowListItemDto,
+): ServiceFlowListItem {
+  return {
+    id: dto.id,
+    title: dto.title,
+    description: dto.description,
+    segmentCount: dto.segmentCount,
+  };
+}
+
+function mapServiceFlowDto(dto: ServiceFlowDto): ServiceFlow {
+  return {
+    id: dto.id,
+    title: dto.title,
+    description: dto.description,
+    segments: dto.segments.map((segment) => ({
+      id: segment.id,
+      position: segment.position,
+      label: segment.label,
+      kind: segment.kind,
+      notes: segment.notes,
+      setlistId: segment.setlistId,
+      setlistName: segment.setlistName,
+      announcements: segment.announcements.map(mapAnnouncementDto),
+    })),
+  };
+}
+
 function getDefaultLiveState(): LiveState {
   return {
     isLive: false,
+    slideMode: "lyrics",
+    currentServiceFlowId: null,
+    currentSegmentId: null,
+    currentAnnouncementId: null,
+    currentAnnouncementTitle: null,
+    currentAnnouncementBody: null,
+    currentCueLabel: null,
+    currentCueNotes: null,
     currentSetlistId: null,
     currentSongId: null,
     currentSectionId: null,
@@ -243,6 +401,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
   const [schedulesError, setSchedulesError] = useState<string | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(false);
+  const [announcementsError, setAnnouncementsError] = useState<string | null>(
+    null,
+  );
+  const [serviceFlowList, setServiceFlowList] = useState<ServiceFlowListItem[]>(
+    [],
+  );
+  const [serviceFlowsLoading, setServiceFlowsLoading] = useState(false);
+  const [serviceFlowsError, setServiceFlowsError] = useState<string | null>(
+    null,
+  );
   const [liveState, setLiveState] = useState<LiveState>(getDefaultLiveState);
   const [liveStateHydrated, setLiveStateHydrated] = useState(false);
   const liveStateChannelRef = React.useRef<ReturnType<
@@ -318,12 +488,69 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [activeOrganizationId]);
 
+  const refreshAnnouncements = useCallback(async () => {
+    if (!activeOrganizationId) {
+      setAnnouncements([]);
+      setAnnouncementsError(null);
+      return;
+    }
+
+    setAnnouncementsLoading(true);
+    setAnnouncementsError(null);
+
+    try {
+      const { announcements: loaded } =
+        await getAnnouncements(activeOrganizationId);
+      setAnnouncements(loaded.map(mapAnnouncementDto));
+    } catch (error) {
+      setAnnouncements([]);
+      setAnnouncementsError(
+        error instanceof Error ? error.message : "Failed to load announcements",
+      );
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  }, [activeOrganizationId]);
+
+  const refreshServiceFlows = useCallback(async () => {
+    if (!activeOrganizationId) {
+      setServiceFlowList([]);
+      setServiceFlowsError(null);
+      return;
+    }
+
+    setServiceFlowsLoading(true);
+    setServiceFlowsError(null);
+
+    try {
+      const { serviceFlows: loaded } =
+        await getServiceFlows(activeOrganizationId);
+      setServiceFlowList(loaded.map(mapServiceFlowListItemDto));
+    } catch (error) {
+      setServiceFlowList([]);
+      setServiceFlowsError(
+        error instanceof Error ? error.message : "Failed to load service flows",
+      );
+    } finally {
+      setServiceFlowsLoading(false);
+    }
+  }, [activeOrganizationId]);
+
   React.useEffect(() => {
     if (isOrgLoading) return;
     refreshSongs();
     refreshSetlists();
     refreshSchedules();
-  }, [isOrgLoading, refreshSongs, refreshSetlists, refreshSchedules]);
+    refreshAnnouncements();
+    refreshServiceFlows();
+  }, [
+    isOrgLoading,
+    refreshSongs,
+    refreshSetlists,
+    refreshSchedules,
+    refreshAnnouncements,
+    refreshServiceFlows,
+  ]);
 
   React.useEffect(() => {
     const saved = readLiveStateFromStorage();
@@ -346,10 +573,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (event.key !== LIVE_STATE_STORAGE_KEY || !event.newValue) return;
 
       try {
-        setLiveState((prev) => ({
-          ...prev,
-          ...JSON.parse(event.newValue || "{}"),
-        }) as LiveState);
+        setLiveState(
+          (prev) =>
+            ({
+              ...prev,
+              ...JSON.parse(event.newValue || "{}"),
+            }) as LiveState,
+        );
       } catch {
         // Ignore malformed storage payloads.
       }
@@ -525,19 +755,172 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSchedules((prev) => prev.filter((schedule) => schedule.id !== id));
   };
 
-  const updateLiveState = (state: Partial<LiveState>) => {
-    setLiveState((prev) => ({ ...prev, ...state }));
+  const addAnnouncement = async (input: NewAnnouncementInput) => {
+    if (!activeOrganizationId) {
+      throw new Error("No organization selected");
+    }
+
+    const { announcement: created } = await createAnnouncementApi(
+      activeOrganizationId,
+      input,
+    );
+
+    setAnnouncements((prev) => [...prev, mapAnnouncementDto(created)]);
   };
 
-  const setCurrentSlide = (songId: string, sectionId: string) => {
+  const updateAnnouncement = async (
+    id: string,
+    input: UpdateAnnouncementInput,
+  ) => {
+    if (!activeOrganizationId) {
+      throw new Error("No organization selected");
+    }
+
+    const { announcement: updated } = await updateAnnouncementApi(
+      activeOrganizationId,
+      id,
+      input,
+    );
+
+    setAnnouncements((prev) =>
+      prev.map((item) => (item.id === id ? mapAnnouncementDto(updated) : item)),
+    );
+  };
+
+  const deleteAnnouncement = async (id: string) => {
+    if (!activeOrganizationId) {
+      throw new Error("No organization selected");
+    }
+
+    await deleteAnnouncementApi(activeOrganizationId, id);
+    setAnnouncements((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const addServiceFlow = async (input: NewServiceFlowInput) => {
+    if (!activeOrganizationId) {
+      throw new Error("No organization selected");
+    }
+
+    const { serviceFlow: created } = await createServiceFlowApi(
+      activeOrganizationId,
+      input,
+    );
+
+    const mapped = mapServiceFlowDto(created);
+    setServiceFlowList((prev) => [
+      ...prev,
+      {
+        id: mapped.id,
+        title: mapped.title,
+        description: mapped.description,
+        segmentCount: mapped.segments.length,
+      },
+    ]);
+
+    return mapped;
+  };
+
+  const updateServiceFlow = async (
+    id: string,
+    input: UpdateServiceFlowInput,
+  ) => {
+    if (!activeOrganizationId) {
+      throw new Error("No organization selected");
+    }
+
+    const { serviceFlow: updated } = await updateServiceFlowApi(
+      activeOrganizationId,
+      id,
+      input,
+    );
+
+    const mapped = mapServiceFlowDto(updated);
+    setServiceFlowList((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              id: mapped.id,
+              title: mapped.title,
+              description: mapped.description,
+              segmentCount: mapped.segments.length,
+            }
+          : item,
+      ),
+    );
+
+    return mapped;
+  };
+
+  const deleteServiceFlow = async (id: string) => {
+    if (!activeOrganizationId) {
+      throw new Error("No organization selected");
+    }
+
+    await deleteServiceFlowApi(activeOrganizationId, id);
+    setServiceFlowList((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const duplicateServiceFlow = async (id: string) => {
+    if (!activeOrganizationId) {
+      throw new Error("No organization selected");
+    }
+
+    const { serviceFlow: duplicated } = await duplicateServiceFlowApi(
+      activeOrganizationId,
+      id,
+    );
+
+    const mapped = mapServiceFlowDto(duplicated);
+    setServiceFlowList((prev) => [
+      ...prev,
+      {
+        id: mapped.id,
+        title: mapped.title,
+        description: mapped.description,
+        segmentCount: mapped.segments.length,
+      },
+    ]);
+
+    return mapped;
+  };
+
+  const updateLiveState = useCallback((state: Partial<LiveState>) => {
+    setLiveState((prev) => ({ ...prev, ...state }));
+  }, []);
+
+  const setCurrentSlide = useCallback((songId: string, sectionId: string) => {
     setLiveState((prev) => ({
       ...prev,
+      slideMode: "lyrics",
       currentSongId: songId,
       currentSectionId: sectionId,
       manualLyrics: null,
       currentChunkIndex: 0,
     }));
-  };
+  }, []);
+
+  const setCurrentAnnouncement = useCallback((announcement: Announcement) => {
+    setLiveState((prev) => ({
+      ...prev,
+      slideMode: "announcement",
+      currentAnnouncementId: announcement.id,
+      currentAnnouncementTitle: announcement.title,
+      currentAnnouncementBody: announcement.body,
+      manualLyrics: null,
+      currentChunkIndex: 0,
+    }));
+  }, []);
+
+  const setCurrentCue = useCallback((label: string, notes: string | null) => {
+    setLiveState((prev) => ({
+      ...prev,
+      slideMode: "cue",
+      currentCueLabel: label,
+      currentCueNotes: notes,
+      manualLyrics: null,
+      currentChunkIndex: 0,
+    }));
+  }, []);
 
   return (
     <AppContext.Provider
@@ -551,10 +934,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         schedules,
         schedulesLoading,
         schedulesError,
+        announcements,
+        announcementsLoading,
+        announcementsError,
+        serviceFlowList,
+        serviceFlowsLoading,
+        serviceFlowsError,
         liveState,
         refreshSongs,
         refreshSetlists,
         refreshSchedules,
+        refreshAnnouncements,
+        refreshServiceFlows,
         addSong,
         updateSong,
         deleteSong,
@@ -564,8 +955,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addSchedule,
         updateSchedule,
         deleteSchedule,
+        addAnnouncement,
+        updateAnnouncement,
+        deleteAnnouncement,
+        addServiceFlow,
+        updateServiceFlow,
+        deleteServiceFlow,
+        duplicateServiceFlow,
         updateLiveState,
         setCurrentSlide,
+        setCurrentAnnouncement,
+        setCurrentCue,
       }}
     >
       {children}

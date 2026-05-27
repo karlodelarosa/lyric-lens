@@ -4,6 +4,8 @@ import { Dashboard } from "./components/pages/Dashboard";
 import { SongLibrary } from "./components/pages/SongLibrary";
 import { SetlistBuilder } from "./components/pages/SetlistBuilder";
 import { Schedule } from "./components/pages/Schedule";
+import { AnnouncementBank } from "./components/pages/AnnouncementBank";
+import { ServiceFlowBuilder } from "./components/pages/ServiceFlowBuilder";
 import { LiveMode } from "./components/pages/LiveMode";
 import { Website } from "./components/pages/Website";
 import { PresenterView } from "./components/pages/PresenterView";
@@ -18,6 +20,8 @@ export const router = createBrowserRouter([
       { index: true, Component: Dashboard },
       { path: "songs", Component: SongLibrary },
       { path: "setlists", Component: SetlistBuilder },
+      { path: "announcements", Component: AnnouncementBank },
+      { path: "service-flows", Component: ServiceFlowBuilder },
       { path: "schedule", Component: Schedule },
       { path: "live", Component: LiveMode },
       { path: "website", Component: Website },

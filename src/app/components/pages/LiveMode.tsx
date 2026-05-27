@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router";
-import { useApp } from "../../contexts/AppContext";
+import { useOrganization } from "@frontend/contexts/OrganizationContext";
+import { getServiceFlow } from "@frontend/lib/api/serviceFlows";
+import {
+  useApp,
+  type ServiceFlow,
+  type ServiceFlowSegment,
+} from "../../contexts/AppContext";
+import { ServiceFlowLivePanel } from "../live/ServiceFlowLivePanel";
 import {
   ChevronRight,
   ChevronLeft,
@@ -98,9 +105,21 @@ const getLyricChunks = (lyrics: string, linesPerSlide: number) => {
 
 export function LiveMode() {
   const [searchParams] = useSearchParams();
-  const { songs, setlists, liveState, updateLiveState, setCurrentSlide } =
-    useApp();
+  const { activeOrganizationId } = useOrganization();
+  const {
+    songs,
+    setlists,
+    liveState,
+    updateLiveState,
+    setCurrentSlide,
+    setCurrentAnnouncement,
+    setCurrentCue,
+  } = useApp();
   const [manualLyricsInput, setManualLyricsInput] = useState("");
+  const serviceFlowIdFromUrl = searchParams.get("serviceFlowId");
+  const [activeServiceFlow, setActiveServiceFlow] =
+    useState<ServiceFlow | null>(null);
+  const [isLoadingServiceFlow, setIsLoadingServiceFlow] = useState(false);
   const initialSetlistId =
     searchParams.get("setlistId") || setlists[0]?.id || null;
   const [selectedSetlistId, setSelectedSetlistId] = useState<string | null>(
@@ -120,6 +139,7 @@ export function LiveMode() {
   );
   const [previewScale, setPreviewScale] = useState(1);
   const previewFrameRef = useRef<HTMLDivElement | null>(null);
+  const loadedServiceFlowIdRef = useRef<string | null>(null);
 
   const selectedSetlist = setlists.find((sl) => sl.id === selectedSetlistId);
   const setlistSongs = (selectedSetlist?.songs || [])
@@ -151,6 +171,19 @@ export function LiveMode() {
       : currentSection.lyrics
     : undefined;
   const liveLyrics = liveState.manualLyrics ?? sectionLyrics;
+  const activeSegment =
+    activeServiceFlow?.segments.find(
+      (segment) => segment.id === liveState.currentSegmentId,
+    ) ??
+    (liveState.currentSegmentId ? undefined : activeServiceFlow?.segments[0]);
+  const activeSegmentSetlist = activeSegment?.setlistId
+    ? setlists.find((setlist) => setlist.id === activeSegment.setlistId)
+    : selectedSetlist;
+  const musicSetlistSongs = (activeSegmentSetlist?.songs || [])
+    .map((songId) => songs.find((song) => song.id === songId))
+    .filter((song): song is NonNullable<typeof song> => Boolean(song));
+  const previewAnnouncementTitle = liveState.currentAnnouncementTitle;
+  const previewAnnouncementBody = liveState.currentAnnouncementBody;
   const scaledPreviewFontSize = Math.max(
     14,
     Math.round(liveState.fontSize * previewScale),
@@ -164,7 +197,106 @@ export function LiveMode() {
       }))
     : [];
 
+  const applyServiceFlowSegment = useCallback(
+    (flow: ServiceFlow, segment: ServiceFlowSegment) => {
+      if (segment.kind === "music") {
+        if (segment.setlistId) {
+          setSelectedSetlistId(segment.setlistId);
+        }
+        updateLiveState({
+          currentServiceFlowId: flow.id,
+          currentSegmentId: segment.id,
+          slideMode: "lyrics",
+          currentSetlistId: segment.setlistId,
+        });
+        return;
+      }
+
+      if (segment.kind === "cue") {
+        setCurrentCue(segment.label, segment.notes);
+        updateLiveState({
+          currentServiceFlowId: flow.id,
+          currentSegmentId: segment.id,
+        });
+        return;
+      }
+
+      updateLiveState({
+        currentServiceFlowId: flow.id,
+        currentSegmentId: segment.id,
+      });
+
+      if (segment.announcements[0]) {
+        setCurrentAnnouncement(segment.announcements[0]);
+      } else {
+        updateLiveState({
+          slideMode: "announcement",
+          currentAnnouncementId: null,
+          currentAnnouncementTitle: segment.label,
+          currentAnnouncementBody: "No announcements attached",
+        });
+      }
+    },
+    [setCurrentAnnouncement, setCurrentCue, updateLiveState],
+  );
+
+  const selectServiceFlowSegment = useCallback(
+    (segment: ServiceFlowSegment) => {
+      if (!activeServiceFlow) return;
+      applyServiceFlowSegment(activeServiceFlow, segment);
+    },
+    [activeServiceFlow, applyServiceFlowSegment],
+  );
+
   useEffect(() => {
+    if (!serviceFlowIdFromUrl || !activeOrganizationId) {
+      setActiveServiceFlow(null);
+      loadedServiceFlowIdRef.current = null;
+      return;
+    }
+
+    if (loadedServiceFlowIdRef.current === serviceFlowIdFromUrl) {
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingServiceFlow(true);
+
+    void getServiceFlow(activeOrganizationId, serviceFlowIdFromUrl)
+      .then(({ serviceFlow }) => {
+        if (cancelled) return;
+
+        loadedServiceFlowIdRef.current = serviceFlowIdFromUrl;
+        setActiveServiceFlow(serviceFlow);
+        updateLiveState({ currentServiceFlowId: serviceFlow.id });
+
+        const first = serviceFlow.segments[0];
+        if (first) {
+          applyServiceFlowSegment(serviceFlow, first);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setActiveServiceFlow(null);
+          loadedServiceFlowIdRef.current = null;
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingServiceFlow(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // Only re-load when the URL flow id or org changes — not when live state updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceFlowIdFromUrl, activeOrganizationId]);
+
+  useEffect(() => {
+    if (serviceFlowIdFromUrl) return;
+
     const setlistFromUrl = searchParams.get("setlistId");
     if (setlistFromUrl && setlists.some((sl) => sl.id === setlistFromUrl)) {
       setSelectedSetlistId(setlistFromUrl);
@@ -175,7 +307,30 @@ export function LiveMode() {
     if (selectedSetlistId && !liveState.currentSetlistId) {
       updateLiveState({ currentSetlistId: selectedSetlistId });
     }
-  }, [searchParams, setlists, selectedSetlistId, liveState.currentSetlistId]);
+  }, [
+    searchParams,
+    setlists,
+    selectedSetlistId,
+    liveState.currentSetlistId,
+    serviceFlowIdFromUrl,
+    updateLiveState,
+  ]);
+
+  const goToAdjacentSegment = (direction: 1 | -1) => {
+    if (!activeServiceFlow) return;
+
+    const currentSegmentId =
+      liveState.currentSegmentId ?? activeServiceFlow.segments[0]?.id;
+    if (!currentSegmentId) return;
+
+    const index = activeServiceFlow.segments.findIndex(
+      (segment) => segment.id === currentSegmentId,
+    );
+    if (index < 0) return;
+
+    const next = activeServiceFlow.segments[index + direction];
+    if (next) selectServiceFlowSegment(next);
+  };
 
   useEffect(() => {
     setVideoUrlInput(liveState.backgroundVideoUrl ?? "");
@@ -220,6 +375,9 @@ export function LiveMode() {
 
   const handleSectionClick = (songId: string, sectionId: string) => {
     setCurrentSlide(songId, sectionId);
+    if (activeServiceFlow) {
+      updateLiveState({ slideMode: "lyrics" });
+    }
   };
 
   const handleChunkClick = (
@@ -240,6 +398,9 @@ export function LiveMode() {
     const firstSection = song?.sections[0];
     if (!song || !firstSection) return;
     setCurrentSlide(song.id, firstSection.id);
+    if (activeServiceFlow) {
+      updateLiveState({ slideMode: "lyrics" });
+    }
   };
 
   const applyCustomColor = () => {
@@ -386,23 +547,54 @@ export function LiveMode() {
                 {liveState.isLive ? "LIVE" : "Not Live"}
               </span>
             </div>
-            <Select
-              value={selectedSetlistId || ""}
-              onValueChange={setSelectedSetlistId}
-            >
-              <SelectTrigger className="w-64">
-                <SelectValue placeholder="Select a setlist" />
-              </SelectTrigger>
-              <SelectContent>
-                {setlists.map((setlist) => (
-                  <SelectItem key={setlist.id} value={setlist.id}>
-                    {setlist.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {activeServiceFlow ? (
+              <div className="text-sm">
+                <span className="text-muted-foreground">Flow: </span>
+                <span className="font-medium">{activeServiceFlow.title}</span>
+                {activeSegment && (
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · {activeSegment.label}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <Select
+                value={selectedSetlistId || ""}
+                onValueChange={setSelectedSetlistId}
+              >
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="Select a setlist" />
+                </SelectTrigger>
+                <SelectContent>
+                  {setlists.map((setlist) => (
+                    <SelectItem key={setlist.id} value={setlist.id}>
+                      {setlist.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div className="flex items-center gap-2">
+            {activeServiceFlow && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToAdjacentSegment(-1)}
+                >
+                  Prev segment
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToAdjacentSegment(1)}
+                >
+                  Next segment
+                </Button>
+              </>
+            )}
             <Button
               variant={isCompactMode ? "default" : "outline"}
               size="sm"
@@ -431,79 +623,100 @@ export function LiveMode() {
           )}
         >
           <div className="p-4 space-y-2">
-            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-4">
-              Song List
-            </h2>
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                className="pl-9"
-                placeholder="Search setlist songs..."
-                value={songSearch}
-                onChange={(e) => setSongSearch(e.target.value)}
+            {isLoadingServiceFlow ? (
+              <p className="text-sm text-muted-foreground">
+                Loading service flow...
+              </p>
+            ) : activeServiceFlow ? (
+              <ServiceFlowLivePanel
+                serviceFlow={activeServiceFlow}
+                activeSegmentId={liveState.currentSegmentId}
+                onSelectSegment={selectServiceFlowSegment}
+                onSelectAnnouncement={setCurrentAnnouncement}
+                onSelectSong={handleSongClick}
+                onSelectSection={handleSectionClick}
+                currentSongId={liveState.currentSongId}
+                currentSectionId={liveState.currentSectionId}
+                currentAnnouncementId={liveState.currentAnnouncementId}
+                setlistSongs={musicSetlistSongs}
               />
-            </div>
-            <div className="space-y-2">
-              {setlistSongs.map((song) => {
-                const songId = song.id;
+            ) : (
+              <>
+                <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-4">
+                  Song List
+                </h2>
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Search setlist songs..."
+                    value={songSearch}
+                    onChange={(e) => setSongSearch(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  {setlistSongs.map((song) => {
+                    const songId = song.id;
 
-                const isSongActive = liveState.currentSongId === songId;
+                    const isSongActive = liveState.currentSongId === songId;
 
-                return (
-                  <div key={songId} className="space-y-1">
-                    <div
-                      className={cn(
-                        "p-3 rounded-lg font-medium",
-                        isSongActive
-                          ? "bg-primary/20 border border-primary"
-                          : "bg-card border",
-                      )}
-                    >
-                      {song.title}
-                    </div>
+                    return (
+                      <div key={songId} className="space-y-1">
+                        <div
+                          className={cn(
+                            "p-3 rounded-lg font-medium",
+                            isSongActive
+                              ? "bg-primary/20 border border-primary"
+                              : "bg-card border",
+                          )}
+                        >
+                          {song.title}
+                        </div>
 
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start mt-1"
-                      onClick={() => handleSongClick(songId)}
-                    >
-                      Start song from first slide
-                    </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start mt-1"
+                          onClick={() => handleSongClick(songId)}
+                        >
+                          Start song from first slide
+                        </Button>
 
-                    <div className="ml-4 space-y-1">
-                      {song.sections.map((section) => {
-                        const isActive =
-                          isSongActive &&
-                          section.id === liveState.currentSectionId;
-                        const firstLine = section.lyrics.split("\n")[0];
+                        <div className="ml-4 space-y-1">
+                          {song.sections.map((section) => {
+                            const isActive =
+                              isSongActive &&
+                              section.id === liveState.currentSectionId;
+                            const firstLine = section.lyrics.split("\n")[0];
 
-                        return (
-                          <button
-                            key={section.id}
-                            onClick={() =>
-                              handleSectionClick(songId, section.id)
-                            }
-                            className={cn(
-                              "w-full text-left p-2 rounded text-sm transition-colors",
-                              isActive
-                                ? "bg-primary text-primary-foreground font-semibold"
-                                : "hover:bg-accent",
-                            )}
-                          >
-                            <div className="text-xs opacity-80">
-                              {section.type.charAt(0).toUpperCase() +
-                                section.type.slice(1)}
-                              {section.number ? ` ${section.number}` : ""}
-                            </div>
-                            <div className="truncate">{firstLine}</div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                            return (
+                              <button
+                                key={section.id}
+                                onClick={() =>
+                                  handleSectionClick(songId, section.id)
+                                }
+                                className={cn(
+                                  "w-full text-left p-2 rounded text-sm transition-colors",
+                                  isActive
+                                    ? "bg-primary text-primary-foreground font-semibold"
+                                    : "hover:bg-accent",
+                                )}
+                              >
+                                <div className="text-xs opacity-80">
+                                  {section.type.charAt(0).toUpperCase() +
+                                    section.type.slice(1)}
+                                  {section.number ? ` ${section.number}` : ""}
+                                </div>
+                                <div className="truncate">{firstLine}</div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -708,7 +921,52 @@ export function LiveMode() {
                           </>
                         ) : null}
 
-                        {liveLyrics ? (
+                        {liveState.slideMode === "announcement" ? (
+                          <div
+                            className={cn(
+                              "max-w-4xl relative z-[1] text-white",
+                              isCompactMode ? "px-6 py-4" : "px-12 py-8",
+                            )}
+                            style={{
+                              fontFamily: liveState.fontFamily,
+                              textAlign: liveState.alignment,
+                            }}
+                          >
+                            {previewAnnouncementTitle && (
+                              <h2
+                                className="font-bold mb-4"
+                                style={{
+                                  fontSize: `${scaledPreviewFontSize}px`,
+                                }}
+                              >
+                                {previewAnnouncementTitle}
+                              </h2>
+                            )}
+                            <p
+                              className="whitespace-pre-wrap"
+                              style={{
+                                fontSize: `${Math.max(20, scaledPreviewFontSize * 0.65)}px`,
+                                lineHeight: liveState.lineHeight,
+                              }}
+                            >
+                              {previewAnnouncementBody}
+                            </p>
+                          </div>
+                        ) : liveState.slideMode === "cue" ? (
+                          <div className="max-w-3xl relative z-[1] text-white text-center px-8">
+                            <p
+                              className="font-semibold"
+                              style={{ fontSize: `${scaledPreviewFontSize}px` }}
+                            >
+                              {liveState.currentCueLabel}
+                            </p>
+                            {liveState.currentCueNotes && (
+                              <p className="mt-4 text-white/80 whitespace-pre-wrap text-lg">
+                                {liveState.currentCueNotes}
+                              </p>
+                            )}
+                          </div>
+                        ) : liveLyrics ? (
                           <div
                             className={cn(
                               "max-w-4xl relative z-[1]",
@@ -735,7 +993,11 @@ export function LiveMode() {
                         ) : (
                           <div className="text-white/50 text-center">
                             <Monitor className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                            <p className="text-xl">Select a song to begin</p>
+                            <p className="text-xl">
+                              {activeServiceFlow
+                                ? "Select a segment item to begin"
+                                : "Select a song to begin"}
+                            </p>
                           </div>
                         )}
                       </div>

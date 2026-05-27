@@ -1,7 +1,14 @@
 import { useApp } from "../../contexts/AppContext";
 import { buildLiveUrl } from "../../lib/liveStateSync";
 import { Link } from "react-router";
-import { Calendar, Music, List, ArrowRight, Plus } from "lucide-react";
+import {
+  Calendar,
+  Music,
+  List,
+  ArrowRight,
+  Plus,
+  GitBranch,
+} from "lucide-react";
 import { Button } from "../ui/button";
 import {
   Card,
@@ -13,7 +20,7 @@ import {
 import { format } from "date-fns";
 
 export function Dashboard() {
-  const { schedules, setlists, songs } = useApp();
+  const { schedules, setlists, songs, serviceFlowList } = useApp();
 
   const upcomingSchedules = schedules
     .filter((s) => new Date(s.date) >= new Date())
@@ -39,6 +46,12 @@ export function Dashboard() {
             <Button>
               <Plus className="w-4 h-4 mr-2" />
               Create Setlist
+            </Button>
+          </Link>
+          <Link to="/service-flows">
+            <Button variant="outline">
+              <GitBranch className="w-4 h-4 mr-2" />
+              Service Flows
             </Button>
           </Link>
           <Link to="/songs">
@@ -204,7 +217,7 @@ export function Dashboard() {
           <CardTitle>Quick Actions</CardTitle>
           <CardDescription>Jump into your workflow</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-3 gap-4">
+        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Link to="/live" className="group">
             <div className="p-6 rounded-lg border bg-card hover:bg-accent transition-all duration-200 cursor-pointer">
               <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -238,8 +251,47 @@ export function Dashboard() {
               </p>
             </div>
           </Link>
+          <Link to="/service-flows" className="group">
+            <div className="p-6 rounded-lg border bg-card hover:bg-accent transition-all duration-200 cursor-pointer">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <GitBranch className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="font-semibold mb-1">Service Flows</h3>
+              <p className="text-sm text-muted-foreground">
+                {serviceFlowList.length} saved flow
+                {serviceFlowList.length === 1 ? "" : "s"}
+              </p>
+            </div>
+          </Link>
         </CardContent>
       </Card>
+
+      {serviceFlowList.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Service Flows</CardTitle>
+            <CardDescription>Go live with a full run-of-show</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {serviceFlowList.slice(0, 5).map((flow) => (
+              <div
+                key={flow.id}
+                className="flex items-center justify-between gap-3 p-3 rounded-lg border"
+              >
+                <div>
+                  <p className="font-medium">{flow.title}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {flow.segmentCount} segments
+                  </p>
+                </div>
+                <Link to={buildLiveUrl({ serviceFlowId: flow.id })}>
+                  <Button size="sm">Go Live</Button>
+                </Link>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

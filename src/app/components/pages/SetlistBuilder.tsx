@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useOrganization } from "@frontend/contexts/OrganizationContext";
-import { useApp, type SetlistFlowSectionInput } from "../../contexts/AppContext";
+import {
+  useApp,
+  type SetlistFlowSectionInput,
+} from "../../contexts/AppContext";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { GripVertical, Plus, Trash2, Save, Search } from "lucide-react";
@@ -412,7 +415,10 @@ export function SetlistBuilder() {
                   {FLOW_PRESETS.map((preset) => {
                     const section = flowSections.find((s) => s.name === preset);
                     return (
-                      <div key={preset} className="rounded-lg border p-3 space-y-2">
+                      <div
+                        key={preset}
+                        className="rounded-lg border p-3 space-y-2"
+                      >
                         <p className="text-sm font-medium">{preset}</p>
                         <div className="flex flex-wrap gap-2">
                           {songOrder.map((songId) => {

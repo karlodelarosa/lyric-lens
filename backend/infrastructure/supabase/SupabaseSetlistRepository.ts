@@ -42,8 +42,7 @@ export class SupabaseSetlistRepository implements SetlistRepository {
     const message = error?.message?.toLowerCase() ?? "";
     return (
       message.includes("flow_sections") &&
-      (message.includes("does not exist") ||
-        message.includes("could not find"))
+      (message.includes("does not exist") || message.includes("could not find"))
     );
   }
 

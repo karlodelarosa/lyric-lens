@@ -395,10 +395,7 @@ export function Schedule() {
                   </div>
                   <div className="flex gap-2">
                     <Link to={buildLiveUrl(schedule.setlistId)}>
-                      <Button
-                        size="sm"
-                        disabled={!schedule.setlistId}
-                      >
+                      <Button size="sm" disabled={!schedule.setlistId}>
                         Go Live
                       </Button>
                     </Link>

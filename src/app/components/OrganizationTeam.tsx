@@ -164,7 +164,10 @@ export function OrganizationTeam() {
             </div>
           )}
 
-          <form onSubmit={handleInviteMember} className="space-y-3 pt-2 border-t">
+          <form
+            onSubmit={handleInviteMember}
+            className="space-y-3 pt-2 border-t"
+          >
             <p className="text-sm font-medium">Invite member (admin only)</p>
             <div className="space-y-2">
               <Label htmlFor="invite-user-id">Member user ID</Label>

@@ -12,6 +12,50 @@ export type Database = {
   };
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          body: string;
+          category: string | null;
+          created_at: string;
+          created_by: string | null;
+          expires_at: string | null;
+          id: string;
+          organization_id: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          body?: string;
+          category?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          expires_at?: string | null;
+          id?: string;
+          organization_id: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          body?: string;
+          category?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          expires_at?: string | null;
+          id?: string;
+          organization_id?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "announcements_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       organization_members: {
         Row: {
           created_at: string;
@@ -88,6 +132,131 @@ export type Database = {
             columns: ["setlist_id"];
             isOneToOne: false;
             referencedRelation: "setlists";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      service_flow_segment_announcements: {
+        Row: {
+          announcement_id: string;
+          id: string;
+          position: number;
+          segment_id: string;
+        };
+        Insert: {
+          announcement_id: string;
+          id?: string;
+          position?: number;
+          segment_id: string;
+        };
+        Update: {
+          announcement_id?: string;
+          id?: string;
+          position?: number;
+          segment_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "service_flow_segment_announcements_announcement_id_fkey";
+            columns: ["announcement_id"];
+            isOneToOne: false;
+            referencedRelation: "announcements";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "service_flow_segment_announcements_segment_id_fkey";
+            columns: ["segment_id"];
+            isOneToOne: false;
+            referencedRelation: "service_flow_segments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      service_flow_segments: {
+        Row: {
+          created_at: string;
+          id: string;
+          kind: Database["public"]["Enums"]["service_flow_segment_kind"];
+          label: string;
+          notes: string | null;
+          position: number;
+          service_flow_id: string;
+          setlist_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          kind?: Database["public"]["Enums"]["service_flow_segment_kind"];
+          label: string;
+          notes?: string | null;
+          position?: number;
+          service_flow_id: string;
+          setlist_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          kind?: Database["public"]["Enums"]["service_flow_segment_kind"];
+          label?: string;
+          notes?: string | null;
+          position?: number;
+          service_flow_id?: string;
+          setlist_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "service_flow_segments_service_flow_id_fkey";
+            columns: ["service_flow_id"];
+            isOneToOne: false;
+            referencedRelation: "service_flows";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "service_flow_segments_setlist_id_fkey";
+            columns: ["setlist_id"];
+            isOneToOne: false;
+            referencedRelation: "setlists";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      service_flows: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          description: string | null;
+          id: string;
+          organization_id: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          id?: string;
+          organization_id: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          id?: string;
+          organization_id?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "service_flows_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
             referencedColumns: ["id"];
           },
         ];
@@ -336,7 +505,7 @@ export type Database = {
       is_org_member: { Args: { org_id: string }; Returns: boolean };
     };
     Enums: {
-      [_ in never]: never;
+      service_flow_segment_kind: "music" | "announcements" | "cue";
     };
     CompositeTypes: {
       [_ in never]: never;

@@ -1,4 +1,7 @@
-import type { OrganizationMember, OrganizationRole } from "../../domain/organization/OrganizationMember";
+import type {
+  OrganizationMember,
+  OrganizationRole,
+} from "../../domain/organization/OrganizationMember";
 import type { OrganizationRepository } from "../../domain/organization/OrganizationRepository";
 
 export class InviteOrganizationMember {

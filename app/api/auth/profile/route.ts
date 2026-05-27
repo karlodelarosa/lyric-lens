@@ -22,7 +22,9 @@ export async function PATCH(request: Request) {
     }
 
     const repository = await createAuthRepository();
-    const updated = await new UpdateProfile(repository).execute({ displayName });
+    const updated = await new UpdateProfile(repository).execute({
+      displayName,
+    });
 
     return NextResponse.json({
       user: {
