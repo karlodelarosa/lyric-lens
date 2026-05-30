@@ -114,11 +114,14 @@ export function PresenterView() {
       );
     }
 
-    if (liveLyrics) {
+    if (
+      liveState.slideMode === "lyrics" &&
+      (liveState.manualLyrics != null || currentSection)
+    ) {
       return (
         <div className="w-full px-16 py-12 max-w-7xl relative z-[1]">
           <div className="w-full" style={textStyle}>
-            {liveLyrics}
+            {liveLyrics ?? ""}
           </div>
         </div>
       );
@@ -147,6 +150,7 @@ export function PresenterView() {
       {liveState.backgroundVideoUrl ? (
         <>
           <video
+            key={liveState.backgroundVideoUrl}
             src={liveState.backgroundVideoUrl}
             autoPlay
             muted

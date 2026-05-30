@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildLiveUrl } from "../src/app/lib/liveStateSync";
+import {
+  buildLiveUrl,
+  isLiveStateBroadcast,
+} from "../src/app/lib/liveStateSync";
 
 describe("liveStateSync", () => {
   it("builds live url without setlist", () => {
@@ -21,5 +24,15 @@ describe("liveStateSync", () => {
     expect(
       buildLiveUrl({ serviceFlowId: "flow-456", setlistId: "abc-123" }),
     ).toBe("/live?serviceFlowId=flow-456");
+  });
+
+  it("detects broadcast envelopes", () => {
+    expect(
+      isLiveStateBroadcast({
+        sourceId: "tab-a",
+        state: { currentChunkIndex: 1 },
+      }),
+    ).toBe(true);
+    expect(isLiveStateBroadcast({ currentChunkIndex: 1 })).toBe(false);
   });
 });

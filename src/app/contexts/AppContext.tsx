@@ -276,6 +276,7 @@ interface AppContextType {
 
 import {
   createLiveStateChannel,
+  isLiveStateBroadcast,
   LIVE_STATE_STORAGE_KEY,
   publishLiveState,
   readLiveStateFromStorage,
@@ -418,6 +419,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const liveStateChannelRef = React.useRef<ReturnType<
     typeof createLiveStateChannel
   > | null>(null);
+  const liveStateSourceIdRef = React.useRef(
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `live-${Math.random().toString(36).slice(2)}`,
+  );
+  const pendingPublishRef = React.useRef<LiveState | null>(null);
+  const publishRafRef = React.useRef<number | null>(null);
+  const skipNextPublishRef = React.useRef(false);
 
   const refreshSongs = useCallback(async () => {
     if (!activeOrganizationId) {
@@ -562,9 +571,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const channel = createLiveStateChannel();
     liveStateChannelRef.current = channel;
 
+    const applyRemoteLiveState = (partial: Record<string, unknown>) => {
+      skipNextPublishRef.current = true;
+      setLiveState((prev) => {
+        const next = { ...prev, ...partial } as LiveState;
+        if (JSON.stringify(prev) === JSON.stringify(next)) {
+          skipNextPublishRef.current = false;
+          return prev;
+        }
+        return next;
+      });
+    };
+
     const onChannelMessage = (event: MessageEvent) => {
-      if (!event.data || typeof event.data !== "object") return;
-      setLiveState((prev) => ({ ...prev, ...event.data }) as LiveState);
+      if (!isLiveStateBroadcast(event.data)) return;
+      if (event.data.sourceId === liveStateSourceIdRef.current) return;
+      applyRemoteLiveState(event.data.state);
     };
 
     channel?.addEventListener("message", onChannelMessage);
@@ -573,19 +595,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (event.key !== LIVE_STATE_STORAGE_KEY || !event.newValue) return;
 
       try {
-        setLiveState(
-          (prev) =>
-            ({
-              ...prev,
-              ...JSON.parse(event.newValue || "{}"),
-            }) as LiveState,
-        );
+        const parsed = JSON.parse(event.newValue) as Record<string, unknown>;
+        if (parsed && typeof parsed === "object") {
+          applyRemoteLiveState(parsed);
+        }
       } catch {
         // Ignore malformed storage payloads.
       }
     };
 
-    window.addEventListener("storage", onStorage);
+    // BroadcastChannel handles same-origin windows; storage is a fallback only.
+    if (!channel) {
+      window.addEventListener("storage", onStorage);
+    }
 
     return () => {
       channel?.removeEventListener("message", onChannelMessage);
@@ -596,12 +618,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   React.useEffect(() => {
     if (!liveStateHydrated) return;
+    if (skipNextPublishRef.current) {
+      skipNextPublishRef.current = false;
+      return;
+    }
 
-    publishLiveState(
-      liveStateChannelRef.current,
-      liveState as unknown as Record<string, unknown>,
-    );
+    pendingPublishRef.current = liveState;
+
+    if (publishRafRef.current != null) return;
+
+    publishRafRef.current = requestAnimationFrame(() => {
+      publishRafRef.current = null;
+      const state = pendingPublishRef.current;
+      if (!state) return;
+
+      publishLiveState(
+        liveStateChannelRef.current,
+        liveStateSourceIdRef.current,
+        state as unknown as Record<string, unknown>,
+      );
+    });
   }, [liveState, liveStateHydrated]);
+
+  React.useEffect(() => {
+    return () => {
+      if (publishRafRef.current != null) {
+        cancelAnimationFrame(publishRafRef.current);
+      }
+    };
+  }, []);
 
   const addSong = async (song: NewSongInput) => {
     if (!activeOrganizationId) {

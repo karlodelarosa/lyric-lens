@@ -363,9 +363,12 @@ export function LiveMode() {
     }
   }, [
     currentSection?.id,
+    currentSection?.lyrics,
+    currentSectionChunks.length,
     liveState.linesPerSlide,
     liveState.currentChunkIndex,
     liveState.useLineChunks,
+    updateLiveState,
   ]);
 
   const handleGoLive = () => {
@@ -516,6 +519,8 @@ export function LiveMode() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return;
+
+      if (event.repeat) return;
 
       if (event.key === "ArrowRight" || event.key === " ") {
         event.preventDefault();
@@ -826,19 +831,7 @@ export function LiveMode() {
                                           }}
                                         >
                                           {liveState.backgroundVideoUrl ? (
-                                            <>
-                                              <video
-                                                src={
-                                                  liveState.backgroundVideoUrl
-                                                }
-                                                autoPlay
-                                                muted
-                                                loop
-                                                playsInline
-                                                className="absolute inset-0 w-full h-full object-cover"
-                                              />
-                                              <div className="absolute inset-0 bg-black/40" />
-                                            </>
+                                            <div className="absolute inset-0 bg-black/50" />
                                           ) : null}
                                           <div
                                             className={cn(
@@ -910,6 +903,7 @@ export function LiveMode() {
                         {liveState.backgroundVideoUrl ? (
                           <>
                             <video
+                              key={liveState.backgroundVideoUrl}
                               src={liveState.backgroundVideoUrl}
                               autoPlay
                               muted
@@ -966,7 +960,8 @@ export function LiveMode() {
                               </p>
                             )}
                           </div>
-                        ) : liveLyrics ? (
+                        ) : liveState.slideMode === "lyrics" &&
+                          (liveState.manualLyrics != null || currentSection) ? (
                           <div
                             className={cn(
                               "max-w-4xl relative z-[1]",
@@ -988,7 +983,7 @@ export function LiveMode() {
                               whiteSpace: "pre-wrap",
                             }}
                           >
-                            {liveLyrics}
+                            {liveLyrics ?? ""}
                           </div>
                         ) : (
                           <div className="text-white/50 text-center">

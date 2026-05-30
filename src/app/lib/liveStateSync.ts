@@ -31,12 +31,32 @@ export function createLiveStateChannel(): BroadcastChannel | null {
   return new BroadcastChannel(LIVE_STATE_CHANNEL_NAME);
 }
 
+export type LiveStateBroadcast = {
+  sourceId: string;
+  state: Record<string, unknown>;
+};
+
+export function isLiveStateBroadcast(
+  data: unknown,
+): data is LiveStateBroadcast {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "sourceId" in data &&
+    "state" in data &&
+    typeof (data as LiveStateBroadcast).sourceId === "string" &&
+    typeof (data as LiveStateBroadcast).state === "object" &&
+    (data as LiveStateBroadcast).state !== null
+  );
+}
+
 export function publishLiveState(
   channel: BroadcastChannel | null,
+  sourceId: string,
   state: Record<string, unknown>,
 ) {
   writeLiveStateToStorage(state);
-  channel?.postMessage(state);
+  channel?.postMessage({ sourceId, state } satisfies LiveStateBroadcast);
 }
 
 export type BuildLiveUrlOptions = {
