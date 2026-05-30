@@ -90,8 +90,14 @@ interface Setlist {
     name: string;
     songIds: string[];
   }[];
+  welcomeSlide: WelcomeSlide | null;
   scheduleId?: string;
 }
+
+export type WelcomeSlide = {
+  url: string;
+  type: "image" | "video";
+};
 
 export type SetlistFlowSectionInput = {
   name: string;
@@ -102,12 +108,14 @@ export type NewSetlistInput = {
   name: string;
   songs: string[];
   flowSections?: SetlistFlowSectionInput[];
+  welcomeSlide?: WelcomeSlide | null;
 };
 
 export type UpdateSetlistInput = {
   name?: string;
   songs?: string[];
   flowSections?: SetlistFlowSectionInput[];
+  welcomeSlide?: WelcomeSlide | null;
 };
 
 interface Schedule {
@@ -190,7 +198,7 @@ export type UpdateServiceFlowInput = {
   segments?: ServiceFlowSegmentInput[];
 };
 
-export type SlideMode = "lyrics" | "announcement" | "cue";
+export type SlideMode = "lyrics" | "announcement" | "cue" | "welcome" | "blank";
 
 interface LiveState {
   isLive: boolean;
@@ -202,6 +210,8 @@ interface LiveState {
   currentAnnouncementBody: string | null;
   currentCueLabel: string | null;
   currentCueNotes: string | null;
+  welcomeSlideUrl: string | null;
+  welcomeSlideType: "image" | "video" | null;
   currentSetlistId: string | null;
   currentSongId: string | null;
   currentSectionId: string | null;
@@ -222,6 +232,7 @@ interface LiveState {
   useLineChunks: boolean;
   linesPerSlide: number;
   currentChunkIndex: number;
+  idleTimeoutSeconds: number;
 }
 
 interface AppContextType {
@@ -272,6 +283,8 @@ interface AppContextType {
   setCurrentSlide: (songId: string, sectionId: string) => void;
   setCurrentAnnouncement: (announcement: Announcement) => void;
   setCurrentCue: (label: string, notes: string | null) => void;
+  showWelcomeSlide: (welcomeSlide: WelcomeSlide) => void;
+  clearScreen: () => void;
 }
 
 import {
@@ -334,6 +347,8 @@ function getDefaultLiveState(): LiveState {
     currentAnnouncementBody: null,
     currentCueLabel: null,
     currentCueNotes: null,
+    welcomeSlideUrl: null,
+    welcomeSlideType: null,
     currentSetlistId: null,
     currentSongId: null,
     currentSectionId: null,
@@ -354,6 +369,7 @@ function getDefaultLiveState(): LiveState {
     useLineChunks: true,
     linesPerSlide: 2,
     currentChunkIndex: 0,
+    idleTimeoutSeconds: 120,
   };
 }
 
@@ -379,6 +395,7 @@ function mapSetlistDto(dto: SetlistDto): Setlist {
     name: dto.name,
     songs: dto.songs,
     flowSections: dto.flowSections ?? [],
+    welcomeSlide: dto.welcomeSlide ?? null,
   };
 }
 
@@ -426,6 +443,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   const pendingPublishRef = React.useRef<LiveState | null>(null);
   const publishRafRef = React.useRef<number | null>(null);
+  const liveActivityRef = React.useRef(Date.now());
   const skipNextPublishRef = React.useRef(false);
 
   const refreshSongs = useCallback(async () => {
@@ -706,6 +724,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       title: input.name,
       songIds: input.songs,
       flowSections: input.flowSections,
+      welcomeSlide: input.welcomeSlide ?? null,
     });
 
     setSetlists((prev) => [...prev, mapSetlistDto(created)]);
@@ -720,11 +739,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       title?: string;
       songIds?: string[];
       flowSections?: SetlistFlowSectionInput[];
+      welcomeSlide?: WelcomeSlide | null;
     } = {};
     if (input.name !== undefined) payload.title = input.name;
     if (input.songs !== undefined) payload.songIds = input.songs;
     if (input.flowSections !== undefined) {
       payload.flowSections = input.flowSections;
+    }
+    if (input.welcomeSlide !== undefined) {
+      payload.welcomeSlide = input.welcomeSlide;
     }
 
     const { setlist: updated } = await updateSetlistApi(
@@ -930,10 +953,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const updateLiveState = useCallback((state: Partial<LiveState>) => {
+    const isIdleBlank =
+      state.slideMode === "blank" && Object.keys(state).length === 1;
+
+    if (!isIdleBlank) {
+      liveActivityRef.current = Date.now();
+    }
+
     setLiveState((prev) => ({ ...prev, ...state }));
   }, []);
 
+  React.useEffect(() => {
+    const interval = window.setInterval(() => {
+      setLiveState((prev) => {
+        if (prev.idleTimeoutSeconds <= 0) return prev;
+        if (prev.slideMode === "blank" || prev.slideMode === "welcome") {
+          return prev;
+        }
+
+        const elapsedMs = Date.now() - liveActivityRef.current;
+        if (elapsedMs < prev.idleTimeoutSeconds * 1000) return prev;
+
+        return { ...prev, slideMode: "blank" };
+      });
+    }, 5000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
   const setCurrentSlide = useCallback((songId: string, sectionId: string) => {
+    liveActivityRef.current = Date.now();
     setLiveState((prev) => ({
       ...prev,
       slideMode: "lyrics",
@@ -945,6 +994,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setCurrentAnnouncement = useCallback((announcement: Announcement) => {
+    liveActivityRef.current = Date.now();
     setLiveState((prev) => ({
       ...prev,
       slideMode: "announcement",
@@ -957,6 +1007,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setCurrentCue = useCallback((label: string, notes: string | null) => {
+    liveActivityRef.current = Date.now();
     setLiveState((prev) => ({
       ...prev,
       slideMode: "cue",
@@ -964,6 +1015,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentCueNotes: notes,
       manualLyrics: null,
       currentChunkIndex: 0,
+    }));
+  }, []);
+
+  const showWelcomeSlide = useCallback((welcomeSlide: WelcomeSlide) => {
+    liveActivityRef.current = Date.now();
+    setLiveState((prev) => ({
+      ...prev,
+      slideMode: "welcome",
+      welcomeSlideUrl: welcomeSlide.url,
+      welcomeSlideType: welcomeSlide.type,
+      manualLyrics: null,
+      currentChunkIndex: 0,
+    }));
+  }, []);
+
+  const clearScreen = useCallback(() => {
+    liveActivityRef.current = Date.now();
+    setLiveState((prev) => ({
+      ...prev,
+      slideMode: "blank",
+      manualLyrics: null,
     }));
   }, []);
 
@@ -1011,6 +1083,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setCurrentSlide,
         setCurrentAnnouncement,
         setCurrentCue,
+        showWelcomeSlide,
+        clearScreen,
       }}
     >
       {children}

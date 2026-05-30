@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useApp } from "../../contexts/AppContext";
 import { Maximize2 } from "lucide-react";
 import { Button } from "../ui/button";
+import { LiveSlideContent } from "../live/LiveSlideContent";
 
 const getLyricChunks = (lyrics: string, linesPerSlide: number) => {
   const safeLinesPerSlide = Math.max(1, Math.floor(linesPerSlide));
@@ -74,65 +75,38 @@ export function PresenterView() {
     whiteSpace: "pre-wrap" as const,
   };
 
-  const renderContent = () => {
-    if (liveState.slideMode === "announcement") {
-      return (
-        <div className="w-full px-16 py-12 max-w-7xl relative z-[1] text-white">
-          {liveState.currentAnnouncementTitle && (
-            <h2 className="font-bold mb-6" style={textStyle}>
-              {liveState.currentAnnouncementTitle}
-            </h2>
-          )}
-          <p
-            style={{
-              ...textStyle,
-              fontSize: `${Math.max(28, liveState.fontSize * 0.7)}px`,
-            }}
-          >
-            {liveState.currentAnnouncementBody}
-          </p>
-        </div>
-      );
-    }
+  const hasSlideContent =
+    liveState.slideMode === "welcome"
+      ? Boolean(liveState.welcomeSlideUrl)
+      : liveState.slideMode === "blank"
+        ? false
+        : liveState.slideMode === "announcement"
+          ? Boolean(liveState.currentAnnouncementBody)
+          : liveState.slideMode === "cue"
+            ? Boolean(liveState.currentCueLabel)
+            : liveState.slideMode === "lyrics" &&
+              (liveState.manualLyrics != null || currentSection);
 
-    if (liveState.slideMode === "cue") {
-      return (
-        <div className="w-full px-16 py-12 max-w-5xl relative z-[1] text-center text-white">
-          <p style={textStyle}>{liveState.currentCueLabel}</p>
-          {liveState.currentCueNotes && (
-            <p
-              className="mt-6 text-white/85"
-              style={{
-                ...textStyle,
-                fontSize: `${Math.max(24, liveState.fontSize * 0.55)}px`,
-              }}
-            >
-              {liveState.currentCueNotes}
-            </p>
-          )}
-        </div>
-      );
-    }
+  const slideContent = hasSlideContent ? (
+    <LiveSlideContent
+      slideMode={liveState.slideMode}
+      welcomeSlideUrl={liveState.welcomeSlideUrl}
+      welcomeSlideType={liveState.welcomeSlideType}
+      announcementTitle={liveState.currentAnnouncementTitle}
+      announcementBody={liveState.currentAnnouncementBody}
+      cueLabel={liveState.currentCueLabel}
+      cueNotes={liveState.currentCueNotes}
+      lyrics={
+        liveState.slideMode === "lyrics" &&
+        (liveState.manualLyrics != null || currentSection)
+          ? (liveLyrics ?? "")
+          : undefined
+      }
+      textStyle={textStyle}
+    />
+  ) : null;
 
-    if (
-      liveState.slideMode === "lyrics" &&
-      (liveState.manualLyrics != null || currentSection)
-    ) {
-      return (
-        <div className="w-full px-16 py-12 max-w-7xl relative z-[1]">
-          <div className="w-full" style={textStyle}>
-            {liveLyrics ?? ""}
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="text-white/30 text-4xl text-center">
-        <p>Waiting for content...</p>
-      </div>
-    );
-  };
+  const showWaiting = !hasSlideContent && liveState.slideMode !== "blank";
 
   return (
     <div
@@ -171,7 +145,13 @@ export function PresenterView() {
         <Maximize2 className="w-5 h-5" />
       </Button>
 
-      {renderContent()}
+      {slideContent}
+
+      {showWaiting && (
+        <div className="text-white/30 text-4xl text-center relative z-[1]">
+          <p>Waiting for content...</p>
+        </div>
+      )}
     </div>
   );
 }

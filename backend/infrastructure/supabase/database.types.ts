@@ -305,6 +305,7 @@ export type Database = {
           created_at: string;
           created_by: string | null;
           flow_sections: Json;
+          welcome_slide: Json | null;
           id: string;
           organization_id: string;
           title: string;
@@ -314,6 +315,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           flow_sections?: Json;
+          welcome_slide?: Json | null;
           id?: string;
           organization_id: string;
           title: string;
@@ -323,6 +325,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           flow_sections?: Json;
+          welcome_slide?: Json | null;
           id?: string;
           organization_id?: string;
           title?: string;

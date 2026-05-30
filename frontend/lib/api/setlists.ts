@@ -5,11 +5,17 @@ export type SetlistFlowSectionDto = {
   songIds: string[];
 };
 
+export type WelcomeSlideDto = {
+  url: string;
+  type: "image" | "video";
+};
+
 export type SetlistDto = {
   id: string;
   name: string;
   songs: string[];
   flowSections?: SetlistFlowSectionDto[];
+  welcomeSlide?: WelcomeSlideDto | null;
 };
 
 export type SetlistsResponse = {
@@ -20,12 +26,14 @@ export type CreateSetlistPayload = {
   title: string;
   songIds: string[];
   flowSections?: SetlistFlowSectionDto[];
+  welcomeSlide?: WelcomeSlideDto | null;
 };
 
 export type UpdateSetlistPayload = {
   title?: string;
   songIds?: string[];
   flowSections?: SetlistFlowSectionDto[];
+  welcomeSlide?: WelcomeSlideDto | null;
 };
 
 export async function getSetlists(

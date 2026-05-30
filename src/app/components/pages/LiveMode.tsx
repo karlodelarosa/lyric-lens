@@ -8,6 +8,7 @@ import {
   type ServiceFlowSegment,
 } from "../../contexts/AppContext";
 import { ServiceFlowLivePanel } from "../live/ServiceFlowLivePanel";
+import { LiveSlideContent } from "../live/LiveSlideContent";
 import {
   ChevronRight,
   ChevronLeft,
@@ -23,6 +24,9 @@ import {
   Rows3,
   Search,
   Video,
+  Sparkles,
+  Eraser,
+  Timer,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -114,6 +118,8 @@ export function LiveMode() {
     setCurrentSlide,
     setCurrentAnnouncement,
     setCurrentCue,
+    showWelcomeSlide,
+    clearScreen,
   } = useApp();
   const [manualLyricsInput, setManualLyricsInput] = useState("");
   const serviceFlowIdFromUrl = searchParams.get("serviceFlowId");
@@ -179,6 +185,8 @@ export function LiveMode() {
   const activeSegmentSetlist = activeSegment?.setlistId
     ? setlists.find((setlist) => setlist.id === activeSegment.setlistId)
     : selectedSetlist;
+  const activeSetlistWelcomeSlide =
+    activeSegmentSetlist?.welcomeSlide ?? selectedSetlist?.welcomeSlide ?? null;
   const musicSetlistSongs = (activeSegmentSetlist?.songs || [])
     .map((songId) => songs.find((song) => song.id === songId))
     .filter((song): song is NonNullable<typeof song> => Boolean(song));
@@ -374,6 +382,15 @@ export function LiveMode() {
   const handleGoLive = () => {
     window.open("/presenter", "_blank", "fullscreen=yes");
     updateLiveState({ isLive: true });
+  };
+
+  const handleShowWelcome = () => {
+    if (!activeSetlistWelcomeSlide) return;
+    showWelcomeSlide(activeSetlistWelcomeSlide);
+  };
+
+  const handleClearScreen = () => {
+    clearScreen();
   };
 
   const handleSectionClick = (songId: string, sectionId: string) => {
@@ -650,6 +667,36 @@ export function LiveMode() {
                 <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-4">
                   Song List
                 </h2>
+                <div className="flex gap-2 mb-3">
+                  <Button
+                    variant={
+                      liveState.slideMode === "welcome" ? "default" : "outline"
+                    }
+                    size="sm"
+                    className="flex-1"
+                    disabled={!activeSetlistWelcomeSlide}
+                    onClick={handleShowWelcome}
+                    title={
+                      activeSetlistWelcomeSlide
+                        ? "Show welcome slide"
+                        : "Configure a welcome slide in Setlist Builder"
+                    }
+                  >
+                    <Sparkles className="w-4 h-4 mr-1" />
+                    Welcome
+                  </Button>
+                  <Button
+                    variant={
+                      liveState.slideMode === "blank" ? "default" : "outline"
+                    }
+                    size="sm"
+                    className="flex-1"
+                    onClick={handleClearScreen}
+                  >
+                    <Eraser className="w-4 h-4 mr-1" />
+                    Clear
+                  </Button>
+                </div>
                 <div className="relative mb-3">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -915,78 +962,45 @@ export function LiveMode() {
                           </>
                         ) : null}
 
-                        {liveState.slideMode === "announcement" ? (
-                          <div
-                            className={cn(
-                              "max-w-4xl relative z-[1] text-white",
-                              isCompactMode ? "px-6 py-4" : "px-12 py-8",
-                            )}
-                            style={{
-                              fontFamily: liveState.fontFamily,
-                              textAlign: liveState.alignment,
-                            }}
-                          >
-                            {previewAnnouncementTitle && (
-                              <h2
-                                className="font-bold mb-4"
-                                style={{
-                                  fontSize: `${scaledPreviewFontSize}px`,
-                                }}
-                              >
-                                {previewAnnouncementTitle}
-                              </h2>
-                            )}
-                            <p
-                              className="whitespace-pre-wrap"
-                              style={{
-                                fontSize: `${Math.max(20, scaledPreviewFontSize * 0.65)}px`,
-                                lineHeight: liveState.lineHeight,
-                              }}
-                            >
-                              {previewAnnouncementBody}
-                            </p>
-                          </div>
-                        ) : liveState.slideMode === "cue" ? (
-                          <div className="max-w-3xl relative z-[1] text-white text-center px-8">
-                            <p
-                              className="font-semibold"
-                              style={{ fontSize: `${scaledPreviewFontSize}px` }}
-                            >
-                              {liveState.currentCueLabel}
-                            </p>
-                            {liveState.currentCueNotes && (
-                              <p className="mt-4 text-white/80 whitespace-pre-wrap text-lg">
-                                {liveState.currentCueNotes}
-                              </p>
-                            )}
-                          </div>
-                        ) : liveState.slideMode === "lyrics" &&
-                          (liveState.manualLyrics != null || currentSection) ? (
-                          <div
-                            className={cn(
-                              "max-w-4xl relative z-[1]",
-                              isCompactMode ? "px-6 py-4" : "px-12 py-8",
-                            )}
-                            style={{
-                              fontFamily: liveState.fontFamily,
-                              fontSize: `${scaledPreviewFontSize}px`,
-                              textAlign: liveState.alignment,
-                              lineHeight: liveState.lineHeight,
-                              paddingTop:
-                                liveState.verticalPosition === "top"
-                                  ? `${liveState.topPadding}px`
-                                  : undefined,
-                              textTransform: liveState.textTransform,
-                              fontWeight: liveState.fontWeight,
-                              color: "white",
-                              textShadow: "0 2px 8px rgba(0,0,0,0.5)",
-                              whiteSpace: "pre-wrap",
-                            }}
-                          >
-                            {liveLyrics ?? ""}
-                          </div>
-                        ) : (
-                          <div className="text-white/50 text-center">
+                        <LiveSlideContent
+                          slideMode={liveState.slideMode}
+                          welcomeSlideUrl={liveState.welcomeSlideUrl}
+                          welcomeSlideType={liveState.welcomeSlideType}
+                          announcementTitle={previewAnnouncementTitle}
+                          announcementBody={previewAnnouncementBody}
+                          cueLabel={liveState.currentCueLabel}
+                          cueNotes={liveState.currentCueNotes}
+                          lyrics={
+                            liveState.slideMode === "lyrics" &&
+                            (liveState.manualLyrics != null || currentSection)
+                              ? (liveLyrics ?? "")
+                              : undefined
+                          }
+                          compact={isCompactMode}
+                          scaledFontSize={scaledPreviewFontSize}
+                          textStyle={{
+                            fontFamily: liveState.fontFamily,
+                            fontSize: `${scaledPreviewFontSize}px`,
+                            textAlign: liveState.alignment,
+                            lineHeight: liveState.lineHeight,
+                            paddingTop:
+                              liveState.verticalPosition === "top"
+                                ? `${liveState.topPadding}px`
+                                : undefined,
+                            textTransform: liveState.textTransform,
+                            fontWeight: liveState.fontWeight,
+                            color: "white",
+                            textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+                            whiteSpace: "pre-wrap",
+                          }}
+                        />
+
+                        {liveState.slideMode !== "blank" &&
+                        liveState.slideMode !== "welcome" &&
+                        liveState.slideMode !== "announcement" &&
+                        liveState.slideMode !== "cue" &&
+                        !(liveState.manualLyrics != null || currentSection) ? (
+                          <div className="text-white/50 text-center relative z-[1]">
                             <Monitor className="w-16 h-16 mx-auto mb-4 opacity-50" />
                             <p className="text-xl">
                               {activeServiceFlow
@@ -994,7 +1008,14 @@ export function LiveMode() {
                                 : "Select a song to begin"}
                             </p>
                           </div>
-                        )}
+                        ) : liveState.slideMode === "welcome" &&
+                          !liveState.welcomeSlideUrl ? (
+                          <div className="text-white/50 text-center relative z-[1]">
+                            <p className="text-xl">
+                              No welcome slide configured for this setlist
+                            </p>
+                          </div>
+                        ) : null}
                       </div>
                     )}
                     <p className="mt-2 text-xs text-muted-foreground">
@@ -1061,28 +1082,57 @@ export function LiveMode() {
           >
             <div className="flex items-center justify-between max-w-4xl mx-auto">
               <div className="flex-1">
-                {currentSong && (
+                {liveState.slideMode === "welcome" ? (
                   <div>
-                    <p className="font-semibold">{currentSong.title}</p>
+                    <p className="font-semibold">Welcome slide</p>
                     <p className="text-sm text-muted-foreground">
-                      {currentSection?.type.charAt(0).toUpperCase()}
-                      {currentSection?.type.slice(1)}
-                      {currentSection?.number
-                        ? ` ${currentSection.number}`
-                        : ""}
+                      Showing setlist welcome media
                     </p>
-                    {!liveState.manualLyrics &&
-                      liveState.useLineChunks &&
-                      currentSectionChunks.length > 1 && (
-                        <p className="text-xs text-muted-foreground">
-                          Slide {currentChunkIndex + 1} /{" "}
-                          {currentSectionChunks.length}
-                        </p>
-                      )}
                   </div>
+                ) : liveState.slideMode === "blank" ? (
+                  <div>
+                    <p className="font-semibold">Screen cleared</p>
+                    <p className="text-sm text-muted-foreground">
+                      Background only — select a song or welcome to continue
+                    </p>
+                  </div>
+                ) : (
+                  currentSong && (
+                    <div>
+                      <p className="font-semibold">{currentSong.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {currentSection?.type.charAt(0).toUpperCase()}
+                        {currentSection?.type.slice(1)}
+                        {currentSection?.number
+                          ? ` ${currentSection.number}`
+                          : ""}
+                      </p>
+                      {!liveState.manualLyrics &&
+                        liveState.useLineChunks &&
+                        currentSectionChunks.length > 1 && (
+                          <p className="text-xs text-muted-foreground">
+                            Slide {currentChunkIndex + 1} /{" "}
+                            {currentSectionChunks.length}
+                          </p>
+                        )}
+                    </div>
+                  )
                 )}
               </div>
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  disabled={!activeSetlistWelcomeSlide}
+                  onClick={handleShowWelcome}
+                >
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  Welcome
+                </Button>
+                <Button variant="outline" size="lg" onClick={handleClearScreen}>
+                  <Eraser className="w-5 h-5 mr-2" />
+                  Clear
+                </Button>
                 <Button
                   variant="outline"
                   size="lg"
@@ -1497,6 +1547,34 @@ export function LiveMode() {
                 smoother playback.
               </p>
             </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Timer className="w-4 h-4" />
+              <Label>Idle screen clear</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Automatically hide lyrics after no presenter activity. Welcome
+              slides are not cleared by idle timeout.
+            </p>
+            <Select
+              value={String(liveState.idleTimeoutSeconds)}
+              onValueChange={(value) =>
+                updateLiveState({ idleTimeoutSeconds: Number(value) })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Off</SelectItem>
+                <SelectItem value="60">1 minute</SelectItem>
+                <SelectItem value="120">2 minutes</SelectItem>
+                <SelectItem value="300">5 minutes</SelectItem>
+                <SelectItem value="600">10 minutes</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>

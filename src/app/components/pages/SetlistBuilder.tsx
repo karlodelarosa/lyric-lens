@@ -20,6 +20,13 @@ import {
   DialogTrigger,
 } from "../ui/dialog";
 import { Label } from "../ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { toast } from "sonner";
 
 interface DraggableSongProps {
@@ -110,6 +117,10 @@ export function SetlistBuilder() {
   const [flowSections, setFlowSections] = useState<SetlistFlowSectionInput[]>(
     [],
   );
+  const [welcomeSlideUrl, setWelcomeSlideUrl] = useState("");
+  const [welcomeSlideType, setWelcomeSlideType] = useState<"image" | "video">(
+    "image",
+  );
 
   const FLOW_PRESETS = ["Opening", "Worship", "Response", "Closing"];
 
@@ -145,6 +156,8 @@ export function SetlistBuilder() {
     setNewSetlistName("");
     setSongOrder([]);
     setFlowSections([]);
+    setWelcomeSlideUrl("");
+    setWelcomeSlideType("image");
     setIsCreatingNew(false);
   };
 
@@ -181,11 +194,17 @@ export function SetlistBuilder() {
 
     setIsSaving(true);
     try {
+      const trimmedWelcomeUrl = welcomeSlideUrl.trim();
+      const welcomeSlide = trimmedWelcomeUrl
+        ? { url: trimmedWelcomeUrl, type: welcomeSlideType }
+        : null;
+
       if (editingSetlistId) {
         await updateSetlist(editingSetlistId, {
           name: newSetlistName.trim(),
           songs: songOrder,
           flowSections,
+          welcomeSlide,
         });
         toast.success("Setlist updated");
       } else {
@@ -193,6 +212,7 @@ export function SetlistBuilder() {
           name: newSetlistName.trim(),
           songs: songOrder,
           flowSections,
+          welcomeSlide,
         });
         toast.success("Setlist created");
       }
@@ -216,6 +236,8 @@ export function SetlistBuilder() {
     setNewSetlistName(setlist.name);
     setSongOrder([...setlist.songs]);
     setFlowSections([...setlist.flowSections]);
+    setWelcomeSlideUrl(setlist.welcomeSlide?.url ?? "");
+    setWelcomeSlideType(setlist.welcomeSlide?.type ?? "image");
     setIsCreatingNew(false);
   };
 
@@ -389,6 +411,42 @@ export function SetlistBuilder() {
                   placeholder="Sunday Morning Worship - May 3"
                 />
               </div>
+
+              <div className="space-y-2 rounded-lg border p-3">
+                <Label>Welcome slide</Label>
+                <p className="text-xs text-muted-foreground">
+                  Optional image or video shown when you press Welcome in Live
+                  Mode. Image URLs are recommended — faster and more reliable on
+                  projectors.
+                </p>
+                <Select
+                  value={welcomeSlideType}
+                  onValueChange={(value) =>
+                    setWelcomeSlideType(value as "image" | "video")
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="image">Image (recommended)</SelectItem>
+                    <SelectItem value="video">Video</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  value={welcomeSlideUrl}
+                  onChange={(e) => setWelcomeSlideUrl(e.target.value)}
+                  placeholder="https://your-cdn.com/welcome.jpg"
+                />
+                {welcomeSlideUrl.trim() && welcomeSlideType === "image" ? (
+                  <img
+                    src={welcomeSlideUrl.trim()}
+                    alt="Welcome slide preview"
+                    className="w-full max-h-40 object-contain rounded border bg-muted/30"
+                  />
+                ) : null}
+              </div>
+
               {songOrder.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <p>Click songs from the library to add them</p>
@@ -486,6 +544,7 @@ export function SetlistBuilder() {
                       <p className="font-semibold">{setlist.name}</p>
                       <p className="text-sm text-muted-foreground">
                         {setlist.songs.length} songs
+                        {setlist.welcomeSlide ? " · Welcome slide" : ""}
                       </p>
                     </div>
                     <div className="flex gap-2">

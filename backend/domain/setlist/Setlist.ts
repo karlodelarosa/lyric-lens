@@ -3,16 +3,23 @@ export type SetlistFlowSection = {
   songIds: string[];
 };
 
+export type WelcomeSlide = {
+  url: string;
+  type: "image" | "video";
+};
+
 export type CreateSetlistInput = {
   title: string;
   songIds: string[];
   flowSections?: SetlistFlowSection[];
+  welcomeSlide?: WelcomeSlide | null;
 };
 
 export type UpdateSetlistInput = {
   title?: string;
   songIds?: string[];
   flowSections?: SetlistFlowSection[];
+  welcomeSlide?: WelcomeSlide | null;
 };
 
 type SetlistSongRow = {
@@ -24,8 +31,23 @@ export type SetlistListRow = {
   id: string;
   title: string;
   flow_sections?: SetlistFlowSection[] | null;
+  welcome_slide?: WelcomeSlide | null;
   setlist_songs: SetlistSongRow[] | null;
 };
+
+function parseWelcomeSlide(value: unknown): WelcomeSlide | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const url = typeof record.url === "string" ? record.url.trim() : "";
+  const type =
+    record.type === "video"
+      ? "video"
+      : record.type === "image"
+        ? "image"
+        : null;
+  if (!url || !type) return null;
+  return { url, type };
+}
 
 export class Setlist {
   constructor(
@@ -33,6 +55,7 @@ export class Setlist {
     readonly name: string,
     readonly songs: string[],
     readonly flowSections: SetlistFlowSection[],
+    readonly welcomeSlide: WelcomeSlide | null = null,
   ) {}
 
   static fromListRow(row: SetlistListRow): Setlist {
@@ -50,6 +73,8 @@ export class Setlist {
         )
       : [];
 
-    return new Setlist(row.id, row.title, songs, flowSections);
+    const welcomeSlide = parseWelcomeSlide(row.welcome_slide);
+
+    return new Setlist(row.id, row.title, songs, flowSections, welcomeSlide);
   }
 }

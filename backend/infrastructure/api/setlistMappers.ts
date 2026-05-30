@@ -1,4 +1,8 @@
-import type { Setlist, SetlistFlowSection } from "../../domain/setlist/Setlist";
+import type {
+  Setlist,
+  SetlistFlowSection,
+  WelcomeSlide,
+} from "../../domain/setlist/Setlist";
 import type {
   CreateSetlistInput,
   UpdateSetlistInput,
@@ -10,6 +14,7 @@ export function setlistToDto(setlist: Setlist) {
     name: setlist.name,
     songs: setlist.songs,
     flowSections: setlist.flowSections,
+    welcomeSlide: setlist.welcomeSlide,
   };
 }
 
@@ -31,6 +36,24 @@ function parseFlowSections(value: unknown): SetlistFlowSection[] | undefined {
   return sections;
 }
 
+function parseWelcomeSlide(value: unknown): WelcomeSlide | null | undefined {
+  if (value === null) return null;
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== "object") return undefined;
+
+  const record = value as Record<string, unknown>;
+  const url = typeof record.url === "string" ? record.url.trim() : "";
+  const type =
+    record.type === "video"
+      ? "video"
+      : record.type === "image"
+        ? "image"
+        : null;
+
+  if (!url || !type) return undefined;
+  return { url, type };
+}
+
 export function parseCreateSetlistBody(
   body: unknown,
 ): CreateSetlistInput | null {
@@ -46,8 +69,14 @@ export function parseCreateSetlistBody(
     : [];
 
   const flowSections = parseFlowSections(record.flowSections);
+  const welcomeSlide = parseWelcomeSlide(record.welcomeSlide);
 
-  return { title, songIds, flowSections };
+  return {
+    title,
+    songIds,
+    flowSections,
+    ...(welcomeSlide !== undefined ? { welcomeSlide } : {}),
+  };
 }
 
 export function parseUpdateSetlistBody(
@@ -75,10 +104,16 @@ export function parseUpdateSetlistBody(
     input.flowSections = flowSections;
   }
 
+  const welcomeSlide = parseWelcomeSlide(record.welcomeSlide);
+  if (welcomeSlide !== undefined) {
+    input.welcomeSlide = welcomeSlide;
+  }
+
   if (
     input.title === undefined &&
     input.songIds === undefined &&
-    input.flowSections === undefined
+    input.flowSections === undefined &&
+    input.welcomeSlide === undefined
   ) {
     return null;
   }

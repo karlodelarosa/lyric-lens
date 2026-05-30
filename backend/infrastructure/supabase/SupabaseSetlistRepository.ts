@@ -12,6 +12,7 @@ const SETLIST_LIST_SELECT = `
   id,
   title,
   flow_sections,
+  welcome_slide,
   setlist_songs (
     song_id,
     position
@@ -21,6 +22,16 @@ const SETLIST_LIST_SELECT = `
 const SETLIST_LIST_SELECT_LEGACY = `
   id,
   title,
+  setlist_songs (
+    song_id,
+    position
+  )
+`;
+
+const SETLIST_LIST_SELECT_NO_WELCOME = `
+  id,
+  title,
+  flow_sections,
   setlist_songs (
     song_id,
     position
@@ -46,6 +57,14 @@ export class SupabaseSetlistRepository implements SetlistRepository {
     );
   }
 
+  private isMissingWelcomeSlideColumn(error: { message?: string } | null) {
+    const message = error?.message?.toLowerCase() ?? "";
+    return (
+      message.includes("welcome_slide") &&
+      (message.includes("does not exist") || message.includes("could not find"))
+    );
+  }
+
   async listByOrganization(organizationId: string): Promise<Setlist[]> {
     let { data, error } = await this.querySetlists(
       organizationId,
@@ -56,6 +75,13 @@ export class SupabaseSetlistRepository implements SetlistRepository {
       ({ data, error } = await this.querySetlists(
         organizationId,
         SETLIST_LIST_SELECT_LEGACY,
+      ));
+    }
+
+    if (error && this.isMissingWelcomeSlideColumn(error)) {
+      ({ data, error } = await this.querySetlists(
+        organizationId,
+        SETLIST_LIST_SELECT_NO_WELCOME,
       ));
     }
 
@@ -84,9 +110,21 @@ export class SupabaseSetlistRepository implements SetlistRepository {
       .insert({
         ...baseInsert,
         flow_sections: input.flowSections ?? [],
+        welcome_slide: input.welcomeSlide ?? null,
       })
       .select("id")
       .single();
+
+    if (setlistError && this.isMissingWelcomeSlideColumn(setlistError)) {
+      ({ data: setlistRow, error: setlistError } = await this.client
+        .from("setlists")
+        .insert({
+          ...baseInsert,
+          flow_sections: input.flowSections ?? [],
+        })
+        .select("id")
+        .single());
+    }
 
     if (setlistError && this.isMissingFlowSectionsColumn(setlistError)) {
       ({ data: setlistRow, error: setlistError } = await this.client
@@ -119,11 +157,18 @@ export class SupabaseSetlistRepository implements SetlistRepository {
     setlistId: string,
     input: UpdateSetlistInput,
   ): Promise<Setlist> {
-    if (input.title !== undefined || input.flowSections !== undefined) {
+    if (
+      input.title !== undefined ||
+      input.flowSections !== undefined ||
+      input.welcomeSlide !== undefined
+    ) {
       const patch = {
         ...(input.title !== undefined ? { title: input.title.trim() } : {}),
         ...(input.flowSections !== undefined
           ? { flow_sections: input.flowSections }
+          : {}),
+        ...(input.welcomeSlide !== undefined
+          ? { welcome_slide: input.welcomeSlide }
           : {}),
       };
 
@@ -132,6 +177,25 @@ export class SupabaseSetlistRepository implements SetlistRepository {
         .update(patch)
         .eq("id", setlistId)
         .eq("organization_id", organizationId);
+
+      if (error && this.isMissingWelcomeSlideColumn(error)) {
+        const legacyPatch = {
+          ...(input.title !== undefined ? { title: input.title.trim() } : {}),
+          ...(input.flowSections !== undefined
+            ? { flow_sections: input.flowSections }
+            : {}),
+        };
+
+        if (Object.keys(legacyPatch).length > 0) {
+          ({ error } = await this.client
+            .from("setlists")
+            .update(legacyPatch)
+            .eq("id", setlistId)
+            .eq("organization_id", organizationId));
+        } else {
+          error = null;
+        }
+      }
 
       if (error && this.isMissingFlowSectionsColumn(error)) {
         const legacyPatch =
