@@ -54,3 +54,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
   return data;
 }
+
+export async function parseApiResponse<T>(response: Response): Promise<T> {
+  return parseResponse<T>(response);
+}

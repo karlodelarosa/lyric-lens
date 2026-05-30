@@ -3,10 +3,16 @@ import { useOrganization } from "@frontend/contexts/OrganizationContext";
 import {
   useApp,
   type SetlistFlowSectionInput,
+  type WelcomeSlide,
 } from "../../contexts/AppContext";
+import {
+  uploadWelcomeSlide,
+  WELCOME_SLIDE_ACCEPT,
+  WELCOME_SLIDE_MAX_BYTES,
+} from "@frontend/lib/api/welcomeSlides";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { GripVertical, Plus, Trash2, Save, Search } from "lucide-react";
+import { GripVertical, Plus, Trash2, Save, Search, Upload } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -20,13 +26,6 @@ import {
   DialogTrigger,
 } from "../ui/dialog";
 import { Label } from "../ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
 import { toast } from "sonner";
 
 interface DraggableSongProps {
@@ -117,10 +116,8 @@ export function SetlistBuilder() {
   const [flowSections, setFlowSections] = useState<SetlistFlowSectionInput[]>(
     [],
   );
-  const [welcomeSlideUrl, setWelcomeSlideUrl] = useState("");
-  const [welcomeSlideType, setWelcomeSlideType] = useState<"image" | "video">(
-    "image",
-  );
+  const [welcomeSlide, setWelcomeSlide] = useState<WelcomeSlide | null>(null);
+  const [isUploadingWelcomeSlide, setIsUploadingWelcomeSlide] = useState(false);
 
   const FLOW_PRESETS = ["Opening", "Worship", "Response", "Closing"];
 
@@ -156,9 +153,50 @@ export function SetlistBuilder() {
     setNewSetlistName("");
     setSongOrder([]);
     setFlowSections([]);
-    setWelcomeSlideUrl("");
-    setWelcomeSlideType("image");
+    setWelcomeSlide(null);
     setIsCreatingNew(false);
+  };
+
+  const handleWelcomeSlideUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    if (!activeOrganizationId) {
+      toast.error("Select an organization before uploading");
+      return;
+    }
+
+    if (file.size > WELCOME_SLIDE_MAX_BYTES) {
+      toast.error("File exceeds the 20 MB limit");
+      return;
+    }
+
+    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+      toast.error("Only image and video files are allowed");
+      return;
+    }
+
+    setIsUploadingWelcomeSlide(true);
+    try {
+      const { welcomeSlide: uploaded } = await uploadWelcomeSlide(
+        activeOrganizationId,
+        file,
+      );
+      setWelcomeSlide(uploaded);
+      toast.success("Welcome slide uploaded");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to upload welcome slide",
+      );
+    } finally {
+      setIsUploadingWelcomeSlide(false);
+    }
   };
 
   const toggleFlowSectionSong = (
@@ -194,11 +232,6 @@ export function SetlistBuilder() {
 
     setIsSaving(true);
     try {
-      const trimmedWelcomeUrl = welcomeSlideUrl.trim();
-      const welcomeSlide = trimmedWelcomeUrl
-        ? { url: trimmedWelcomeUrl, type: welcomeSlideType }
-        : null;
-
       if (editingSetlistId) {
         await updateSetlist(editingSetlistId, {
           name: newSetlistName.trim(),
@@ -236,8 +269,7 @@ export function SetlistBuilder() {
     setNewSetlistName(setlist.name);
     setSongOrder([...setlist.songs]);
     setFlowSections([...setlist.flowSections]);
-    setWelcomeSlideUrl(setlist.welcomeSlide?.url ?? "");
-    setWelcomeSlideType(setlist.welcomeSlide?.type ?? "image");
+    setWelcomeSlide(setlist.welcomeSlide ?? null);
     setIsCreatingNew(false);
   };
 
@@ -415,33 +447,62 @@ export function SetlistBuilder() {
               <div className="space-y-2 rounded-lg border p-3">
                 <Label>Welcome slide</Label>
                 <p className="text-xs text-muted-foreground">
-                  Optional image or video shown when you press Welcome in Live
-                  Mode. Image URLs are recommended — faster and more reliable on
-                  projectors.
+                  Upload an image or video (max 20 MB) shown when you press
+                  Welcome in Live Mode.
                 </p>
-                <Select
-                  value={welcomeSlideType}
-                  onValueChange={(value) =>
-                    setWelcomeSlideType(value as "image" | "video")
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="image">Image (recommended)</SelectItem>
-                    <SelectItem value="video">Video</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input
-                  value={welcomeSlideUrl}
-                  onChange={(e) => setWelcomeSlideUrl(e.target.value)}
-                  placeholder="https://your-cdn.com/welcome.jpg"
-                />
-                {welcomeSlideUrl.trim() && welcomeSlideType === "image" ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      !activeOrganizationId ||
+                      isUploadingWelcomeSlide ||
+                      isSaving
+                    }
+                    asChild
+                  >
+                    <label className="cursor-pointer">
+                      <Upload className="w-4 h-4 mr-2" />
+                      {isUploadingWelcomeSlide
+                        ? "Uploading..."
+                        : welcomeSlide
+                          ? "Replace file"
+                          : "Upload file"}
+                      <input
+                        type="file"
+                        className="sr-only"
+                        accept={WELCOME_SLIDE_ACCEPT}
+                        onChange={(event) =>
+                          void handleWelcomeSlideUpload(event)
+                        }
+                      />
+                    </label>
+                  </Button>
+                  {welcomeSlide ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setWelcomeSlide(null)}
+                    >
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
+                {welcomeSlide?.type === "image" ? (
                   <img
-                    src={welcomeSlideUrl.trim()}
+                    src={welcomeSlide.url}
                     alt="Welcome slide preview"
+                    className="w-full max-h-40 object-contain rounded border bg-muted/30"
+                  />
+                ) : null}
+                {welcomeSlide?.type === "video" ? (
+                  <video
+                    src={welcomeSlide.url}
+                    muted
+                    playsInline
+                    controls
                     className="w-full max-h-40 object-contain rounded border bg-muted/30"
                   />
                 ) : null}
