@@ -10,6 +10,7 @@ import { LiveMode } from "./components/pages/LiveMode";
 import { Website } from "./components/pages/Website";
 import { PresenterView } from "./components/pages/PresenterView";
 import { Profile } from "./components/pages/Profile";
+import { HowToUse } from "./components/pages/HowToUse";
 import { NotFound } from "./components/pages/NotFound";
 
 export const router = createBrowserRouter([
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: "service-flows", Component: ServiceFlowBuilder },
       { path: "schedule", Component: Schedule },
       { path: "live", Component: LiveMode },
+      { path: "how-to-use", Component: HowToUse },
       { path: "website", Component: Website },
       { path: "profile", Component: Profile },
       { path: "*", Component: NotFound },

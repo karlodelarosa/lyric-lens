@@ -10,7 +10,9 @@ import {
   GitBranch,
   Megaphone,
   Calendar,
-  Radio,
+  Play,
+  ChevronRight,
+  BookOpen,
   Sun,
   Moon,
   Globe,
@@ -65,14 +67,22 @@ export function RootLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showCollapseHint, setShowCollapseHint] = useState(false);
 
-  const navigation = [
+  const mainNavigation = [
     { name: "Dashboard", href: "/", icon: Home },
     { name: "Songs", href: "/songs", icon: Music },
     { name: "Setlists", href: "/setlists", icon: List },
     { name: "Service Flows", href: "/service-flows", icon: GitBranch },
     { name: "Announcements", href: "/announcements", icon: Megaphone },
     { name: "Schedule", href: "/schedule", icon: Calendar },
-    { name: "Live Mode", href: "/live", icon: Radio },
+  ];
+
+  const liveNav = {
+    name: "Live Mode",
+    href: "/live",
+  };
+
+  const secondaryNavigation = [
+    { name: "How to use", href: "/how-to-use", icon: BookOpen },
     { name: "Website", href: "/website", icon: Globe },
   ];
 
@@ -182,30 +192,111 @@ export function RootLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.href);
-            return (
+        <nav className="flex-1 p-4 flex flex-col gap-1 min-h-0">
+          <div className="space-y-1">
+            {mainNavigation.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    "flex items-center px-3 py-2.5 rounded-lg transition-all duration-200",
+                    isSidebarCollapsed ? "justify-center" : "gap-3",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  )}
+                  title={isSidebarCollapsed ? item.name : undefined}
+                >
+                  <Icon className="w-5 h-5 shrink-0" />
+                  {!isSidebarCollapsed && (
+                    <span className="font-medium">{item.name}</span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+
+          <div
+            className={cn(
+              "pt-3",
+              !isSidebarCollapsed && "border-t border-border/80 mt-2 px-1",
+            )}
+          >
+            {!isSidebarCollapsed && (
+              <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Present
+              </p>
+            )}
+            <Button
+              asChild
+              size={isSidebarCollapsed ? "icon" : "lg"}
+              className={cn(
+                "w-full cursor-pointer font-semibold transition-all",
+                "bg-gradient-to-r from-purple-600 to-indigo-600",
+                "hover:from-purple-500 hover:to-indigo-500",
+                "shadow-md hover:shadow-lg hover:-translate-y-0.5",
+                "active:translate-y-0 active:shadow-md",
+                "border border-white/20",
+                isSidebarCollapsed
+                  ? "h-12 w-12 rounded-xl"
+                  : "h-auto py-3.5 rounded-xl justify-between gap-2",
+                isActive(liveNav.href) &&
+                  "ring-2 ring-white/40 ring-offset-2 ring-offset-card",
+              )}
+            >
               <Link
-                key={item.name}
-                to={item.href}
-                className={cn(
-                  "flex items-center px-3 py-2.5 rounded-lg transition-all duration-200",
-                  isSidebarCollapsed ? "justify-center" : "gap-3",
-                  active
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                )}
-                title={isSidebarCollapsed ? item.name : undefined}
+                to={liveNav.href}
+                title={isSidebarCollapsed ? liveNav.name : undefined}
               >
-                <Icon className="w-5 h-5" />
-                {!isSidebarCollapsed && (
-                  <span className="font-medium">{item.name}</span>
+                {isSidebarCollapsed ? (
+                  <Play className="w-5 h-5 fill-current" />
+                ) : (
+                  <>
+                    <span className="flex items-center gap-2.5 min-w-0 text-white">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/20">
+                        <Play className="w-4 h-4 fill-current" />
+                      </span>
+                      <span className="flex flex-col items-start text-left leading-tight">
+                        <span className="text-base font-bold">
+                          Open Live Mode
+                        </span>
+                        <span className="text-[11px] font-normal opacity-90">
+                          Control & project
+                        </span>
+                      </span>
+                    </span>
+                  </>
                 )}
               </Link>
-            );
-          })}
+            </Button>
+          </div>
+
+          <div className="space-y-1 mt-auto pt-3">
+            {secondaryNavigation.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    "flex items-center px-3 py-2 rounded-lg transition-all duration-200 text-sm",
+                    isSidebarCollapsed ? "justify-center" : "gap-3",
+                    active
+                      ? "bg-accent text-accent-foreground font-medium"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  )}
+                  title={isSidebarCollapsed ? item.name : undefined}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  {!isSidebarCollapsed && <span>{item.name}</span>}
+                </Link>
+              );
+            })}
+          </div>
         </nav>
 
         {organizations.length > 1 && !isSidebarCollapsed && (
