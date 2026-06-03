@@ -1,7 +1,27 @@
 import { useId, useMemo, useRef, useState } from "react";
 import { useOrganization } from "@frontend/contexts/OrganizationContext";
 import { useApp, type SongSectionType } from "../../contexts/AppContext";
-import { Search, Plus, Edit, Trash2, Music, Filter } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  Music,
+  Filter,
+  LayoutGrid,
+  List,
+  Table2,
+} from "lucide-react";
+import { usePagination } from "../../lib/usePagination";
+import { ListPagination } from "../ListPagination";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -67,6 +87,9 @@ export function SongLibrary() {
   const [editingSongId, setEditingSongId] = useState<string | null>(null);
   const [tagFilter, setTagFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"title" | "usage">("title");
+  const [viewMode, setViewMode] = useState<"card" | "compact" | "table">(
+    "card",
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [sections, setSections] = useState(() => [
     createEmptySection(`${sectionIdPrefix}-0`),
@@ -97,6 +120,18 @@ export function SongLibrary() {
       return a.title.localeCompare(b.title);
     });
   }, [songs, searchTerm, tagFilter, sortBy]);
+
+  const {
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    totalPages,
+    paginatedItems,
+    rangeStart,
+    rangeEnd,
+  } = usePagination(filteredSongs, [searchTerm, tagFilter, sortBy]);
 
   const handleAddSong = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -454,8 +489,33 @@ export function SongLibrary() {
             {tag}
           </Button>
         ))}
-        <div className="ml-auto flex items-center gap-2">
-          <Label className="text-xs text-muted-foreground">Sort by</Label>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Label className="text-xs text-muted-foreground">View</Label>
+          <Button
+            size="sm"
+            variant={viewMode === "card" ? "default" : "outline"}
+            onClick={() => setViewMode("card")}
+            aria-label="Card view"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant={viewMode === "compact" ? "default" : "outline"}
+            onClick={() => setViewMode("compact")}
+            aria-label="Compact list view"
+          >
+            <List className="w-4 h-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant={viewMode === "table" ? "default" : "outline"}
+            onClick={() => setViewMode("table")}
+            aria-label="Table view"
+          >
+            <Table2 className="w-4 h-4" />
+          </Button>
+          <Label className="text-xs text-muted-foreground ml-2">Sort by</Label>
           <Button
             size="sm"
             variant={sortBy === "title" ? "default" : "outline"}
@@ -473,45 +533,139 @@ export function SongLibrary() {
         </div>
       </div>
 
-      {/* Songs Grid */}
-      <div className="grid grid-cols-1 gap-4">
-        {filteredSongs.map((song) => (
-          <Card
-            key={song.id}
-            className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => setSelectedSong(song.id)}
+      {filteredSongs.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">
+          No songs match your search or filters.
+        </p>
+      ) : viewMode === "table" ? (
+        <div className="space-y-4">
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Artist</TableHead>
+                  <TableHead>Tags</TableHead>
+                  <TableHead className="text-right">Usage</TableHead>
+                  <TableHead className="w-[88px]" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedItems.map((song) => (
+                  <TableRow
+                    key={song.id}
+                    className="cursor-pointer"
+                    onClick={() => setSelectedSong(song.id)}
+                  >
+                    <TableCell className="font-medium">{song.title}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {song.artist}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {song.tags.slice(0, 3).map((tag) => (
+                          <Badge
+                            key={tag}
+                            variant="secondary"
+                            className="text-xs"
+                          >
+                            {tag}
+                          </Badge>
+                        ))}
+                        {song.tags.length > 3 && (
+                          <span className="text-xs text-muted-foreground">
+                            +{song.tags.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {song.usageCount}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditSong(song.id);
+                          }}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleDeleteSong(song.id);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <ListPagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div
+            className={
+              viewMode === "compact"
+                ? "divide-y rounded-lg border"
+                : "grid grid-cols-1 gap-4"
+            }
           >
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-4 flex-1">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                    <Music className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg">{song.title}</h3>
-                    <p className="text-sm text-muted-foreground">
+            {paginatedItems.map((song) =>
+              viewMode === "compact" ? (
+                <div
+                  key={song.id}
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => setSelectedSong(song.id)}
+                >
+                  <Music className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{song.title}</p>
+                    <p className="text-sm text-muted-foreground truncate">
                       {song.artist}
                     </p>
-                    <div className="flex gap-2 mt-2 flex-wrap">
-                      {song.tags.map((tag) => (
-                        <Badge key={tag} variant="secondary">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">
-                      Used in services
-                    </p>
-                    <p className="text-2xl font-bold">{song.usageCount}</p>
+                  <div className="hidden sm:flex gap-1 max-w-[200px] overflow-hidden">
+                    {song.tags.slice(0, 2).map((tag) => (
+                      <Badge
+                        key={tag}
+                        variant="secondary"
+                        className="text-xs shrink-0"
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
                   </div>
-                  <div className="flex gap-2">
+                  <span className="text-sm text-muted-foreground tabular-nums w-8 text-right">
+                    {song.usageCount}
+                  </span>
+                  <div className="flex gap-1 shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-8 w-8"
                       onClick={(e) => {
                         e.stopPropagation();
                         openEditSong(song.id);
@@ -522,6 +676,7 @@ export function SongLibrary() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-8 w-8"
                       onClick={(e) => {
                         e.stopPropagation();
                         void handleDeleteSong(song.id);
@@ -531,11 +686,84 @@ export function SongLibrary() {
                     </Button>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              ) : (
+                <Card
+                  key={song.id}
+                  className="hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => setSelectedSong(song.id)}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4 flex-1">
+                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                          <Music className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg">
+                            {song.title}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {song.artist}
+                          </p>
+                          <div className="flex gap-2 mt-2 flex-wrap">
+                            {song.tags.map((tag) => (
+                              <Badge key={tag} variant="secondary">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">
+                            Used in services
+                          </p>
+                          <p className="text-2xl font-bold">
+                            {song.usageCount}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditSong(song.id);
+                            }}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleDeleteSong(song.id);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ),
+            )}
+          </div>
+          <ListPagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
+      )}
 
       {/* Edit Song Dialog */}
       <Dialog

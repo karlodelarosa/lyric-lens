@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { usePagination } from "../lib/usePagination";
+import { ListPagination } from "./ListPagination";
 import { useOrganization } from "@frontend/contexts/OrganizationContext";
 import { useAuth } from "@frontend/contexts/AuthContext";
 import {
@@ -59,6 +61,8 @@ export function OrganizationTeam() {
   useEffect(() => {
     void loadMembers();
   }, [loadMembers]);
+
+  const membersPagination = usePagination(members, [members.length]);
 
   const handleCreateOrganization = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,18 +153,30 @@ export function OrganizationTeam() {
           ) : members.length === 0 ? (
             <p className="text-sm text-muted-foreground">No members found.</p>
           ) : (
-            <div className="space-y-2">
-              {members.map((member) => (
-                <div
-                  key={member.id}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
-                >
-                  <code className="text-xs">{member.userId}</code>
-                  <span className="capitalize text-muted-foreground">
-                    {member.role}
-                  </span>
-                </div>
-              ))}
+            <div className="space-y-3">
+              <div className="space-y-2">
+                {membersPagination.paginatedItems.map((member) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
+                  >
+                    <code className="text-xs">{member.userId}</code>
+                    <span className="capitalize text-muted-foreground">
+                      {member.role}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <ListPagination
+                page={membersPagination.page}
+                totalPages={membersPagination.totalPages}
+                totalItems={membersPagination.totalItems}
+                rangeStart={membersPagination.rangeStart}
+                rangeEnd={membersPagination.rangeEnd}
+                pageSize={membersPagination.pageSize}
+                onPageChange={membersPagination.setPage}
+                onPageSizeChange={membersPagination.setPageSize}
+              />
             </div>
           )}
 

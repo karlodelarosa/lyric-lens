@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { usePagination } from "../../lib/usePagination";
+import { ListPagination } from "../ListPagination";
 import { Link } from "react-router";
 import { useOrganization } from "@frontend/contexts/OrganizationContext";
 import { getServiceFlow } from "@frontend/lib/api/serviceFlows";
@@ -272,6 +274,10 @@ export function ServiceFlowBuilder() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [customLabel, setCustomLabel] = useState("");
   const [customKind, setCustomKind] = useState<ServiceFlowSegmentKind>("cue");
+
+  const flowsPagination = usePagination(serviceFlowList, [
+    serviceFlowList.length,
+  ]);
 
   const resetBuilder = () => {
     setEditingFlowId(null);
@@ -652,56 +658,68 @@ export function ServiceFlowBuilder() {
                   No service flows yet.
                 </p>
               ) : (
-                serviceFlowList.map((flow) => (
-                  <div
-                    key={flow.id}
-                    className="p-4 rounded-lg border flex items-center justify-between gap-3"
-                  >
-                    <div>
-                      <p className="font-medium">{flow.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {flow.segmentCount} segment
-                        {flow.segmentCount === 1 ? "" : "s"}
-                      </p>
-                      {flow.description && (
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {flow.description}
+                <>
+                  {flowsPagination.paginatedItems.map((flow) => (
+                    <div
+                      key={flow.id}
+                      className="p-4 rounded-lg border flex items-center justify-between gap-3"
+                    >
+                      <div>
+                        <p className="font-medium">{flow.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {flow.segmentCount} segment
+                          {flow.segmentCount === 1 ? "" : "s"}
                         </p>
-                      )}
+                        {flow.description && (
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            {flow.description}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        <Badge variant="secondary">
+                          {flow.segmentCount} steps
+                        </Badge>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setEditingFlowId(flow.id)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDuplicate(flow.id)}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDelete(flow.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to={buildLiveUrl({ serviceFlowId: flow.id })}>
+                            <Radio className="w-4 h-4" />
+                          </Link>
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-1 justify-end">
-                      <Badge variant="secondary">
-                        {flow.segmentCount} steps
-                      </Badge>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => setEditingFlowId(flow.id)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleDuplicate(flow.id)}
-                      >
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleDelete(flow.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="outline" asChild>
-                        <Link to={buildLiveUrl({ serviceFlowId: flow.id })}>
-                          <Radio className="w-4 h-4" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                  <ListPagination
+                    page={flowsPagination.page}
+                    totalPages={flowsPagination.totalPages}
+                    totalItems={flowsPagination.totalItems}
+                    rangeStart={flowsPagination.rangeStart}
+                    rangeEnd={flowsPagination.rangeEnd}
+                    pageSize={flowsPagination.pageSize}
+                    onPageChange={flowsPagination.setPage}
+                    onPageSizeChange={flowsPagination.setPageSize}
+                  />
+                </>
               )}
             </CardContent>
           </Card>

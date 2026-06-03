@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { usePagination } from "../../lib/usePagination";
+import { ListPagination } from "../ListPagination";
 import { useOrganization } from "@frontend/contexts/OrganizationContext";
 import { useApp, type AnnouncementSlide } from "../../contexts/AppContext";
 import {
@@ -74,6 +76,18 @@ export function AnnouncementBank() {
 
     return matchesSearch && matchesCategory;
   });
+
+  const {
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    totalPages,
+    paginatedItems,
+    rangeStart,
+    rangeEnd,
+  } = usePagination(filteredAnnouncements, [search, categoryFilter]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -315,91 +329,106 @@ export function AnnouncementBank() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filteredAnnouncements.map((item) => {
-            const isExpired =
-              item.expiresAt && isPast(parseISO(item.expiresAt));
-            const isSlideDeck = item.slides.length > 0;
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {paginatedItems.map((item) => {
+              const isExpired =
+                item.expiresAt && isPast(parseISO(item.expiresAt));
+              const isSlideDeck = item.slides.length > 0;
 
-            return (
-              <Card key={item.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-lg">{item.title}</CardTitle>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEdit(item.id)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(item.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {isSlideDeck && (
-                      <Badge variant="secondary">
-                        {item.slides.length} slide
-                        {item.slides.length === 1 ? "" : "s"}
-                      </Badge>
-                    )}
-                    {!isSlideDeck && <Badge variant="outline">Text</Badge>}
-                    {item.category && (
-                      <Badge variant="secondary">{item.category}</Badge>
-                    )}
-                    {isExpired && <Badge variant="destructive">Expired</Badge>}
-                    {item.expiresAt && !isExpired && (
-                      <Badge variant="outline">
-                        Until {format(parseISO(item.expiresAt), "MMM d, yyyy")}
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {isSlideDeck ? (
-                    <div className="flex gap-2 overflow-x-auto pb-1">
-                      {item.slides.slice(0, 4).map((slide, index) => (
-                        <div
-                          key={`${slide.url}-${index}`}
-                          className="w-14 h-10 shrink-0 rounded border overflow-hidden bg-muted/30"
+              return (
+                <Card key={item.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-lg">{item.title}</CardTitle>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEdit(item.id)}
                         >
-                          {slide.type === "video" ? (
-                            <video
-                              src={slide.url}
-                              muted
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <img
-                              src={slide.url}
-                              alt=""
-                              className="w-full h-full object-cover"
-                            />
-                          )}
-                        </div>
-                      ))}
-                      {item.slides.length > 4 && (
-                        <span className="text-xs text-muted-foreground self-center">
-                          +{item.slides.length - 4}
-                        </span>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(item.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {isSlideDeck && (
+                        <Badge variant="secondary">
+                          {item.slides.length} slide
+                          {item.slides.length === 1 ? "" : "s"}
+                        </Badge>
+                      )}
+                      {!isSlideDeck && <Badge variant="outline">Text</Badge>}
+                      {item.category && (
+                        <Badge variant="secondary">{item.category}</Badge>
+                      )}
+                      {isExpired && (
+                        <Badge variant="destructive">Expired</Badge>
+                      )}
+                      {item.expiresAt && !isExpired && (
+                        <Badge variant="outline">
+                          Until{" "}
+                          {format(parseISO(item.expiresAt), "MMM d, yyyy")}
+                        </Badge>
                       )}
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-wrap">
-                      {item.body || "No body text"}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+                  </CardHeader>
+                  <CardContent>
+                    {isSlideDeck ? (
+                      <div className="flex gap-2 overflow-x-auto pb-1">
+                        {item.slides.slice(0, 4).map((slide, index) => (
+                          <div
+                            key={`${slide.url}-${index}`}
+                            className="w-14 h-10 shrink-0 rounded border overflow-hidden bg-muted/30"
+                          >
+                            {slide.type === "video" ? (
+                              <video
+                                src={slide.url}
+                                muted
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <img
+                                src={slide.url}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </div>
+                        ))}
+                        {item.slides.length > 4 && (
+                          <span className="text-xs text-muted-foreground self-center">
+                            +{item.slides.length - 4}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-wrap">
+                        {item.body || "No body text"}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          <ListPagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       )}
     </div>

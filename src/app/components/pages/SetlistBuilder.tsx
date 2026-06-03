@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { usePagination } from "../../lib/usePagination";
+import { ListPagination } from "../ListPagination";
 import { useOrganization } from "@frontend/contexts/OrganizationContext";
 import {
   useApp,
@@ -121,15 +123,25 @@ export function SetlistBuilder() {
 
   const FLOW_PRESETS = ["Opening", "Worship", "Response", "Closing"];
 
-  const filteredLibrarySongs = songs.filter((song) => {
-    const keyword = librarySearch.trim().toLowerCase();
-    if (!keyword) return true;
-    return (
-      song.title.toLowerCase().includes(keyword) ||
-      song.artist.toLowerCase().includes(keyword) ||
-      song.tags.some((tag) => tag.toLowerCase().includes(keyword))
-    );
-  });
+  const filteredLibrarySongs = useMemo(
+    () =>
+      songs.filter((song) => {
+        const keyword = librarySearch.trim().toLowerCase();
+        if (!keyword) return true;
+        return (
+          song.title.toLowerCase().includes(keyword) ||
+          song.artist.toLowerCase().includes(keyword) ||
+          song.tags.some((tag) => tag.toLowerCase().includes(keyword))
+        );
+      }),
+    [songs, librarySearch],
+  );
+
+  const libraryPagination = usePagination(filteredLibrarySongs, [
+    librarySearch,
+  ]);
+
+  const setlistsPagination = usePagination(setlists, [setlists.length]);
 
   const handleMoveSong = (dragIndex: number, hoverIndex: number) => {
     const newOrder = [...songOrder];
@@ -380,7 +392,7 @@ export function SetlistBuilder() {
             <CardHeader>
               <CardTitle>Song Library</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 max-h-[600px] overflow-y-auto">
+            <CardContent className="space-y-2">
               <div className="relative mb-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -395,18 +407,34 @@ export function SetlistBuilder() {
                   No songs in your library yet. Add songs first.
                 </p>
               ) : (
-                filteredLibrarySongs.map((song) => (
-                  <div
-                    key={song.id}
-                    className="p-3 rounded-lg border bg-card hover:bg-accent transition-colors cursor-pointer"
-                    onClick={() => handleAddSongToSetlist(song.id)}
-                  >
-                    <p className="font-medium">{song.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {song.artist}
-                    </p>
+                <>
+                  <div className="divide-y rounded-lg border max-h-[480px] overflow-y-auto">
+                    {libraryPagination.paginatedItems.map((song) => (
+                      <div
+                        key={song.id}
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-accent transition-colors cursor-pointer text-sm"
+                        onClick={() => handleAddSongToSetlist(song.id)}
+                      >
+                        <span className="font-medium truncate flex-1">
+                          {song.title}
+                        </span>
+                        <span className="text-muted-foreground truncate max-w-[40%]">
+                          {song.artist}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))
+                  <ListPagination
+                    page={libraryPagination.page}
+                    totalPages={libraryPagination.totalPages}
+                    totalItems={libraryPagination.totalItems}
+                    rangeStart={libraryPagination.rangeStart}
+                    rangeEnd={libraryPagination.rangeEnd}
+                    pageSize={libraryPagination.pageSize}
+                    onPageChange={libraryPagination.setPage}
+                    onPageSizeChange={libraryPagination.setPageSize}
+                  />
+                </>
               )}
             </CardContent>
           </Card>
@@ -595,38 +623,50 @@ export function SetlistBuilder() {
                 No saved setlists yet.
               </p>
             ) : (
-              setlists.map((setlist) => (
-                <div
-                  key={setlist.id}
-                  className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-semibold">{setlist.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {setlist.songs.length} songs
-                        {setlist.welcomeSlide ? " · Welcome slide" : ""}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditSetlist(setlist.id)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => void handleDeleteSetlist(setlist.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+              <>
+                {setlistsPagination.paginatedItems.map((setlist) => (
+                  <div
+                    key={setlist.id}
+                    className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold">{setlist.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {setlist.songs.length} songs
+                          {setlist.welcomeSlide ? " · Welcome slide" : ""}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditSetlist(setlist.id)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => void handleDeleteSetlist(setlist.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                ))}
+                <ListPagination
+                  page={setlistsPagination.page}
+                  totalPages={setlistsPagination.totalPages}
+                  totalItems={setlistsPagination.totalItems}
+                  rangeStart={setlistsPagination.rangeStart}
+                  rangeEnd={setlistsPagination.rangeEnd}
+                  pageSize={setlistsPagination.pageSize}
+                  onPageChange={setlistsPagination.setPage}
+                  onPageSizeChange={setlistsPagination.setPageSize}
+                />
+              </>
             )}
           </CardContent>
         </Card>

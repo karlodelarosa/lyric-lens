@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { usePagination } from "../../lib/usePagination";
+import { ListPagination } from "../ListPagination";
 import { Link } from "react-router";
 import { useOrganization } from "@frontend/contexts/OrganizationContext";
 import { useApp } from "../../contexts/AppContext";
@@ -125,6 +127,20 @@ export function Schedule() {
       setlistId: schedule.setlistId ?? "",
     });
   };
+
+  const upcomingSchedules = useMemo(
+    () =>
+      schedules
+        .filter((s) => new Date(s.date) >= new Date())
+        .sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+        ),
+    [schedules],
+  );
+
+  const upcomingPagination = usePagination(upcomingSchedules, [
+    schedules.length,
+  ]);
 
   const selectedSchedule = schedules.find((s) => s.id === selectedScheduleId);
   const selectedScheduleSetlist = setlists.find(
@@ -358,58 +374,74 @@ export function Schedule() {
           <CardTitle>Upcoming Events</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {schedules
-            .filter((s) => new Date(s.date) >= new Date())
-            .sort(
-              (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-            )
-            .map((schedule) => {
-              const setlist = setlists.find(
-                (sl) => sl.id === schedule.setlistId,
-              );
-              return (
-                <div
-                  key={schedule.id}
-                  className="flex items-center justify-between p-4 rounded-lg border bg-card hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex flex-col items-center justify-center text-white">
-                      <div className="text-xs font-medium">
-                        {format(new Date(schedule.date), "MMM")}
+          {upcomingSchedules.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              No upcoming events scheduled.
+            </p>
+          ) : (
+            <>
+              {upcomingPagination.paginatedItems.map((schedule) => {
+                const setlist = setlists.find(
+                  (sl) => sl.id === schedule.setlistId,
+                );
+                return (
+                  <div
+                    key={schedule.id}
+                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex flex-col items-center justify-center text-white">
+                        <div className="text-xs font-medium">
+                          {format(new Date(schedule.date), "MMM")}
+                        </div>
+                        <div className="text-xl font-bold">
+                          {format(new Date(schedule.date), "d")}
+                        </div>
                       </div>
-                      <div className="text-xl font-bold">
-                        {format(new Date(schedule.date), "d")}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="font-semibold">{schedule.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {format(new Date(schedule.date), "EEEE, MMMM d, yyyy")}
-                      </p>
-                      {setlist && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Setlist: {setlist.name}
+                      <div>
+                        <p className="font-semibold">{schedule.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(
+                            new Date(schedule.date),
+                            "EEEE, MMMM d, yyyy",
+                          )}
                         </p>
-                      )}
+                        {setlist && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Setlist: {setlist.name}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Link to={buildLiveUrl(schedule.setlistId)}>
+                        <Button size="sm" disabled={!schedule.setlistId}>
+                          Go Live
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openScheduleEditor(schedule.id)}
+                      >
+                        Edit
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Link to={buildLiveUrl(schedule.setlistId)}>
-                      <Button size="sm" disabled={!schedule.setlistId}>
-                        Go Live
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openScheduleEditor(schedule.id)}
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+              <ListPagination
+                page={upcomingPagination.page}
+                totalPages={upcomingPagination.totalPages}
+                totalItems={upcomingPagination.totalItems}
+                rangeStart={upcomingPagination.rangeStart}
+                rangeEnd={upcomingPagination.rangeEnd}
+                pageSize={upcomingPagination.pageSize}
+                onPageChange={upcomingPagination.setPage}
+                onPageSizeChange={upcomingPagination.setPageSize}
+              />
+            </>
+          )}
         </CardContent>
       </Card>
 
