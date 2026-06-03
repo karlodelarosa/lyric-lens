@@ -23,6 +23,7 @@ import {
   AlignRight,
   Image as ImageIcon,
   Play,
+  Maximize2,
   Rows3,
   Search,
   Video,
@@ -47,6 +48,12 @@ import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { cn } from "../../lib/utils";
+import {
+  broadcastPresenterMessage,
+  openPresenterWindow,
+  requestPresenterFullscreen,
+} from "../../lib/presenterWindow";
+import { toast } from "sonner";
 
 const fontOptions = [
   "Inter",
@@ -149,6 +156,7 @@ export function LiveMode() {
   const [previewScale, setPreviewScale] = useState(1);
   const previewFrameRef = useRef<HTMLDivElement | null>(null);
   const loadedServiceFlowIdRef = useRef<string | null>(null);
+  const presenterWindowRef = useRef<Window | null>(null);
 
   const selectedSetlist = setlists.find((sl) => sl.id === selectedSetlistId);
   const setlistSongs = (selectedSetlist?.songs || [])
@@ -382,9 +390,45 @@ export function LiveMode() {
     updateLiveState,
   ]);
 
+  const openOrFocusPresenter = () => {
+    const existing = presenterWindowRef.current;
+    if (existing && !existing.closed) {
+      existing.focus();
+      return existing;
+    }
+
+    const opened = openPresenterWindow("/presenter");
+    presenterWindowRef.current = opened;
+    return opened;
+  };
+
   const handleGoLive = () => {
-    window.open("/presenter", "_blank", "fullscreen=yes");
+    const presenter = openOrFocusPresenter();
+    if (!presenter) {
+      toast.error("Allow pop-ups for this site, then click Go Live again.");
+      return;
+    }
+
     updateLiveState({ isLive: true });
+    requestPresenterFullscreen(presenter);
+    broadcastPresenterMessage({ type: "REQUEST_FULLSCREEN" });
+  };
+
+  const handleFillScreenOutput = () => {
+    const presenter = openOrFocusPresenter();
+    if (!presenter) {
+      toast.error(
+        "Allow pop-ups for this site, then open the output window again.",
+      );
+      return;
+    }
+
+    requestPresenterFullscreen(presenter);
+    broadcastPresenterMessage({ type: "REQUEST_FULLSCREEN" });
+    toast.message("Fill screen requested on the output window", {
+      description:
+        "If it did not go fullscreen, click Fill screen in the output window.",
+    });
   };
 
   const handleShowWelcome = () => {
@@ -663,6 +707,15 @@ export function LiveMode() {
               onClick={() => setIsCompactMode((prev) => !prev)}
             >
               Compact
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleFillScreenOutput}
+              title="Fill screen on the output window (move it to your projector display first)"
+            >
+              <Maximize2 className="w-4 h-4 mr-2" />
+              Fill screen
             </Button>
             <Button
               onClick={handleGoLive}

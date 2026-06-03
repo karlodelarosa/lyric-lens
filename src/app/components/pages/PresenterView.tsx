@@ -1,8 +1,14 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useApp } from "../../contexts/AppContext";
-import { Maximize2 } from "lucide-react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { LiveSlideContent } from "../live/LiveSlideContent";
+import {
+  exitFullscreen,
+  getFullscreenElement,
+  requestElementFullscreen,
+  subscribePresenterChannel,
+} from "../../lib/presenterWindow";
 
 const getLyricChunks = (lyrics: string, linesPerSlide: number) => {
   const safeLinesPerSlide = Math.max(1, Math.floor(linesPerSlide));
@@ -22,6 +28,8 @@ const getLyricChunks = (lyrics: string, linesPerSlide: number) => {
 
 export function PresenterView() {
   const { songs, liveState } = useApp();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
 
   const currentSong = songs.find((s) => s.id === liveState.currentSongId);
   const currentSection = currentSong?.sections.find(
@@ -41,23 +49,63 @@ export function PresenterView() {
     : undefined;
   const liveLyrics = liveState.manualLyrics ?? sectionLyrics;
 
+  const syncFullscreenState = useCallback(() => {
+    setIsFullscreen(Boolean(getFullscreenElement()));
+  }, []);
+
+  const handleEnterFullscreen = useCallback(async () => {
+    try {
+      await requestElementFullscreen(document.documentElement);
+      setShowFullscreenPrompt(false);
+    } catch {
+      setShowFullscreenPrompt(true);
+    }
+  }, []);
+
+  const handleToggleFullscreen = useCallback(async () => {
+    if (getFullscreenElement()) {
+      await exitFullscreen();
+      return;
+    }
+    await handleEnterFullscreen();
+  }, [handleEnterFullscreen]);
+
   useEffect(() => {
-    const requestFullscreen = () => {
-      const elem = document.documentElement;
-      if (elem.requestFullscreen) {
-        elem.requestFullscreen();
+    const onFullscreenChange = () => {
+      syncFullscreenState();
+      if (getFullscreenElement()) {
+        setShowFullscreenPrompt(false);
       }
     };
 
-    setTimeout(requestFullscreen, 100);
-  }, []);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+    syncFullscreenState();
 
-  const handleFullscreen = () => {
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) {
-      void elem.requestFullscreen();
-    }
-  };
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      document.removeEventListener(
+        "webkitfullscreenchange",
+        onFullscreenChange,
+      );
+    };
+  }, [syncFullscreenState]);
+
+  useEffect(() => {
+    void handleEnterFullscreen().catch(() => {
+      setShowFullscreenPrompt(true);
+    });
+  }, [handleEnterFullscreen]);
+
+  useEffect(() => {
+    return subscribePresenterChannel((message) => {
+      if (message.type === "REQUEST_FULLSCREEN") {
+        void handleEnterFullscreen().catch(() => setShowFullscreenPrompt(true));
+      } else if (message.type === "EXIT_FULLSCREEN") {
+        void exitFullscreen();
+      }
+    });
+  }, [handleEnterFullscreen]);
 
   const textStyle = {
     fontFamily: liveState.fontFamily,
@@ -144,11 +192,38 @@ export function PresenterView() {
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-4 right-4 z-10 bg-black/30 hover:bg-black/50 text-white/70 hover:text-white rounded-full"
-        onClick={handleFullscreen}
+        className="absolute top-4 right-4 z-20 bg-black/30 hover:bg-black/50 text-white/70 hover:text-white rounded-full"
+        onClick={() => void handleToggleFullscreen()}
+        title={isFullscreen ? "Exit fullscreen" : "Fill screen"}
       >
-        <Maximize2 className="w-5 h-5" />
+        {isFullscreen ? (
+          <Minimize2 className="w-5 h-5" />
+        ) : (
+          <Maximize2 className="w-5 h-5" />
+        )}
       </Button>
+
+      {showFullscreenPrompt && !isFullscreen && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 p-6">
+          <div className="max-w-md rounded-xl border border-white/20 bg-black/80 p-6 text-center text-white shadow-2xl">
+            <p className="text-lg font-semibold mb-2">
+              Fill screen on this display
+            </p>
+            <p className="text-sm text-white/70 mb-4">
+              Drag this window to your projector or second screen, then enter
+              fullscreen here. You can also use Fill screen on the Live page.
+            </p>
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={() => void handleEnterFullscreen()}
+            >
+              <Maximize2 className="w-5 h-5 mr-2" />
+              Fill screen
+            </Button>
+          </div>
+        </div>
+      )}
 
       {slideContent}
 
