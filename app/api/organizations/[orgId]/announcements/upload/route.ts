@@ -5,5 +5,5 @@ type RouteContext = {
 };
 
 export async function POST(request: Request, context: RouteContext) {
-  return handlePresentationMediaUpload(request, context, "welcome");
+  return handlePresentationMediaUpload(request, context, "announcements");
 }

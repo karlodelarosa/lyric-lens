@@ -21,6 +21,7 @@ export type Database = {
           expires_at: string | null;
           id: string;
           organization_id: string;
+          slides: Json;
           title: string;
           updated_at: string;
         };
@@ -32,6 +33,7 @@ export type Database = {
           expires_at?: string | null;
           id?: string;
           organization_id: string;
+          slides?: Json;
           title: string;
           updated_at?: string;
         };
@@ -43,6 +45,7 @@ export type Database = {
           expires_at?: string | null;
           id?: string;
           organization_id?: string;
+          slides?: Json;
           title?: string;
           updated_at?: string;
         };

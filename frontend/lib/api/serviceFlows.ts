@@ -8,6 +8,7 @@ export type ServiceFlowSegmentAnnouncementDto = {
   body: string;
   category: string | null;
   expiresAt: string | null;
+  slides: { url: string; type: "image" | "video" }[];
 };
 
 export type ServiceFlowSegmentDto = {

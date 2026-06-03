@@ -8,7 +8,7 @@ import {
 import type { AnnouncementRepository } from "../../domain/announcement/AnnouncementRepository";
 import type { Database } from "./database.types";
 
-const ANNOUNCEMENT_SELECT = "id, title, body, category, expires_at";
+const ANNOUNCEMENT_SELECT = "id, title, body, category, expires_at, slides";
 
 export class SupabaseAnnouncementRepository implements AnnouncementRepository {
   constructor(private readonly client: SupabaseClient<Database>) {}
@@ -42,6 +42,7 @@ export class SupabaseAnnouncementRepository implements AnnouncementRepository {
         body: input.body,
         category: input.category?.trim() || null,
         expires_at: input.expiresAt ?? null,
+        slides: input.slides ?? [],
         created_by: createdBy,
       })
       .select(ANNOUNCEMENT_SELECT)
@@ -71,6 +72,7 @@ export class SupabaseAnnouncementRepository implements AnnouncementRepository {
       patch.category = input.category?.trim() || null;
     }
     if (input.expiresAt !== undefined) patch.expires_at = input.expiresAt;
+    if (input.slides !== undefined) patch.slides = input.slides;
 
     const { data, error } = await this.client
       .from("announcements")

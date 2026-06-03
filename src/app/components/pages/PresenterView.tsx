@@ -81,7 +81,8 @@ export function PresenterView() {
       : liveState.slideMode === "blank"
         ? false
         : liveState.slideMode === "announcement"
-          ? Boolean(liveState.currentAnnouncementBody)
+          ? liveState.currentAnnouncementSlides.length > 0 ||
+            Boolean(liveState.currentAnnouncementBody)
           : liveState.slideMode === "cue"
             ? Boolean(liveState.currentCueLabel)
             : liveState.slideMode === "lyrics" &&
@@ -94,6 +95,8 @@ export function PresenterView() {
       welcomeSlideType={liveState.welcomeSlideType}
       announcementTitle={liveState.currentAnnouncementTitle}
       announcementBody={liveState.currentAnnouncementBody}
+      announcementSlides={liveState.currentAnnouncementSlides}
+      announcementSlideIndex={liveState.currentChunkIndex}
       cueLabel={liveState.currentCueLabel}
       cueNotes={liveState.currentCueNotes}
       lyrics={

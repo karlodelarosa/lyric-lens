@@ -1,10 +1,17 @@
 import { useMemo, useState } from "react";
 import { useOrganization } from "@frontend/contexts/OrganizationContext";
-import { useApp } from "../../contexts/AppContext";
+import {
+  useApp,
+  type AnnouncementSlide,
+} from "../../contexts/AppContext";
+import {
+  SlideDeckEditor,
+  inferAnnouncementFormat,
+  type AnnouncementFormat,
+} from "../announcements/SlideDeckEditor";
 import { Megaphone, Plus, Pencil, Trash2, Search } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import {
@@ -24,6 +31,8 @@ const emptyForm = {
   body: "",
   category: "",
   expiresAt: "",
+  slides: [] as AnnouncementSlide[],
+  format: "text" as AnnouncementFormat,
 };
 
 export function AnnouncementBank() {
@@ -84,6 +93,8 @@ export function AnnouncementBank() {
       body: item.body,
       category: item.category ?? "",
       expiresAt: item.expiresAt ? item.expiresAt.slice(0, 10) : "",
+      slides: [...item.slides],
+      format: inferAnnouncementFormat(item.slides, item.body),
     });
     setIsDialogOpen(true);
   };
@@ -94,15 +105,21 @@ export function AnnouncementBank() {
       return;
     }
 
+    if (form.format === "slides" && form.slides.length === 0) {
+      toast.error("Add at least one slide or switch to text format");
+      return;
+    }
+
     setIsSaving(true);
     try {
       const payload = {
         title: form.title.trim(),
-        body: form.body,
+        body: form.format === "text" ? form.body : "",
         category: form.category.trim() || null,
         expiresAt: form.expiresAt
           ? new Date(`${form.expiresAt}T23:59:59`).toISOString()
           : null,
+        slides: form.format === "slides" ? form.slides : [],
       };
 
       if (editingId) {
@@ -159,7 +176,7 @@ export function AnnouncementBank() {
             Announcement Bank
           </h1>
           <p className="text-muted-foreground mt-1">
-            Reusable announcements for schedules, events, and service segments.
+            Text announcements or multi-slide decks for service segments.
           </p>
         </div>
 
@@ -170,13 +187,14 @@ export function AnnouncementBank() {
               New announcement
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingId ? "Edit announcement" : "New announcement"}
               </DialogTitle>
               <DialogDescription>
-                Saved announcements can be attached to service flow segments.
+                Use a slide deck for image/video announcements, or text for
+                simple copy.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -190,17 +208,24 @@ export function AnnouncementBank() {
                   }
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="announcement-body">Body</Label>
-                <Textarea
-                  id="announcement-body"
-                  rows={6}
-                  value={form.body}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, body: e.target.value }))
-                  }
-                />
-              </div>
+
+              <SlideDeckEditor
+                organizationId={activeOrganizationId}
+                format={form.format}
+                onFormatChange={(format) =>
+                  setForm((prev) => ({ ...prev, format }))
+                }
+                slides={form.slides}
+                onSlidesChange={(slides) =>
+                  setForm((prev) => ({ ...prev, slides }))
+                }
+                body={form.body}
+                onBodyChange={(body) =>
+                  setForm((prev) => ({ ...prev, body }))
+                }
+                disabled={isSaving}
+              />
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="announcement-category">Category</Label>
@@ -209,7 +234,10 @@ export function AnnouncementBank() {
                     placeholder="Events, Giving, Volunteers"
                     value={form.category}
                     onChange={(e) =>
-                      setForm((prev) => ({ ...prev, category: e.target.value }))
+                      setForm((prev) => ({
+                        ...prev,
+                        category: e.target.value,
+                      }))
                     }
                   />
                 </div>
@@ -275,7 +303,8 @@ export function AnnouncementBank() {
       ) : filteredAnnouncements.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            No announcements yet. Create reusable copy for your services.
+            No announcements yet. Create reusable copy or slide decks for your
+            services.
           </CardContent>
         </Card>
       ) : (
@@ -283,6 +312,7 @@ export function AnnouncementBank() {
           {filteredAnnouncements.map((item) => {
             const isExpired =
               item.expiresAt && isPast(parseISO(item.expiresAt));
+            const isSlideDeck = item.slides.length > 0;
 
             return (
               <Card key={item.id}>
@@ -307,6 +337,15 @@ export function AnnouncementBank() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    {isSlideDeck && (
+                      <Badge variant="secondary">
+                        {item.slides.length} slide
+                        {item.slides.length === 1 ? "" : "s"}
+                      </Badge>
+                    )}
+                    {!isSlideDeck && (
+                      <Badge variant="outline">Text</Badge>
+                    )}
                     {item.category && (
                       <Badge variant="secondary">{item.category}</Badge>
                     )}
@@ -319,9 +358,39 @@ export function AnnouncementBank() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-wrap">
-                    {item.body || "No body text"}
-                  </p>
+                  {isSlideDeck ? (
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {item.slides.slice(0, 4).map((slide, index) => (
+                        <div
+                          key={`${slide.url}-${index}`}
+                          className="w-14 h-10 shrink-0 rounded border overflow-hidden bg-muted/30"
+                        >
+                          {slide.type === "video" ? (
+                            <video
+                              src={slide.url}
+                              muted
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <img
+                              src={slide.url}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                        </div>
+                      ))}
+                      {item.slides.length > 4 && (
+                        <span className="text-xs text-muted-foreground self-center">
+                          +{item.slides.length - 4}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-wrap">
+                      {item.body || "No body text"}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             );

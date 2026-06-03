@@ -3,6 +3,10 @@ import type {
   CreateAnnouncementInput,
   UpdateAnnouncementInput,
 } from "../../domain/announcement/Announcement";
+import {
+  parseAnnouncementSlides,
+  type AnnouncementSlide,
+} from "../../domain/announcement/AnnouncementSlide";
 
 export function announcementToDto(announcement: Announcement) {
   return {
@@ -11,7 +15,13 @@ export function announcementToDto(announcement: Announcement) {
     body: announcement.body,
     category: announcement.category,
     expiresAt: announcement.expiresAt,
+    slides: announcement.slides,
   };
+}
+
+function parseSlidesInput(value: unknown): AnnouncementSlide[] | undefined {
+  if (value === undefined) return undefined;
+  return parseAnnouncementSlides(value);
 }
 
 export function parseCreateAnnouncementBody(
@@ -35,11 +45,14 @@ export function parseCreateAnnouncementBody(
         ? record.expiresAt
         : undefined;
 
+  const slides = parseSlidesInput(record.slides);
+
   return {
     title,
     body: bodyText,
     category: category || null,
     expiresAt,
+    ...(slides !== undefined ? { slides } : {}),
   };
 }
 
@@ -73,11 +86,17 @@ export function parseUpdateAnnouncementBody(
     input.expiresAt = record.expiresAt;
   }
 
+  const slides = parseSlidesInput(record.slides);
+  if (slides !== undefined) {
+    input.slides = slides;
+  }
+
   if (
     input.title === undefined &&
     input.body === undefined &&
     input.category === undefined &&
-    input.expiresAt === undefined
+    input.expiresAt === undefined &&
+    input.slides === undefined
   ) {
     return null;
   }

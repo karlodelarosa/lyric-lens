@@ -9,12 +9,13 @@ type ServiceFlowLivePanelProps = {
   serviceFlow: ServiceFlow;
   activeSegmentId: string | null;
   onSelectSegment: (segment: ServiceFlowSegment) => void;
-  onSelectAnnouncement: (announcement: Announcement) => void;
+  onSelectAnnouncement: (announcement: Announcement, slideIndex?: number) => void;
   onSelectSong: (songId: string) => void;
   onSelectSection: (songId: string, sectionId: string) => void;
   currentSongId: string | null;
   currentSectionId: string | null;
   currentAnnouncementId: string | null;
+  currentAnnouncementSlideIndex: number;
   setlistSongs: {
     id: string;
     title: string;
@@ -33,6 +34,7 @@ export function ServiceFlowLivePanel({
   currentSongId,
   currentSectionId,
   currentAnnouncementId,
+  currentAnnouncementSlideIndex,
   setlistSongs,
 }: ServiceFlowLivePanelProps) {
   const activeSegment =
@@ -92,24 +94,69 @@ export function ServiceFlowLivePanel({
               No announcements attached to this segment.
             </p>
           ) : (
-            activeSegment.announcements.map((announcement) => (
-              <button
-                key={announcement.id}
-                type="button"
-                onClick={() => onSelectAnnouncement(announcement)}
-                className={cn(
-                  "w-full text-left p-3 rounded-lg border text-sm",
-                  currentAnnouncementId === announcement.id
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card hover:bg-accent",
-                )}
-              >
-                <div className="font-medium">{announcement.title}</div>
-                <div className="text-xs opacity-80 line-clamp-2 mt-1">
-                  {announcement.body}
+            activeSegment.announcements.map((announcement) => {
+              const isActive = currentAnnouncementId === announcement.id;
+              const hasSlides = announcement.slides.length > 0;
+
+              return (
+                <div key={announcement.id} className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => onSelectAnnouncement(announcement, 0)}
+                    className={cn(
+                      "w-full text-left p-3 rounded-lg border text-sm",
+                      isActive && !hasSlides
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : isActive
+                          ? "bg-primary/20 border-primary"
+                          : "bg-card hover:bg-accent",
+                    )}
+                  >
+                    <div className="font-medium">{announcement.title}</div>
+                    <div className="text-xs opacity-80 mt-1">
+                      {hasSlides
+                        ? `${announcement.slides.length} slide${announcement.slides.length === 1 ? "" : "s"}`
+                        : announcement.body || "Text announcement"}
+                    </div>
+                  </button>
+
+                  {hasSlides && isActive && (
+                    <div className="ml-3 flex flex-wrap gap-1">
+                      {announcement.slides.map((slide, slideIndex) => (
+                        <button
+                          key={`${announcement.id}-${slide.url}-${slideIndex}`}
+                          type="button"
+                          onClick={() =>
+                            onSelectAnnouncement(announcement, slideIndex)
+                          }
+                          className={cn(
+                            "w-12 h-9 rounded border overflow-hidden shrink-0",
+                            currentAnnouncementSlideIndex === slideIndex
+                              ? "ring-2 ring-primary"
+                              : "opacity-80 hover:opacity-100",
+                          )}
+                          title={`Slide ${slideIndex + 1}`}
+                        >
+                          {slide.type === "video" ? (
+                            <video
+                              src={slide.url}
+                              muted
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <img
+                              src={slide.url}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </button>
-            ))
+              );
+            })
           )}
         </div>
       )}

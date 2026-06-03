@@ -437,6 +437,21 @@ export function LiveMode() {
   };
 
   const handleNext = () => {
+    if (
+      liveState.slideMode === "announcement" &&
+      liveState.currentAnnouncementSlides.length > 0
+    ) {
+      if (
+        liveState.currentChunkIndex <
+        liveState.currentAnnouncementSlides.length - 1
+      ) {
+        updateLiveState({
+          currentChunkIndex: liveState.currentChunkIndex + 1,
+        });
+      }
+      return;
+    }
+
     if (!currentSong) return;
     const currentIndex = getCurrentSectionIndex();
     if (
@@ -456,6 +471,17 @@ export function LiveMode() {
   };
 
   const handlePrevious = () => {
+    if (
+      liveState.slideMode === "announcement" &&
+      liveState.currentAnnouncementSlides.length > 0 &&
+      liveState.currentChunkIndex > 0
+    ) {
+      updateLiveState({
+        currentChunkIndex: liveState.currentChunkIndex - 1,
+      });
+      return;
+    }
+
     if (!currentSong) return;
     const currentIndex = getCurrentSectionIndex();
     if (
@@ -488,6 +514,13 @@ export function LiveMode() {
   };
 
   const canGoPrevious = () => {
+    if (
+      liveState.slideMode === "announcement" &&
+      liveState.currentAnnouncementSlides.length > 0
+    ) {
+      return liveState.currentChunkIndex > 0;
+    }
+
     if (!currentSong) return false;
     const currentIndex = getCurrentSectionIndex();
     if (currentIndex < 0) return false;
@@ -503,6 +536,16 @@ export function LiveMode() {
   };
 
   const canGoNext = () => {
+    if (
+      liveState.slideMode === "announcement" &&
+      liveState.currentAnnouncementSlides.length > 0
+    ) {
+      return (
+        liveState.currentChunkIndex <
+        liveState.currentAnnouncementSlides.length - 1
+      );
+    }
+
     if (!currentSong) return false;
     const currentIndex = getCurrentSectionIndex();
     if (currentIndex < 0) return false;
@@ -660,6 +703,7 @@ export function LiveMode() {
                 currentSongId={liveState.currentSongId}
                 currentSectionId={liveState.currentSectionId}
                 currentAnnouncementId={liveState.currentAnnouncementId}
+                currentAnnouncementSlideIndex={liveState.currentChunkIndex}
                 setlistSongs={musicSetlistSongs}
               />
             ) : (
@@ -968,6 +1012,8 @@ export function LiveMode() {
                           welcomeSlideType={liveState.welcomeSlideType}
                           announcementTitle={previewAnnouncementTitle}
                           announcementBody={previewAnnouncementBody}
+                          announcementSlides={liveState.currentAnnouncementSlides}
+                          announcementSlideIndex={liveState.currentChunkIndex}
                           cueLabel={liveState.currentCueLabel}
                           cueNotes={liveState.currentCueNotes}
                           lyrics={
@@ -995,11 +1041,17 @@ export function LiveMode() {
                           }}
                         />
 
-                        {liveState.slideMode !== "blank" &&
-                        liveState.slideMode !== "welcome" &&
-                        liveState.slideMode !== "announcement" &&
-                        liveState.slideMode !== "cue" &&
-                        !(liveState.manualLyrics != null || currentSection) ? (
+                        {liveState.slideMode === "announcement" &&
+                        liveState.currentAnnouncementSlides.length === 0 &&
+                        !liveState.currentAnnouncementBody ? (
+                          <div className="text-white/50 text-center relative z-[1]">
+                            <p className="text-xl">No announcement content</p>
+                          </div>
+                        ) : liveState.slideMode !== "blank" &&
+                          liveState.slideMode !== "welcome" &&
+                          liveState.slideMode !== "announcement" &&
+                          liveState.slideMode !== "cue" &&
+                          !(liveState.manualLyrics != null || currentSection) ? (
                           <div className="text-white/50 text-center relative z-[1]">
                             <Monitor className="w-16 h-16 mx-auto mb-4 opacity-50" />
                             <p className="text-xl">
@@ -1095,6 +1147,22 @@ export function LiveMode() {
                     <p className="text-sm text-muted-foreground">
                       Background only — select a song or welcome to continue
                     </p>
+                  </div>
+                ) : liveState.slideMode === "announcement" ? (
+                  <div>
+                    <p className="font-semibold">
+                      {liveState.currentAnnouncementTitle ?? "Announcement"}
+                    </p>
+                    {liveState.currentAnnouncementSlides.length > 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Slide {liveState.currentChunkIndex + 1} /{" "}
+                        {liveState.currentAnnouncementSlides.length}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Text announcement
+                      </p>
+                    )}
                   </div>
                 ) : (
                   currentSong && (

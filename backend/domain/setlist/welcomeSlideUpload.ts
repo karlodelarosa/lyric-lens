@@ -45,11 +45,29 @@ export function buildWelcomeSlideStoragePath(
   organizationId: string,
   extension: string,
 ): string {
+  return buildPresentationMediaStoragePath(
+    organizationId,
+    "welcome",
+    extension,
+  );
+}
+
+export type PresentationMediaScope = "welcome" | "announcements";
+
+export function buildPresentationMediaStoragePath(
+  organizationId: string,
+  scope: PresentationMediaScope,
+  extension: string,
+): string {
   const safeExtension = extension.replace(/[^a-z0-9]/gi, "").toLowerCase();
   const fileId =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-  return `${organizationId}/${fileId}.${safeExtension || "bin"}`;
+  if (scope === "welcome") {
+    return `${organizationId}/${fileId}.${safeExtension || "bin"}`;
+  }
+
+  return `${organizationId}/${scope}/${fileId}.${safeExtension || "bin"}`;
 }

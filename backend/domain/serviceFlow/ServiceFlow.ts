@@ -1,3 +1,8 @@
+import {
+  parseAnnouncementSlides,
+  type AnnouncementSlide,
+} from "../announcement/AnnouncementSlide";
+
 export type ServiceFlowSegmentKind = "music" | "announcements" | "cue";
 
 export type ServiceFlowSegmentInput = {
@@ -29,6 +34,7 @@ export type ServiceFlowSegmentAnnouncementRow = {
     body: string;
     category: string | null;
     expires_at: string | null;
+    slides?: unknown;
   } | null;
 };
 
@@ -65,6 +71,7 @@ export type ServiceFlowSegmentAnnouncement = {
   body: string;
   category: string | null;
   expiresAt: string | null;
+  slides: AnnouncementSlide[];
 };
 
 export type ServiceFlowSegment = {
@@ -113,6 +120,7 @@ export class ServiceFlow {
         body: item.body,
         category: item.category,
         expiresAt: item.expires_at,
+        slides: parseAnnouncementSlides(item.slides),
       }));
 
     return {

@@ -137,12 +137,18 @@ export type UpdateScheduleInput = {
   setlistId?: string | null;
 };
 
+export type AnnouncementSlide = {
+  url: string;
+  type: "image" | "video";
+};
+
 export type Announcement = {
   id: string;
   title: string;
   body: string;
   category: string | null;
   expiresAt: string | null;
+  slides: AnnouncementSlide[];
 };
 
 export type NewAnnouncementInput = {
@@ -150,6 +156,7 @@ export type NewAnnouncementInput = {
   body: string;
   category?: string | null;
   expiresAt?: string | null;
+  slides?: AnnouncementSlide[];
 };
 
 export type UpdateAnnouncementInput = {
@@ -157,6 +164,7 @@ export type UpdateAnnouncementInput = {
   body?: string;
   category?: string | null;
   expiresAt?: string | null;
+  slides?: AnnouncementSlide[];
 };
 
 export type ServiceFlowSegmentKind = "music" | "announcements" | "cue";
@@ -208,6 +216,7 @@ interface LiveState {
   currentAnnouncementId: string | null;
   currentAnnouncementTitle: string | null;
   currentAnnouncementBody: string | null;
+  currentAnnouncementSlides: AnnouncementSlide[];
   currentCueLabel: string | null;
   currentCueNotes: string | null;
   welcomeSlideUrl: string | null;
@@ -281,7 +290,10 @@ interface AppContextType {
   duplicateServiceFlow: (id: string) => Promise<ServiceFlow>;
   updateLiveState: (state: Partial<LiveState>) => void;
   setCurrentSlide: (songId: string, sectionId: string) => void;
-  setCurrentAnnouncement: (announcement: Announcement) => void;
+  setCurrentAnnouncement: (
+    announcement: Announcement,
+    slideIndex?: number,
+  ) => void;
   setCurrentCue: (label: string, notes: string | null) => void;
   showWelcomeSlide: (welcomeSlide: WelcomeSlide) => void;
   clearScreen: () => void;
@@ -304,6 +316,7 @@ function mapAnnouncementDto(dto: AnnouncementDto): Announcement {
     body: dto.body,
     category: dto.category,
     expiresAt: dto.expiresAt,
+    slides: dto.slides ?? [],
   };
 }
 
@@ -345,6 +358,7 @@ function getDefaultLiveState(): LiveState {
     currentAnnouncementId: null,
     currentAnnouncementTitle: null,
     currentAnnouncementBody: null,
+    currentAnnouncementSlides: [],
     currentCueLabel: null,
     currentCueNotes: null,
     welcomeSlideUrl: null,
@@ -993,18 +1007,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const setCurrentAnnouncement = useCallback((announcement: Announcement) => {
-    liveActivityRef.current = Date.now();
-    setLiveState((prev) => ({
-      ...prev,
-      slideMode: "announcement",
-      currentAnnouncementId: announcement.id,
-      currentAnnouncementTitle: announcement.title,
-      currentAnnouncementBody: announcement.body,
-      manualLyrics: null,
-      currentChunkIndex: 0,
-    }));
-  }, []);
+  const setCurrentAnnouncement = useCallback(
+    (announcement: Announcement, slideIndex = 0) => {
+      liveActivityRef.current = Date.now();
+      const maxSlideIndex = Math.max(announcement.slides.length - 1, 0);
+      const safeSlideIndex = Math.min(
+        Math.max(slideIndex, 0),
+        announcement.slides.length > 0 ? maxSlideIndex : 0,
+      );
+
+      setLiveState((prev) => ({
+        ...prev,
+        slideMode: "announcement",
+        currentAnnouncementId: announcement.id,
+        currentAnnouncementTitle: announcement.title,
+        currentAnnouncementBody: announcement.body,
+        currentAnnouncementSlides: announcement.slides,
+        manualLyrics: null,
+        currentChunkIndex: safeSlideIndex,
+      }));
+    },
+    [],
+  );
 
   const setCurrentCue = useCallback((label: string, notes: string | null) => {
     liveActivityRef.current = Date.now();

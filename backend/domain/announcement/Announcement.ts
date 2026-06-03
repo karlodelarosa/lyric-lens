@@ -1,8 +1,16 @@
+import {
+  parseAnnouncementSlides,
+  type AnnouncementSlide,
+} from "./AnnouncementSlide";
+
+export type { AnnouncementSlide };
+
 export type CreateAnnouncementInput = {
   title: string;
   body: string;
   category?: string | null;
   expiresAt?: string | null;
+  slides?: AnnouncementSlide[];
 };
 
 export type UpdateAnnouncementInput = {
@@ -10,6 +18,7 @@ export type UpdateAnnouncementInput = {
   body?: string;
   category?: string | null;
   expiresAt?: string | null;
+  slides?: AnnouncementSlide[];
 };
 
 export type AnnouncementRow = {
@@ -18,6 +27,7 @@ export type AnnouncementRow = {
   body: string;
   category: string | null;
   expires_at: string | null;
+  slides?: unknown;
 };
 
 export class Announcement {
@@ -27,6 +37,7 @@ export class Announcement {
     readonly body: string,
     readonly category: string | null,
     readonly expiresAt: string | null,
+    readonly slides: AnnouncementSlide[],
   ) {}
 
   static fromRow(row: AnnouncementRow): Announcement {
@@ -36,6 +47,7 @@ export class Announcement {
       row.body,
       row.category,
       row.expires_at,
+      parseAnnouncementSlides(row.slides),
     );
   }
 }

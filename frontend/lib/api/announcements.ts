@@ -1,4 +1,9 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
+import { apiDelete, apiGet, apiPatch, apiPost, parseApiResponse } from "./client";
+
+export type AnnouncementSlideDto = {
+  url: string;
+  type: "image" | "video";
+};
 
 export type AnnouncementDto = {
   id: string;
@@ -6,6 +11,7 @@ export type AnnouncementDto = {
   body: string;
   category: string | null;
   expiresAt: string | null;
+  slides: AnnouncementSlideDto[];
 };
 
 export type AnnouncementsResponse = {
@@ -17,6 +23,7 @@ export type CreateAnnouncementPayload = {
   body: string;
   category?: string | null;
   expiresAt?: string | null;
+  slides?: AnnouncementSlideDto[];
 };
 
 export type UpdateAnnouncementPayload = {
@@ -24,7 +31,18 @@ export type UpdateAnnouncementPayload = {
   body?: string;
   category?: string | null;
   expiresAt?: string | null;
+  slides?: AnnouncementSlideDto[];
 };
+
+export type UploadAnnouncementSlideResponse = {
+  slide: AnnouncementSlideDto;
+  storagePath: string;
+};
+
+export const ANNOUNCEMENT_SLIDE_MAX_BYTES = 20 * 1024 * 1024;
+
+export const ANNOUNCEMENT_SLIDE_ACCEPT =
+  "image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm,video/quicktime";
 
 export async function getAnnouncements(
   organizationId: string,
@@ -62,4 +80,22 @@ export async function deleteAnnouncement(
   return apiDelete<{ ok: boolean }>(
     `/api/organizations/${organizationId}/announcements/${announcementId}`,
   );
+}
+
+export async function uploadAnnouncementSlide(
+  organizationId: string,
+  file: File,
+): Promise<UploadAnnouncementSlideResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(
+    `/api/organizations/${organizationId}/announcements/upload`,
+    {
+      method: "POST",
+      body: formData,
+    },
+  );
+
+  return parseApiResponse<UploadAnnouncementSlideResponse>(response);
 }

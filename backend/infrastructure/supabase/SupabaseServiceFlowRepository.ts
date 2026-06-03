@@ -27,7 +27,7 @@ const SERVICE_FLOW_DETAIL_SELECT = `
     service_flow_segment_announcements (
       announcement_id,
       position,
-      announcements ( id, title, body, category, expires_at )
+      announcements ( id, title, body, category, expires_at, slides )
     )
   )
 `;

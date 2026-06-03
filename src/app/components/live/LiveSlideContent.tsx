@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { SlideMode } from "../../contexts/AppContext";
+import type { AnnouncementSlide, SlideMode } from "../../contexts/AppContext";
 
 type WelcomeSlideType = "image" | "video";
 
@@ -9,6 +9,8 @@ type LiveSlideContentProps = {
   welcomeSlideType: WelcomeSlideType | null;
   announcementTitle: string | null;
   announcementBody: string | null;
+  announcementSlides: AnnouncementSlide[];
+  announcementSlideIndex: number;
   cueLabel: string | null;
   cueNotes: string | null;
   lyrics: string | null | undefined;
@@ -17,12 +19,38 @@ type LiveSlideContentProps = {
   scaledFontSize?: number;
 };
 
+function renderMediaSlide(
+  slide: AnnouncementSlide,
+  alt: string,
+  className: string,
+) {
+  if (slide.type === "video") {
+    return (
+      <video
+        key={slide.url}
+        src={slide.url}
+        autoPlay
+        muted
+        loop
+        playsInline
+        className={className}
+      />
+    );
+  }
+
+  return (
+    <img key={slide.url} src={slide.url} alt={alt} className={className} />
+  );
+}
+
 export function LiveSlideContent({
   slideMode,
   welcomeSlideUrl,
   welcomeSlideType,
   announcementTitle,
   announcementBody,
+  announcementSlides,
+  announcementSlideIndex,
   cueLabel,
   cueNotes,
   lyrics,
@@ -41,31 +69,23 @@ export function LiveSlideContent({
   }
 
   if (slideMode === "welcome" && welcomeSlideUrl) {
-    if (welcomeSlideType === "video") {
-      return (
-        <video
-          key={welcomeSlideUrl}
-          src={welcomeSlideUrl}
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="absolute inset-0 z-[1] w-full h-full object-contain"
-        />
-      );
-    }
-
-    return (
-      <img
-        key={welcomeSlideUrl}
-        src={welcomeSlideUrl}
-        alt="Welcome slide"
-        className="absolute inset-0 z-[1] w-full h-full object-contain"
-      />
+    return renderMediaSlide(
+      { url: welcomeSlideUrl, type: welcomeSlideType ?? "image" },
+      "Welcome slide",
+      "absolute inset-0 z-[1] w-full h-full object-contain",
     );
   }
 
   if (slideMode === "announcement") {
+    const currentSlide = announcementSlides[announcementSlideIndex];
+    if (currentSlide) {
+      return renderMediaSlide(
+        currentSlide,
+        `Announcement slide ${announcementSlideIndex + 1}`,
+        "absolute inset-0 z-[1] w-full h-full object-contain",
+      );
+    }
+
     return (
       <div
         className={`max-w-4xl relative z-[1] text-white ${compact ? "px-6 py-4" : "px-12 py-8"}`}
