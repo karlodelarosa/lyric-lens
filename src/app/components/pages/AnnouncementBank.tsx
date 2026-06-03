@@ -1,9 +1,6 @@
 import { useMemo, useState } from "react";
 import { useOrganization } from "@frontend/contexts/OrganizationContext";
-import {
-  useApp,
-  type AnnouncementSlide,
-} from "../../contexts/AppContext";
+import { useApp, type AnnouncementSlide } from "../../contexts/AppContext";
 import {
   SlideDeckEditor,
   inferAnnouncementFormat,
@@ -56,6 +53,7 @@ export function AnnouncementBank() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingSlides, setIsUploadingSlides] = useState(false);
 
   const categories = useMemo(() => {
     const values = announcements
@@ -180,14 +178,24 @@ export function AnnouncementBank() {
           </p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={(open) => {
+            if (!open && isUploadingSlides) return;
+            setIsDialogOpen(open);
+          }}
+        >
           <DialogTrigger asChild>
             <Button onClick={openCreate}>
               <Plus className="w-4 h-4 mr-2" />
               New announcement
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent
+            className="max-w-lg max-h-[90vh] overflow-y-auto"
+            onPointerDownOutside={(event) => event.preventDefault()}
+            onInteractOutside={(event) => event.preventDefault()}
+          >
             <DialogHeader>
               <DialogTitle>
                 {editingId ? "Edit announcement" : "New announcement"}
@@ -220,10 +228,9 @@ export function AnnouncementBank() {
                   setForm((prev) => ({ ...prev, slides }))
                 }
                 body={form.body}
-                onBodyChange={(body) =>
-                  setForm((prev) => ({ ...prev, body }))
-                }
+                onBodyChange={(body) => setForm((prev) => ({ ...prev, body }))}
                 disabled={isSaving}
+                onUploadingChange={setIsUploadingSlides}
               />
 
               <div className="grid grid-cols-2 gap-4">
@@ -343,9 +350,7 @@ export function AnnouncementBank() {
                         {item.slides.length === 1 ? "" : "s"}
                       </Badge>
                     )}
-                    {!isSlideDeck && (
-                      <Badge variant="outline">Text</Badge>
-                    )}
+                    {!isSlideDeck && <Badge variant="outline">Text</Badge>}
                     {item.category && (
                       <Badge variant="secondary">{item.category}</Badge>
                     )}

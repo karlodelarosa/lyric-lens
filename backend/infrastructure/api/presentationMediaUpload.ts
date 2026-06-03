@@ -2,8 +2,8 @@ import { requireOrgMember } from "@backend/infrastructure/api/requireOrgAdmin";
 import {
   buildPresentationMediaStoragePath,
   getWelcomeSlideExtension,
-  getWelcomeSlideMediaType,
-  isAllowedWelcomeSlideMimeType,
+  getPresentationMediaType,
+  isAllowedPresentationMediaFile,
   type PresentationMediaScope,
   WELCOME_SLIDE_MAX_BYTES,
 } from "@backend/domain/setlist/welcomeSlideUpload";
@@ -45,14 +45,14 @@ export async function uploadPresentationMedia(
   }
 
   const mimeType = file.type.trim().toLowerCase();
-  if (!isAllowedWelcomeSlideMimeType(mimeType)) {
+  if (!isAllowedPresentationMediaFile(file)) {
     return NextResponse.json(
       { error: "Only image and video files are allowed" },
       { status: 400 },
     );
   }
 
-  const mediaType = getWelcomeSlideMediaType(mimeType);
+  const mediaType = getPresentationMediaType(file);
   const extension = getWelcomeSlideExtension(mimeType, file.name);
   if (!mediaType || !extension) {
     return NextResponse.json(
@@ -60,6 +60,12 @@ export async function uploadPresentationMedia(
       { status: 400 },
     );
   }
+
+  const contentType =
+    mimeType ||
+    (mediaType === "video"
+      ? "video/mp4"
+      : `image/${extension === "jpg" ? "jpeg" : extension}`);
 
   const storagePath = buildPresentationMediaStoragePath(
     orgId,
@@ -72,13 +78,16 @@ export async function uploadPresentationMedia(
   const { error: uploadError } = await client.storage
     .from(PRESENTATION_MEDIA_BUCKET)
     .upload(storagePath, fileBuffer, {
-      contentType: mimeType,
+      contentType,
       upsert: false,
     });
 
   if (uploadError) {
     console.error(`[${scope} upload]`, uploadError.message);
-    return NextResponse.json({ error: "Failed to upload media" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to upload media" },
+      { status: 500 },
+    );
   }
 
   const { data: publicUrlData } = client.storage

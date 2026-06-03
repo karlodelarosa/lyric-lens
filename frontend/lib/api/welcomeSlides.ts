@@ -26,6 +26,7 @@ export async function uploadWelcomeSlide(
     `/api/organizations/${organizationId}/welcome-slides/upload`,
     {
       method: "POST",
+      credentials: "include",
       body: formData,
     },
   );

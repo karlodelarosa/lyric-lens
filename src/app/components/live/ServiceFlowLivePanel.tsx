@@ -9,7 +9,10 @@ type ServiceFlowLivePanelProps = {
   serviceFlow: ServiceFlow;
   activeSegmentId: string | null;
   onSelectSegment: (segment: ServiceFlowSegment) => void;
-  onSelectAnnouncement: (announcement: Announcement, slideIndex?: number) => void;
+  onSelectAnnouncement: (
+    announcement: Announcement,
+    slideIndex?: number,
+  ) => void;
   onSelectSong: (songId: string) => void;
   onSelectSection: (songId: string, sectionId: string) => void;
   currentSongId: string | null;
@@ -95,8 +98,9 @@ export function ServiceFlowLivePanel({
             </p>
           ) : (
             activeSegment.announcements.map((announcement) => {
+              const slides = announcement.slides ?? [];
               const isActive = currentAnnouncementId === announcement.id;
-              const hasSlides = announcement.slides.length > 0;
+              const hasSlides = slides.length > 0;
 
               return (
                 <div key={announcement.id} className="space-y-1">
@@ -115,14 +119,14 @@ export function ServiceFlowLivePanel({
                     <div className="font-medium">{announcement.title}</div>
                     <div className="text-xs opacity-80 mt-1">
                       {hasSlides
-                        ? `${announcement.slides.length} slide${announcement.slides.length === 1 ? "" : "s"}`
+                        ? `${slides.length} slide${slides.length === 1 ? "" : "s"}`
                         : announcement.body || "Text announcement"}
                     </div>
                   </button>
 
                   {hasSlides && isActive && (
                     <div className="ml-3 flex flex-wrap gap-1">
-                      {announcement.slides.map((slide, slideIndex) => (
+                      {slides.map((slide, slideIndex) => (
                         <button
                           key={`${announcement.id}-${slide.url}-${slideIndex}`}
                           type="button"

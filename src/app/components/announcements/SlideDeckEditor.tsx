@@ -1,11 +1,13 @@
+import { useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { AnnouncementSlide } from "../../contexts/AppContext";
 import { Button } from "../ui/button";
 import { Label } from "../ui/label";
+import { uploadAnnouncementSlide } from "@frontend/lib/api/announcements";
 import {
-  ANNOUNCEMENT_SLIDE_ACCEPT,
-  ANNOUNCEMENT_SLIDE_MAX_BYTES,
-  uploadAnnouncementSlide,
-} from "@frontend/lib/api/announcements";
+  PRESENTATION_MEDIA_ACCEPT,
+  presentationMediaValidationError,
+} from "@frontend/lib/mediaUpload";
 import {
   ChevronDown,
   ChevronUp,
@@ -27,6 +29,7 @@ type SlideDeckEditorProps = {
   body: string;
   onBodyChange: (body: string) => void;
   disabled?: boolean;
+  onUploadingChange?: (isUploading: boolean) => void;
 };
 
 export function SlideDeckEditor({
@@ -38,7 +41,17 @@ export function SlideDeckEditor({
   body,
   onBodyChange,
   disabled = false,
+  onUploadingChange,
 }: SlideDeckEditorProps) {
+  const fileInputId = useId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const setUploading = (value: boolean) => {
+    setIsUploading(value);
+    onUploadingChange?.(value);
+  };
+
   const moveSlide = (index: number, direction: -1 | 1) => {
     const nextIndex = index + direction;
     if (nextIndex < 0 || nextIndex >= slides.length) return;
@@ -47,64 +60,120 @@ export function SlideDeckEditor({
     onSlidesChange(next);
   };
 
-  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    event.target.value = "";
-    if (!files?.length) return;
-
+  const openFilePicker = () => {
     if (!organizationId) {
-      toast.error("Select an organization before uploading");
+      toast.error("Select an organization in the header before uploading");
       return;
     }
 
-    const validFiles = [...files].filter((file) => {
-      if (file.size > ANNOUNCEMENT_SLIDE_MAX_BYTES) {
-        toast.error(`${file.name} exceeds the 20 MB limit`);
-        return false;
-      }
-      if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
-        toast.error(`${file.name} is not a supported image or video`);
-        return false;
-      }
-      return true;
-    });
-
-    if (!validFiles.length) return;
-
-    const uploaded: AnnouncementSlide[] = [];
-    for (const file of validFiles) {
-      try {
-        const { slide } = await uploadAnnouncementSlide(organizationId, file);
-        uploaded.push(slide);
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : `Failed to upload ${file.name}`,
-        );
-      }
+    const input = fileInputRef.current;
+    if (!input) {
+      toast.error("File picker is not ready. Try again.");
+      return;
     }
 
-    if (uploaded.length) {
-      onSlidesChange([...slides, ...uploaded]);
-      onFormatChange("slides");
-      toast.success(
-        uploaded.length === 1
-          ? "Slide uploaded"
-          : `${uploaded.length} slides uploaded`,
-      );
+    input.click();
+  };
+
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = event.target.files;
+    if (fileList?.length) {
+      // Copy before clearing — clearing can empty the list in some browsers.
+      const files = Array.from(fileList);
+      event.target.value = "";
+
+      if (!organizationId) {
+        toast.error("Select an organization before uploading");
+        return;
+      }
+
+      const validFiles: File[] = [];
+      for (const file of files) {
+        const validationError = presentationMediaValidationError(file);
+        if (validationError) {
+          toast.error(validationError);
+          continue;
+        }
+        validFiles.push(file);
+      }
+
+      if (!validFiles.length) {
+        toast.error("No valid image or video files were selected");
+        return;
+      }
+
+      setUploading(true);
+      const uploaded: AnnouncementSlide[] = [];
+
+      try {
+        for (const file of validFiles) {
+          try {
+            const { slide } = await uploadAnnouncementSlide(
+              organizationId,
+              file,
+            );
+            uploaded.push(slide);
+          } catch (error) {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : `Failed to upload ${file.name}`,
+            );
+          }
+        }
+
+        if (uploaded.length) {
+          onSlidesChange([...slides, ...uploaded]);
+          onFormatChange("slides");
+          toast.success(
+            uploaded.length === 1
+              ? "Slide uploaded"
+              : `${uploaded.length} slides uploaded`,
+          );
+        }
+      } finally {
+        setUploading(false);
+      }
     }
   };
 
+  const fileInput =
+    typeof document !== "undefined"
+      ? createPortal(
+          <input
+            id={fileInputId}
+            ref={fileInputRef}
+            type="file"
+            tabIndex={-1}
+            aria-hidden
+            multiple
+            accept={`${PRESENTATION_MEDIA_ACCEPT},image/*,video/*`}
+            disabled={disabled || isUploading}
+            onChange={(event) => void handleUpload(event)}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: 1,
+              height: 1,
+              opacity: 0,
+              pointerEvents: "none",
+            }}
+          />,
+          document.body,
+        )
+      : null;
+
   return (
     <div className="space-y-3 rounded-lg border p-3">
+      {fileInput}
       <Label>Presentation format</Label>
       <div className="flex gap-2">
         <Button
           type="button"
           size="sm"
           variant={format === "text" ? "default" : "outline"}
-          disabled={disabled}
+          disabled={disabled || isUploading}
           onClick={() => onFormatChange("text")}
         >
           <Type className="w-4 h-4 mr-1" />
@@ -114,7 +183,7 @@ export function SlideDeckEditor({
           type="button"
           size="sm"
           variant={format === "slides" ? "default" : "outline"}
-          disabled={disabled}
+          disabled={disabled || isUploading}
           onClick={() => onFormatChange("slides")}
         >
           <Images className="w-4 h-4 mr-1" />
@@ -128,7 +197,7 @@ export function SlideDeckEditor({
           <textarea
             id="announcement-body"
             rows={6}
-            disabled={disabled}
+            disabled={disabled || isUploading}
             className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={body}
             onChange={(e) => onBodyChange(e.target.value)}
@@ -144,22 +213,18 @@ export function SlideDeckEditor({
             type="button"
             variant="outline"
             size="sm"
-            disabled={disabled || !organizationId}
-            asChild
+            disabled={disabled || isUploading || !organizationId}
+            onClick={openFilePicker}
           >
-            <label className="cursor-pointer">
-              <Upload className="w-4 h-4 mr-2" />
-              Add slides
-              <input
-                type="file"
-                className="sr-only"
-                multiple
-                accept={ANNOUNCEMENT_SLIDE_ACCEPT}
-                disabled={disabled}
-                onChange={(event) => void handleUpload(event)}
-              />
-            </label>
+            <Upload className="w-4 h-4 mr-2" />
+            {isUploading ? "Uploading..." : "Add slides"}
           </Button>
+
+          {!organizationId && (
+            <p className="text-xs text-destructive">
+              Select an organization in the header before uploading slides.
+            </p>
+          )}
 
           {slides.length === 0 ? (
             <p className="text-sm text-muted-foreground">
@@ -196,7 +261,7 @@ export function SlideDeckEditor({
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      disabled={disabled || index === 0}
+                      disabled={disabled || isUploading || index === 0}
                       onClick={() => moveSlide(index, -1)}
                     >
                       <ChevronUp className="w-4 h-4" />
@@ -206,7 +271,9 @@ export function SlideDeckEditor({
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      disabled={disabled || index === slides.length - 1}
+                      disabled={
+                        disabled || isUploading || index === slides.length - 1
+                      }
                       onClick={() => moveSlide(index, 1)}
                     >
                       <ChevronDown className="w-4 h-4" />
@@ -216,7 +283,7 @@ export function SlideDeckEditor({
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      disabled={disabled}
+                      disabled={disabled || isUploading}
                       onClick={() =>
                         onSlidesChange(slides.filter((_, i) => i !== index))
                       }

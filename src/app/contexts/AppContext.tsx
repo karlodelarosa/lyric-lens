@@ -331,7 +331,7 @@ function mapServiceFlowListItemDto(
   };
 }
 
-function mapServiceFlowDto(dto: ServiceFlowDto): ServiceFlow {
+export function mapServiceFlowDto(dto: ServiceFlowDto): ServiceFlow {
   return {
     id: dto.id,
     title: dto.title,
@@ -596,7 +596,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   React.useEffect(() => {
     const saved = readLiveStateFromStorage();
     if (saved) {
-      setLiveState((prev) => ({ ...prev, ...saved }) as LiveState);
+      setLiveState(
+        (prev) =>
+          ({
+            ...prev,
+            ...saved,
+            currentAnnouncementSlides: Array.isArray(
+              saved.currentAnnouncementSlides,
+            )
+              ? saved.currentAnnouncementSlides
+              : prev.currentAnnouncementSlides,
+          }) as LiveState,
+      );
     }
     setLiveStateHydrated(true);
 
@@ -604,9 +615,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     liveStateChannelRef.current = channel;
 
     const applyRemoteLiveState = (partial: Record<string, unknown>) => {
+      liveActivityRef.current = Date.now();
       skipNextPublishRef.current = true;
       setLiveState((prev) => {
-        const next = { ...prev, ...partial } as LiveState;
+        const next = {
+          ...prev,
+          ...partial,
+          currentAnnouncementSlides: Array.isArray(
+            partial.currentAnnouncementSlides,
+          )
+            ? partial.currentAnnouncementSlides
+            : prev.currentAnnouncementSlides,
+        } as LiveState;
         if (JSON.stringify(prev) === JSON.stringify(next)) {
           skipNextPublishRef.current = false;
           return prev;
@@ -979,16 +999,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   React.useEffect(() => {
     const interval = window.setInterval(() => {
+      if (
+        typeof window !== "undefined" &&
+        window.location.pathname.startsWith("/presenter")
+      ) {
+        return;
+      }
+
       setLiveState((prev) => {
+        if (!prev.isLive) return prev;
         if (prev.idleTimeoutSeconds <= 0) return prev;
-        if (prev.slideMode === "blank" || prev.slideMode === "welcome") {
+        if (
+          prev.slideMode === "blank" ||
+          prev.slideMode === "welcome" ||
+          prev.slideMode === "announcement"
+        ) {
           return prev;
         }
 
         const elapsedMs = Date.now() - liveActivityRef.current;
         if (elapsedMs < prev.idleTimeoutSeconds * 1000) return prev;
 
-        return { ...prev, slideMode: "blank" };
+        return { ...prev, slideMode: "blank", manualLyrics: null };
       });
     }, 5000);
 
@@ -1010,10 +1042,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setCurrentAnnouncement = useCallback(
     (announcement: Announcement, slideIndex = 0) => {
       liveActivityRef.current = Date.now();
-      const maxSlideIndex = Math.max(announcement.slides.length - 1, 0);
+      const slides = Array.isArray(announcement.slides)
+        ? announcement.slides
+        : [];
+      const maxSlideIndex = Math.max(slides.length - 1, 0);
       const safeSlideIndex = Math.min(
         Math.max(slideIndex, 0),
-        announcement.slides.length > 0 ? maxSlideIndex : 0,
+        slides.length > 0 ? maxSlideIndex : 0,
       );
 
       setLiveState((prev) => ({
@@ -1022,7 +1057,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentAnnouncementId: announcement.id,
         currentAnnouncementTitle: announcement.title,
         currentAnnouncementBody: announcement.body,
-        currentAnnouncementSlides: announcement.slides,
+        currentAnnouncementSlides: slides,
         manualLyrics: null,
         currentChunkIndex: safeSlideIndex,
       }));

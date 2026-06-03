@@ -8,6 +8,7 @@ import type {
   ServiceFlowSegmentKind,
   UpdateServiceFlowInput,
 } from "../../domain/serviceFlow/ServiceFlow";
+import { announcementToDto } from "./announcementMappers";
 
 const SEGMENT_KINDS: ServiceFlowSegmentKind[] = [
   "music",
@@ -89,13 +90,9 @@ export function serviceFlowToDto(flow: ServiceFlow) {
       notes: segment.notes,
       setlistId: segment.setlistId,
       setlistName: segment.setlistName,
-      announcements: segment.announcements.map((announcement) => ({
-        id: announcement.id,
-        title: announcement.title,
-        body: announcement.body,
-        category: announcement.category,
-        expiresAt: announcement.expiresAt,
-      })),
+      announcements: segment.announcements.map((announcement) =>
+        announcementToDto(announcement),
+      ),
     })),
   };
 }

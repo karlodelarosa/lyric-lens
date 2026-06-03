@@ -10,6 +10,8 @@ const MIME_TO_EXTENSION: Record<string, string> = {
   "image/webp": "webp",
   "image/gif": "gif",
   "image/avif": "avif",
+  "image/heic": "heic",
+  "image/heif": "heif",
   "video/mp4": "mp4",
   "video/webm": "webm",
   "video/quicktime": "mov",
@@ -23,6 +25,39 @@ export function getWelcomeSlideMediaType(
   if (mimeType.startsWith("image/")) return "image";
   if (mimeType.startsWith("video/")) return "video";
   return null;
+}
+
+const VIDEO_EXTENSIONS = new Set(["mp4", "webm", "mov"]);
+const IMAGE_EXTENSIONS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "gif",
+  "avif",
+  "heic",
+  "heif",
+]);
+
+export function getPresentationMediaType(file: {
+  type: string;
+  name: string;
+}): WelcomeSlideMediaType | null {
+  const fromMime = getWelcomeSlideMediaType(file.type.trim().toLowerCase());
+  if (fromMime) return fromMime;
+
+  const extension = getWelcomeSlideExtension(file.type, file.name);
+  if (!extension) return null;
+  if (VIDEO_EXTENSIONS.has(extension)) return "video";
+  if (IMAGE_EXTENSIONS.has(extension)) return "image";
+  return null;
+}
+
+export function isAllowedPresentationMediaFile(file: {
+  type: string;
+  name: string;
+}): boolean {
+  return getPresentationMediaType(file) !== null;
 }
 
 export function isAllowedWelcomeSlideMimeType(mimeType: string): boolean {

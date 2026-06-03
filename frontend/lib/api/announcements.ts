@@ -1,4 +1,10 @@
-import { apiDelete, apiGet, apiPatch, apiPost, parseApiResponse } from "./client";
+import {
+  apiDelete,
+  apiGet,
+  apiPatch,
+  apiPost,
+  parseApiResponse,
+} from "./client";
 
 export type AnnouncementSlideDto = {
   url: string;
@@ -41,8 +47,7 @@ export type UploadAnnouncementSlideResponse = {
 
 export const ANNOUNCEMENT_SLIDE_MAX_BYTES = 20 * 1024 * 1024;
 
-export const ANNOUNCEMENT_SLIDE_ACCEPT =
-  "image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm,video/quicktime";
+export { PRESENTATION_MEDIA_ACCEPT as ANNOUNCEMENT_SLIDE_ACCEPT } from "../mediaUpload";
 
 export async function getAnnouncements(
   organizationId: string,
@@ -93,6 +98,7 @@ export async function uploadAnnouncementSlide(
     `/api/organizations/${organizationId}/announcements/upload`,
     {
       method: "POST",
+      credentials: "include",
       body: formData,
     },
   );

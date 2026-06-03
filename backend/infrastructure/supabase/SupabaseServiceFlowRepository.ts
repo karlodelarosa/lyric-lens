@@ -32,6 +32,26 @@ const SERVICE_FLOW_DETAIL_SELECT = `
   )
 `;
 
+const SERVICE_FLOW_DETAIL_SELECT_LEGACY = `
+  id,
+  title,
+  description,
+  service_flow_segments (
+    id,
+    position,
+    label,
+    kind,
+    notes,
+    setlist_id,
+    setlists ( id, title ),
+    service_flow_segment_announcements (
+      announcement_id,
+      position,
+      announcements ( id, title, body, category, expires_at )
+    )
+  )
+`;
+
 const SERVICE_FLOW_LIST_SELECT = `
   id,
   title,
@@ -41,6 +61,14 @@ const SERVICE_FLOW_LIST_SELECT = `
 
 export class SupabaseServiceFlowRepository implements ServiceFlowRepository {
   constructor(private readonly client: SupabaseClient<Database>) {}
+
+  private isMissingSlidesColumn(error: { message?: string } | null) {
+    const message = error?.message?.toLowerCase() ?? "";
+    return (
+      message.includes("slides") &&
+      (message.includes("does not exist") || message.includes("could not find"))
+    );
+  }
 
   async listByOrganization(
     organizationId: string,
@@ -70,12 +98,21 @@ export class SupabaseServiceFlowRepository implements ServiceFlowRepository {
     organizationId: string,
     serviceFlowId: string,
   ): Promise<ServiceFlow | null> {
-    const { data, error } = await this.client
+    let { data, error } = await this.client
       .from("service_flows")
       .select(SERVICE_FLOW_DETAIL_SELECT)
       .eq("id", serviceFlowId)
       .eq("organization_id", organizationId)
       .maybeSingle();
+
+    if (error && this.isMissingSlidesColumn(error)) {
+      ({ data, error } = await this.client
+        .from("service_flows")
+        .select(SERVICE_FLOW_DETAIL_SELECT_LEGACY)
+        .eq("id", serviceFlowId)
+        .eq("organization_id", organizationId)
+        .maybeSingle());
+    }
 
     if (error) {
       throw new Error(`Failed to load service flow: ${error.message}`);

@@ -12,6 +12,8 @@ values (
     'image/webp',
     'image/gif',
     'image/avif',
+    'image/heic',
+    'image/heif',
     'video/mp4',
     'video/webm',
     'video/quicktime'
