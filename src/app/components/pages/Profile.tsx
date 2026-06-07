@@ -3,6 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { useAuth } from "@frontend/contexts/AuthContext";
 import { updateProfile } from "@frontend/lib/api/auth";
 import { OrganizationTeam } from "../OrganizationTeam";
+import { OrganizationBranding } from "../OrganizationBranding";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Button } from "../ui/button";
 import {
@@ -93,6 +94,12 @@ export function Profile() {
                 {isSaving ? "Saving..." : "Save profile"}
               </Button>
             </form>
+          </section>
+
+          <Separator />
+
+          <section className="space-y-4">
+            <OrganizationBranding />
           </section>
 
           <Separator />

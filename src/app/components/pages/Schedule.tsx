@@ -346,7 +346,7 @@ export function Schedule() {
                       return (
                         <div
                           key={schedule.id}
-                          className="text-xs p-1.5 rounded bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/30 cursor-pointer hover:shadow-sm"
+                          className="text-xs p-1.5 rounded bg-primary/20 border border-primary/30 cursor-pointer hover:shadow-sm"
                           onClick={() => openScheduleEditor(schedule.id)}
                         >
                           <p className="font-medium truncate">
@@ -390,7 +390,7 @@ export function Schedule() {
                     className="flex items-center justify-between p-4 rounded-lg border bg-card hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex flex-col items-center justify-center text-white">
+                      <div className="w-14 h-14 rounded-lg bg-primary flex flex-col items-center justify-center text-primary-foreground">
                         <div className="text-xs font-medium">
                           {format(new Date(schedule.date), "MMM")}
                         </div>

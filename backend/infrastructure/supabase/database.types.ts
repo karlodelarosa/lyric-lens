@@ -349,22 +349,31 @@ export type Database = {
           created_at: string;
           created_by: string | null;
           id: string;
+          logo_url: string | null;
           name: string;
+          show_org_name_in_sidebar: boolean;
           slug: string;
+          theme_preset: string;
         };
         Insert: {
           created_at?: string;
           created_by?: string | null;
           id?: string;
+          logo_url?: string | null;
           name: string;
+          show_org_name_in_sidebar?: boolean;
           slug: string;
+          theme_preset?: string;
         };
         Update: {
           created_at?: string;
           created_by?: string | null;
           id?: string;
+          logo_url?: string | null;
           name?: string;
+          show_org_name_in_sidebar?: boolean;
           slug?: string;
+          theme_preset?: string;
         };
         Relationships: [];
       };
@@ -508,6 +517,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      is_org_admin: { Args: { org_id: string }; Returns: boolean };
       is_org_member: { Args: { org_id: string }; Returns: boolean };
     };
     Enums: {

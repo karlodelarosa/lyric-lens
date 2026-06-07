@@ -6,12 +6,12 @@ These steps assume your latest changes are already merged and pushed to the `mai
 
 ## Architecture
 
-| Layer | Platform | Notes |
-|-------|----------|-------|
-| Web app | Cloudflare Workers (`lyric-lens`) | Next.js App Router built with `@opennextjs/cloudflare` |
-| Incremental cache | Cloudflare R2 (`lyric-lens-opennext-cache`) | Configured in `wrangler.jsonc` |
-| Database & auth | Supabase | Postgres + RLS policies |
-| File storage | Supabase Storage (`welcome-slides` bucket) | Created by migration |
+| Layer             | Platform                                    | Notes                                                  |
+| ----------------- | ------------------------------------------- | ------------------------------------------------------ |
+| Web app           | Cloudflare Workers (`lyric-lens`)           | Next.js App Router built with `@opennextjs/cloudflare` |
+| Incremental cache | Cloudflare R2 (`lyric-lens-opennext-cache`) | Configured in `wrangler.jsonc`                         |
+| Database & auth   | Supabase                                    | Postgres + RLS policies                                |
+| File storage      | Supabase Storage (`welcome-slides` bucket)  | Created by migration                                   |
 
 ## Prerequisites
 
@@ -86,14 +86,14 @@ cp .env.example .dev.vars
 
 Fill in values from **Supabase Dashboard → Settings → API**:
 
-| Variable | Required | Notes |
-|----------|----------|-------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Public; embedded in the client bundle at build time |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes | Public publishable key |
-| `SUPABASE_URL` | Yes | Same URL as above; used by server code |
-| `SUPABASE_PUBLISHABLE_KEY` | Yes | Same key as above; used by server code |
-| `PUBLIC_SUPABASE_URL` | Optional | Alias used by some tooling |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional | Legacy alias for the publishable key |
+| Variable                               | Required | Notes                                               |
+| -------------------------------------- | -------- | --------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Yes      | Public; embedded in the client bundle at build time |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes      | Public publishable key                              |
+| `SUPABASE_URL`                         | Yes      | Same URL as above; used by server code              |
+| `SUPABASE_PUBLISHABLE_KEY`             | Yes      | Same key as above; used by server code              |
+| `PUBLIC_SUPABASE_URL`                  | Optional | Alias used by some tooling                          |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`        | Optional | Legacy alias for the publishable key                |
 
 For production deploys, put the same values in `.dev.vars` on the machine that runs `npm run deploy`. Wrangler reads `.dev.vars` during build and preview.
 
@@ -170,14 +170,14 @@ Ensure `.dev.vars` is configured first. This uses the same OpenNext build as dep
 
 ## Useful commands
 
-| Command | Purpose |
-|---------|---------|
-| `npm run dev` | Local Next.js dev server (Node.js, not Workers runtime) |
-| `npm run preview` | Build + local Workers preview |
-| `npm run deploy` | Build + deploy to Cloudflare |
-| `npm run upload` | Build + upload a new Worker version without full deploy flow |
-| `npx wrangler tail` | Stream live Worker logs |
-| `npm run cf-typegen` | Regenerate Cloudflare binding types |
+| Command              | Purpose                                                      |
+| -------------------- | ------------------------------------------------------------ |
+| `npm run dev`        | Local Next.js dev server (Node.js, not Workers runtime)      |
+| `npm run preview`    | Build + local Workers preview                                |
+| `npm run deploy`     | Build + deploy to Cloudflare                                 |
+| `npm run upload`     | Build + upload a new Worker version without full deploy flow |
+| `npx wrangler tail`  | Stream live Worker logs                                      |
+| `npm run cf-typegen` | Regenerate Cloudflare binding types                          |
 
 ## Troubleshooting
 

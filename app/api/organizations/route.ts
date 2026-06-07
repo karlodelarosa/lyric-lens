@@ -1,7 +1,10 @@
 import { CreateOrganization } from "@backend/application/organization/CreateOrganization";
 import { ListOrganizations } from "@backend/application/organization/ListOrganizations";
 import { GetCurrentUser } from "@backend/application/auth/GetCurrentUser";
-import { parseCreateOrganizationBody } from "@backend/infrastructure/api/organizationMappers";
+import {
+  parseCreateOrganizationBody,
+  organizationToDto,
+} from "@backend/infrastructure/api/organizationMappers";
 import {
   createAuthRepository,
   createOrganizationRepository,
@@ -21,12 +24,7 @@ export async function GET() {
     const organizations = await new ListOrganizations(orgRepository).execute();
 
     return NextResponse.json({
-      organizations: organizations.map((org) => ({
-        id: org.id,
-        name: org.name,
-        slug: org.slug,
-        createdAt: org.createdAt,
-      })),
+      organizations: organizations.map((org) => organizationToDto(org)),
     });
   } catch {
     return NextResponse.json(
@@ -63,12 +61,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        organization: {
-          id: organization.id,
-          name: organization.name,
-          slug: organization.slug,
-          createdAt: organization.createdAt,
-        },
+        organization: organizationToDto(organization),
       },
       { status: 201 },
     );

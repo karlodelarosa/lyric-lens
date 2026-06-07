@@ -7,8 +7,12 @@ import {
 import type {
   CreateOrganizationInput,
   OrganizationRepository,
+  UpdateOrganizationInput,
 } from "../../domain/organization/OrganizationRepository";
 import type { Database } from "./database.types";
+
+const ORGANIZATION_SELECT =
+  "id, name, slug, created_by, created_at, theme_preset, logo_url, show_org_name_in_sidebar";
 
 export class SupabaseOrganizationRepository implements OrganizationRepository {
   constructor(private readonly client: SupabaseClient<Database>) {}
@@ -16,7 +20,7 @@ export class SupabaseOrganizationRepository implements OrganizationRepository {
   async list(): Promise<Organization[]> {
     const { data, error } = await this.client
       .from("organizations")
-      .select("id, name, slug, created_by, created_at")
+      .select(ORGANIZATION_SELECT)
       .order("name");
 
     if (error) {
@@ -37,7 +41,7 @@ export class SupabaseOrganizationRepository implements OrganizationRepository {
         slug: input.slug,
         created_by: createdBy,
       })
-      .select("id, name, slug, created_by, created_at")
+      .select(ORGANIZATION_SELECT)
       .single();
 
     if (orgError || !orgRow) {
@@ -58,6 +62,52 @@ export class SupabaseOrganizationRepository implements OrganizationRepository {
     }
 
     return Organization.fromRow(orgRow);
+  }
+
+  async update(
+    organizationId: string,
+    input: UpdateOrganizationInput,
+  ): Promise<Organization> {
+    const patch: Database["public"]["Tables"]["organizations"]["Update"] = {};
+
+    if (input.themePreset !== undefined) {
+      patch.theme_preset = input.themePreset;
+    }
+
+    if (input.logoUrl !== undefined) {
+      patch.logo_url = input.logoUrl;
+    }
+
+    if (input.showOrgNameInSidebar !== undefined) {
+      patch.show_org_name_in_sidebar = input.showOrgNameInSidebar;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      const { data, error } = await this.client
+        .from("organizations")
+        .select(ORGANIZATION_SELECT)
+        .eq("id", organizationId)
+        .single();
+
+      if (error || !data) {
+        throw new Error("Failed to load organization");
+      }
+
+      return Organization.fromRow(data);
+    }
+
+    const { data, error } = await this.client
+      .from("organizations")
+      .update(patch)
+      .eq("id", organizationId)
+      .select(ORGANIZATION_SELECT)
+      .single();
+
+    if (error || !data) {
+      throw new Error("Failed to update organization");
+    }
+
+    return Organization.fromRow(data);
   }
 
   async getMemberRole(

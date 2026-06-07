@@ -720,7 +720,7 @@ export function LiveMode() {
             <Button
               onClick={handleGoLive}
               size="lg"
-              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               <Play className="w-5 h-5 mr-2" />
               Go Live

@@ -288,7 +288,7 @@ export function HowToUse() {
         <Link to="/live">
           <Button
             size="lg"
-            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-lg text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
           >
             <Radio className="w-5 h-5 mr-2" />
             Open Live Mode
@@ -424,7 +424,7 @@ export function HowToUse() {
         <Link to="/live">
           <Button
             size="lg"
-            className="bg-gradient-to-r from-purple-600 to-indigo-600"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             <Radio className="w-5 h-5 mr-2" />
             Start in Live Mode
@@ -445,7 +445,7 @@ function cnStepNumber(isLive: boolean) {
   return [
     "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold",
     isLive
-      ? "bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md"
+      ? "bg-primary text-primary-foreground shadow-md"
       : "bg-muted text-muted-foreground",
   ].join(" ");
 }

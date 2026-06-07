@@ -91,6 +91,12 @@ export function RootLayout() {
     return location.pathname.startsWith(href);
   };
 
+  const sidebarTitle =
+    (activeOrganization?.showOrgNameInSidebar ?? true) &&
+    activeOrganization?.name
+      ? activeOrganization.name
+      : "Lyric Lens";
+
   useEffect(() => {
     if (location.pathname.startsWith("/live")) {
       setIsSidebarCollapsed(true);
@@ -178,12 +184,24 @@ export function RootLayout() {
               isSidebarCollapsed && "justify-center",
             )}
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
-              <Eye className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center shrink-0">
+              {activeOrganization?.logoUrl ? (
+                <img
+                  src={activeOrganization.logoUrl}
+                  alt={`${activeOrganization.name} logo`}
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                <div className="w-full h-full bg-primary flex items-center justify-center">
+                  <Eye className="w-5 h-5 text-primary-foreground" />
+                </div>
+              )}
             </div>
             {!isSidebarCollapsed && (
               <div>
-                <h1 className="font-semibold text-lg">Lyric Lens</h1>
+                <h1 className="font-semibold text-lg truncate">
+                  {sidebarTitle}
+                </h1>
                 <p className="text-xs text-muted-foreground">
                   Worship Platform
                 </p>
@@ -235,16 +253,16 @@ export function RootLayout() {
               size={isSidebarCollapsed ? "icon" : "lg"}
               className={cn(
                 "w-full cursor-pointer font-semibold transition-all",
-                "bg-gradient-to-r from-purple-600 to-indigo-600",
-                "hover:from-purple-500 hover:to-indigo-500",
+                "bg-primary hover:bg-primary/90",
+                "text-primary-foreground",
                 "shadow-md hover:shadow-lg hover:-translate-y-0.5",
                 "active:translate-y-0 active:shadow-md",
-                "border border-white/20",
+                "border border-primary-foreground/20",
                 isSidebarCollapsed
                   ? "h-12 w-12 rounded-xl"
                   : "h-auto py-3.5 rounded-xl justify-between gap-2",
                 isActive(liveNav.href) &&
-                  "ring-2 ring-white/40 ring-offset-2 ring-offset-card",
+                  "ring-2 ring-primary-foreground/40 ring-offset-2 ring-offset-card",
               )}
             >
               <Link
@@ -255,8 +273,8 @@ export function RootLayout() {
                   <Play className="w-5 h-5 fill-current" />
                 ) : (
                   <>
-                    <span className="flex items-center gap-2.5 min-w-0 text-white">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/20">
+                    <span className="flex items-center gap-2.5 min-w-0 text-primary-foreground">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/20">
                         <Play className="w-4 h-4 fill-current" />
                       </span>
                       <span className="flex flex-col items-start text-left leading-tight">

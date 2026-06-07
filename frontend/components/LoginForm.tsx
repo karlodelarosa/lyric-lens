@@ -55,8 +55,8 @@ export function LoginForm() {
       >
         <CardHeader className="space-y-1">
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
-              <Eye className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+              <Eye className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
               <p className="font-semibold leading-none">Lyric Lens</p>

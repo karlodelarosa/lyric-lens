@@ -65,10 +65,10 @@ export function Dashboard() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-3 gap-6">
-        <Card className="bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border-purple-500/20">
+        <Card className="bg-primary/10 border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Songs</CardTitle>
-            <Music className="w-4 h-4 text-purple-500" />
+            <Music className="w-4 h-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{songs.length}</div>
@@ -212,7 +212,7 @@ export function Dashboard() {
       </div>
 
       {/* Quick Actions */}
-      <Card className="bg-gradient-to-br from-violet-500/5 to-purple-500/5 border-violet-500/20">
+      <Card className="bg-primary/5 border-primary/20">
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
           <CardDescription>Jump into your workflow</CardDescription>
@@ -220,8 +220,8 @@ export function Dashboard() {
         <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Link to="/live" className="group">
             <div className="p-6 rounded-lg border bg-card hover:bg-accent transition-all duration-200 cursor-pointer">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Calendar className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Calendar className="w-6 h-6 text-primary-foreground" />
               </div>
               <h3 className="font-semibold mb-1">Go to Live Mode</h3>
               <p className="text-sm text-muted-foreground">

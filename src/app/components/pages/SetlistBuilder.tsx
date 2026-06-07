@@ -144,24 +144,21 @@ export function SetlistBuilder() {
     librarySearch,
   ]);
 
-  const filteredSetlistEntries = useMemo(
-    () => {
-      const keyword = setlistSearch.trim().toLowerCase();
-      return songOrder
-        .map((songId, index) => ({ songId, index }))
-        .filter(({ songId }) => {
-          const song = songs.find((entry) => entry.id === songId);
-          if (!song) return false;
-          if (!keyword) return true;
-          return (
-            song.title.toLowerCase().includes(keyword) ||
-            song.artist.toLowerCase().includes(keyword) ||
-            song.tags.some((tag) => tag.toLowerCase().includes(keyword))
-          );
-        });
-    },
-    [songOrder, songs, setlistSearch],
-  );
+  const filteredSetlistEntries = useMemo(() => {
+    const keyword = setlistSearch.trim().toLowerCase();
+    return songOrder
+      .map((songId, index) => ({ songId, index }))
+      .filter(({ songId }) => {
+        const song = songs.find((entry) => entry.id === songId);
+        if (!song) return false;
+        if (!keyword) return true;
+        return (
+          song.title.toLowerCase().includes(keyword) ||
+          song.artist.toLowerCase().includes(keyword) ||
+          song.tags.some((tag) => tag.toLowerCase().includes(keyword))
+        );
+      });
+  }, [songOrder, songs, setlistSearch]);
 
   const filteredSavedSetlists = useMemo(() => {
     const keyword = savedSetlistsSearch.trim().toLowerCase();
@@ -521,10 +518,7 @@ export function SetlistBuilder() {
             {FLOW_PRESETS.map((preset) => {
               const section = flowSections.find((s) => s.name === preset);
               return (
-                <div
-                  key={preset}
-                  className="rounded-lg border p-3 space-y-2"
-                >
+                <div key={preset} className="rounded-lg border p-3 space-y-2">
                   <p className="text-sm font-medium">{preset}</p>
                   <div className="flex flex-wrap gap-2">
                     {songOrder.map((songId) => {
@@ -661,8 +655,8 @@ export function SetlistBuilder() {
                       <CardContent className="p-6">
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-4 flex-1">
-                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                              <ListMusic className="w-6 h-6 text-white" />
+                            <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+                              <ListMusic className="w-6 h-6 text-primary-foreground" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <h3 className="font-semibold text-lg truncate">

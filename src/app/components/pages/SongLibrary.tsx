@@ -695,8 +695,8 @@ export function SongLibrary() {
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-4 flex-1">
-                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                          <Music className="w-6 h-6 text-white" />
+                        <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+                          <Music className="w-6 h-6 text-primary-foreground" />
                         </div>
                         <div className="flex-1">
                           <h3 className="font-semibold text-lg">

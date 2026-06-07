@@ -1,10 +1,14 @@
-import { apiGet, apiPost } from "./client";
+import { apiGet, apiPost, apiPatch, parseApiResponse } from "./client";
+import type { OrgThemePresetId } from "@backend/domain/organization/orgThemePresets";
 
 export type OrganizationDto = {
   id: string;
   name: string;
   slug: string;
   createdAt: string;
+  themePreset: OrgThemePresetId;
+  logoUrl: string | null;
+  showOrgNameInSidebar: boolean;
 };
 
 export type OrganizationMemberDto = {
@@ -66,4 +70,54 @@ export async function inviteOrganizationMember(
     `/api/organizations/${organizationId}/members`,
     payload,
   );
+}
+
+export type UpdateOrganizationPayload = {
+  themePreset?: OrgThemePresetId;
+  logoUrl?: string | null;
+  showOrgNameInSidebar?: boolean;
+};
+
+export type UpdateOrganizationResponse = {
+  organization: OrganizationDto;
+};
+
+export async function updateOrganization(
+  organizationId: string,
+  payload: UpdateOrganizationPayload,
+): Promise<UpdateOrganizationResponse> {
+  return apiPatch<UpdateOrganizationResponse>(
+    `/api/organizations/${organizationId}`,
+    payload,
+  );
+}
+
+export const ORG_LOGO_MAX_BYTES = 2 * 1024 * 1024;
+
+export const ORG_LOGO_ACCEPT =
+  "image/jpeg,image/png,image/webp,image/gif,image/avif,image/svg+xml";
+
+export type UploadOrganizationLogoResponse = {
+  organization: OrganizationDto;
+  logoUrl: string | null;
+  storagePath: string;
+};
+
+export async function uploadOrganizationLogo(
+  organizationId: string,
+  file: File,
+): Promise<UploadOrganizationLogoResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(
+    `/api/organizations/${organizationId}/logo/upload`,
+    {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    },
+  );
+
+  return parseApiResponse<UploadOrganizationLogoResponse>(response);
 }
