@@ -30,6 +30,7 @@ type SetlistSongRow = {
 export type SetlistListRow = {
   id: string;
   title: string;
+  updated_at?: string;
   flow_sections?: SetlistFlowSection[] | null;
   welcome_slide?: WelcomeSlide | null;
   setlist_songs: SetlistSongRow[] | null;
@@ -56,6 +57,7 @@ export class Setlist {
     readonly songs: string[],
     readonly flowSections: SetlistFlowSection[],
     readonly welcomeSlide: WelcomeSlide | null = null,
+    readonly updatedAt: string | null = null,
   ) {}
 
   static fromListRow(row: SetlistListRow): Setlist {
@@ -75,6 +77,13 @@ export class Setlist {
 
     const welcomeSlide = parseWelcomeSlide(row.welcome_slide);
 
-    return new Setlist(row.id, row.title, songs, flowSections, welcomeSlide);
+    return new Setlist(
+      row.id,
+      row.title,
+      songs,
+      flowSections,
+      welcomeSlide,
+      row.updated_at ?? null,
+    );
   }
 }

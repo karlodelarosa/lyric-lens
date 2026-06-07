@@ -11,6 +11,7 @@ import type { Database } from "./database.types";
 const SETLIST_LIST_SELECT = `
   id,
   title,
+  updated_at,
   flow_sections,
   welcome_slide,
   setlist_songs (
@@ -22,6 +23,7 @@ const SETLIST_LIST_SELECT = `
 const SETLIST_LIST_SELECT_LEGACY = `
   id,
   title,
+  updated_at,
   setlist_songs (
     song_id,
     position
@@ -31,6 +33,7 @@ const SETLIST_LIST_SELECT_LEGACY = `
 const SETLIST_LIST_SELECT_NO_WELCOME = `
   id,
   title,
+  updated_at,
   flow_sections,
   setlist_songs (
     song_id,
@@ -46,7 +49,7 @@ export class SupabaseSetlistRepository implements SetlistRepository {
       .from("setlists")
       .select(select)
       .eq("organization_id", organizationId)
-      .order("title");
+      .order("updated_at", { ascending: false });
   }
 
   private isMissingFlowSectionsColumn(error: { message?: string } | null) {
@@ -163,6 +166,7 @@ export class SupabaseSetlistRepository implements SetlistRepository {
       input.welcomeSlide !== undefined
     ) {
       const patch = {
+        updated_at: new Date().toISOString(),
         ...(input.title !== undefined ? { title: input.title.trim() } : {}),
         ...(input.flowSections !== undefined
           ? { flow_sections: input.flowSections }
@@ -180,6 +184,7 @@ export class SupabaseSetlistRepository implements SetlistRepository {
 
       if (error && this.isMissingWelcomeSlideColumn(error)) {
         const legacyPatch = {
+          updated_at: new Date().toISOString(),
           ...(input.title !== undefined ? { title: input.title.trim() } : {}),
           ...(input.flowSections !== undefined
             ? { flow_sections: input.flowSections }
@@ -199,7 +204,12 @@ export class SupabaseSetlistRepository implements SetlistRepository {
 
       if (error && this.isMissingFlowSectionsColumn(error)) {
         const legacyPatch =
-          input.title !== undefined ? { title: input.title.trim() } : null;
+          input.title !== undefined
+            ? {
+                title: input.title.trim(),
+                updated_at: new Date().toISOString(),
+              }
+            : null;
 
         if (legacyPatch) {
           ({ error } = await this.client
@@ -219,6 +229,16 @@ export class SupabaseSetlistRepository implements SetlistRepository {
 
     if (input.songIds !== undefined) {
       await this.replaceSongs(setlistId, input.songIds);
+
+      const { error: touchError } = await this.client
+        .from("setlists")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", setlistId)
+        .eq("organization_id", organizationId);
+
+      if (touchError) {
+        throw new Error(`Failed to update setlist: ${touchError.message}`);
+      }
     }
 
     const setlists = await this.listByOrganization(organizationId);

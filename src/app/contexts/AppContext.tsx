@@ -91,6 +91,7 @@ interface Setlist {
     songIds: string[];
   }[];
   welcomeSlide: WelcomeSlide | null;
+  updatedAt?: string | null;
   scheduleId?: string;
 }
 
@@ -403,6 +404,14 @@ function mapSongDto(dto: SongDto): Song {
   };
 }
 
+function sortSetlistsByUpdatedAt(setlists: Setlist[]): Setlist[] {
+  return [...setlists].sort((a, b) => {
+    const aTime = a.updatedAt ? Date.parse(a.updatedAt) : 0;
+    const bTime = b.updatedAt ? Date.parse(b.updatedAt) : 0;
+    return bTime - aTime;
+  });
+}
+
 function mapSetlistDto(dto: SetlistDto): Setlist {
   return {
     id: dto.id,
@@ -410,6 +419,7 @@ function mapSetlistDto(dto: SetlistDto): Setlist {
     songs: dto.songs,
     flowSections: dto.flowSections ?? [],
     welcomeSlide: dto.welcomeSlide ?? null,
+    updatedAt: dto.updatedAt ?? null,
   };
 }
 
@@ -495,7 +505,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     try {
       const { setlists: loaded } = await getSetlists(activeOrganizationId);
-      setSetlists(loaded.map(mapSetlistDto));
+      setSetlists(sortSetlistsByUpdatedAt(loaded.map(mapSetlistDto)));
     } catch (error) {
       setSetlists([]);
       setSetlistsError(
@@ -761,7 +771,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       welcomeSlide: input.welcomeSlide ?? null,
     });
 
-    setSetlists((prev) => [...prev, mapSetlistDto(created)]);
+    setSetlists((prev) =>
+      sortSetlistsByUpdatedAt([...prev, mapSetlistDto(created)]),
+    );
   };
 
   const updateSetlist = async (id: string, input: UpdateSetlistInput) => {
@@ -791,8 +803,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
 
     setSetlists((prev) =>
-      prev.map((setlist) =>
-        setlist.id === id ? mapSetlistDto(updated) : setlist,
+      sortSetlistsByUpdatedAt(
+        prev.map((setlist) =>
+          setlist.id === id ? mapSetlistDto(updated) : setlist,
+        ),
       ),
     );
   };

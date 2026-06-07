@@ -16,6 +16,7 @@ export type SetlistDto = {
   songs: string[];
   flowSections?: SetlistFlowSectionDto[];
   welcomeSlide?: WelcomeSlideDto | null;
+  updatedAt?: string | null;
 };
 
 export type SetlistsResponse = {

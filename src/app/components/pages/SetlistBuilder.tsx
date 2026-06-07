@@ -14,21 +14,24 @@ import {
 } from "@frontend/lib/api/welcomeSlides";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { GripVertical, Plus, Trash2, Save, Search, Upload } from "lucide-react";
+import {
+  ArrowLeft,
+  Edit,
+  GripVertical,
+  ListMusic,
+  Plus,
+  Trash2,
+  Save,
+  Search,
+  Upload,
+} from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../ui/dialog";
 import { Label } from "../ui/label";
 import { toast } from "sonner";
+import { format, parseISO } from "date-fns";
 
 interface DraggableSongProps {
   songId: string;
@@ -71,23 +74,21 @@ function DraggableSong({
       ref={(node) => {
         drag(drop(node));
       }}
-      className={`p-4 rounded-lg border bg-card flex items-center gap-3 cursor-move ${
+      className={`flex items-center gap-2 px-3 py-2 hover:bg-accent transition-colors cursor-move text-sm ${
         isDragging ? "opacity-50" : ""
       }`}
     >
-      <GripVertical className="w-5 h-5 text-muted-foreground" />
-      <div className="flex-1">
-        <p className="font-medium">{song.title}</p>
-        <p className="text-sm text-muted-foreground">{song.artist}</p>
-      </div>
-      <div className="flex gap-2">
-        {song.tags.slice(0, 2).map((tag) => (
-          <Badge key={tag} variant="secondary">
-            {tag}
-          </Badge>
-        ))}
-      </div>
-      <Button variant="ghost" size="icon" onClick={() => onRemove(index)}>
+      <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" />
+      <span className="font-medium truncate flex-1">{song.title}</span>
+      <span className="text-muted-foreground truncate max-w-[40%]">
+        {song.artist}
+      </span>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7 shrink-0"
+        onClick={() => onRemove(index)}
+      >
         <Trash2 className="w-4 h-4" />
       </Button>
     </div>
@@ -114,6 +115,8 @@ export function SetlistBuilder() {
   const [songOrder, setSongOrder] = useState<string[]>([]);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [librarySearch, setLibrarySearch] = useState("");
+  const [setlistSearch, setSetlistSearch] = useState("");
+  const [savedSetlistsSearch, setSavedSetlistsSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [flowSections, setFlowSections] = useState<SetlistFlowSectionInput[]>(
     [],
@@ -141,7 +144,37 @@ export function SetlistBuilder() {
     librarySearch,
   ]);
 
-  const setlistsPagination = usePagination(setlists, [setlists.length]);
+  const filteredSetlistEntries = useMemo(
+    () => {
+      const keyword = setlistSearch.trim().toLowerCase();
+      return songOrder
+        .map((songId, index) => ({ songId, index }))
+        .filter(({ songId }) => {
+          const song = songs.find((entry) => entry.id === songId);
+          if (!song) return false;
+          if (!keyword) return true;
+          return (
+            song.title.toLowerCase().includes(keyword) ||
+            song.artist.toLowerCase().includes(keyword) ||
+            song.tags.some((tag) => tag.toLowerCase().includes(keyword))
+          );
+        });
+    },
+    [songOrder, songs, setlistSearch],
+  );
+
+  const filteredSavedSetlists = useMemo(() => {
+    const keyword = savedSetlistsSearch.trim().toLowerCase();
+    if (!keyword) return setlists;
+    return setlists.filter((setlist) =>
+      setlist.name.toLowerCase().includes(keyword),
+    );
+  }, [setlists, savedSetlistsSearch]);
+
+  const setlistsPagination = usePagination(filteredSavedSetlists, [
+    filteredSavedSetlists.length,
+    savedSetlistsSearch,
+  ]);
 
   const handleMoveSong = (dragIndex: number, hoverIndex: number) => {
     const newOrder = [...songOrder];
@@ -160,13 +193,25 @@ export function SetlistBuilder() {
     }
   };
 
+  const isBuilderActive = isCreatingNew || editingSetlistId !== null;
+
   const resetBuilder = () => {
     setEditingSetlistId(null);
     setNewSetlistName("");
     setSongOrder([]);
     setFlowSections([]);
     setWelcomeSlide(null);
+    setSetlistSearch("");
     setIsCreatingNew(false);
+  };
+
+  const startNewSetlist = () => {
+    setEditingSetlistId(null);
+    setNewSetlistName("");
+    setSongOrder([]);
+    setFlowSections([]);
+    setWelcomeSlide(null);
+    setIsCreatingNew(true);
   };
 
   const handleWelcomeSlideUpload = async (
@@ -297,80 +342,257 @@ export function SetlistBuilder() {
     }
   };
 
+  const songLibraryPanel = (
+    <Card className="xl:sticky xl:top-6">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Song Library</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            className="pl-9 h-9"
+            placeholder="Search songs..."
+            value={librarySearch}
+            onChange={(e) => setLibrarySearch(e.target.value)}
+          />
+        </div>
+        {filteredLibrarySongs.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-8 text-center">
+            No songs in your library yet. Add songs first.
+          </p>
+        ) : (
+          <>
+            <div className="divide-y rounded-lg border max-h-[min(70vh,520px)] overflow-y-auto">
+              {libraryPagination.paginatedItems.map((song) => (
+                <div
+                  key={song.id}
+                  className="flex items-center gap-2 px-3 py-2 hover:bg-accent transition-colors cursor-pointer text-sm"
+                  onClick={() => handleAddSongToSetlist(song.id)}
+                >
+                  <span className="font-medium truncate flex-1">
+                    {song.title}
+                  </span>
+                  <span className="text-muted-foreground truncate max-w-[40%]">
+                    {song.artist}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <ListPagination
+              page={libraryPagination.page}
+              totalPages={libraryPagination.totalPages}
+              totalItems={libraryPagination.totalItems}
+              rangeStart={libraryPagination.rangeStart}
+              rangeEnd={libraryPagination.rangeEnd}
+              pageSize={libraryPagination.pageSize}
+              onPageChange={libraryPagination.setPage}
+              onPageSizeChange={libraryPagination.setPageSize}
+            />
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const setlistEditorPanel = (
+    <div className="space-y-4 xl:sticky xl:top-6">
+      <div className="flex justify-end">
+        <Button
+          size="sm"
+          onClick={() => void handleSaveSetlist()}
+          disabled={!newSetlistName.trim() || isSaving}
+        >
+          <Save className="w-4 h-4 mr-2" />
+          {isSaving ? "Saving..." : editingSetlistId ? "Update" : "Save"}
+        </Button>
+      </div>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="setlist-name">Setlist Name</Label>
+          <Input
+            id="setlist-name"
+            value={newSetlistName}
+            onChange={(e) => setNewSetlistName(e.target.value)}
+            placeholder="Sunday Morning Worship - May 3"
+          />
+        </div>
+
+        <div className="space-y-2 rounded-lg border p-3">
+          <Label>Welcome slide</Label>
+          <p className="text-xs text-muted-foreground">
+            Upload an image or video (max 20 MB) shown when you press Welcome in
+            Live Mode.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={
+                !activeOrganizationId || isUploadingWelcomeSlide || isSaving
+              }
+              asChild
+            >
+              <label className="cursor-pointer">
+                <Upload className="w-4 h-4 mr-2" />
+                {isUploadingWelcomeSlide
+                  ? "Uploading..."
+                  : welcomeSlide
+                    ? "Replace file"
+                    : "Upload file"}
+                <input
+                  type="file"
+                  className="sr-only"
+                  accept={WELCOME_SLIDE_ACCEPT}
+                  onChange={(event) => void handleWelcomeSlideUpload(event)}
+                />
+              </label>
+            </Button>
+            {welcomeSlide ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setWelcomeSlide(null)}
+              >
+                Remove
+              </Button>
+            ) : null}
+          </div>
+          {welcomeSlide?.type === "image" ? (
+            <img
+              src={welcomeSlide.url}
+              alt="Welcome slide preview"
+              className="w-full max-h-40 object-contain rounded border bg-muted/30"
+            />
+          ) : null}
+          {welcomeSlide?.type === "video" ? (
+            <video
+              src={welcomeSlide.url}
+              muted
+              playsInline
+              controls
+              className="w-full max-h-40 object-contain rounded border bg-muted/30"
+            />
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Setlist ({songOrder.length})</Label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              className="pl-9 h-9"
+              placeholder="Search setlist..."
+              value={setlistSearch}
+              onChange={(e) => setSetlistSearch(e.target.value)}
+            />
+          </div>
+          {songOrder.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center rounded-lg border border-dashed">
+              Add songs from the library, then drag to reorder
+            </p>
+          ) : filteredSetlistEntries.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center rounded-lg border">
+              No songs match your search
+            </p>
+          ) : (
+            <div className="divide-y rounded-lg border max-h-[min(70vh,520px)] overflow-y-auto">
+              {filteredSetlistEntries.map(({ songId, index }) => (
+                <DraggableSong
+                  key={`${songId}-${index}`}
+                  songId={songId}
+                  index={index}
+                  onMove={handleMoveSong}
+                  onRemove={handleRemoveSong}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {songOrder.length > 0 && (
+          <div className="space-y-3 pt-2 border-t">
+            <Label>Flow sections</Label>
+            <p className="text-xs text-muted-foreground">
+              Assign songs to service flow blocks (Opening, Worship, etc.)
+            </p>
+            {FLOW_PRESETS.map((preset) => {
+              const section = flowSections.find((s) => s.name === preset);
+              return (
+                <div
+                  key={preset}
+                  className="rounded-lg border p-3 space-y-2"
+                >
+                  <p className="text-sm font-medium">{preset}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {songOrder.map((songId) => {
+                      const song = songs.find((s) => s.id === songId);
+                      if (!song) return null;
+                      const checked =
+                        section?.songIds.includes(songId) ?? false;
+                      return (
+                        <label
+                          key={`${preset}-${songId}`}
+                          className="flex items-center gap-1 text-xs border rounded px-2 py-1 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) =>
+                              toggleFlowSectionSong(
+                                preset,
+                                songId,
+                                e.target.checked,
+                              )
+                            }
+                          />
+                          {song.title}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="p-8 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Setlist Builder</h1>
+            <h1 className="text-3xl font-bold">
+              {isBuilderActive
+                ? editingSetlistId
+                  ? "Edit Setlist"
+                  : "Create Setlist"
+                : "Setlists"}
+            </h1>
             <p className="text-muted-foreground mt-1">
               {setlistsLoading
                 ? "Loading setlists..."
-                : "Create and manage song sequences"}
+                : isBuilderActive
+                  ? editingSetlistId
+                    ? "Update songs, flow sections, and welcome slide"
+                    : "Name your setlist and add songs from the library"
+                  : "Create and manage song sequences for services"}
             </p>
           </div>
-          <Dialog
-            open={isCreatingNew}
-            onOpenChange={(open) => {
-              setIsCreatingNew(open);
-              if (!open && !editingSetlistId) {
-                setNewSetlistName("");
-              }
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button
-                disabled={!activeOrganizationId || isOrgLoading}
-                onClick={() => {
-                  setEditingSetlistId(null);
-                  setSongOrder([]);
-                  setNewSetlistName("");
-                }}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                New Setlist
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Setlist</DialogTitle>
-                <DialogDescription>
-                  Name your setlist, then add songs in the builder panel.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Setlist Name</Label>
-                  <Input
-                    id="name"
-                    value={newSetlistName}
-                    onChange={(e) => setNewSetlistName(e.target.value)}
-                    placeholder="Sunday Morning Worship - May 3"
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  You can add songs now in the builder, or create the setlist
-                  and edit it later.
-                </p>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsCreatingNew(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => void handleSaveSetlist()}
-                    disabled={!newSetlistName.trim() || isSaving}
-                  >
-                    {isSaving ? "Saving..." : "Create Setlist"}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+          {!isBuilderActive && (
+            <Button
+              disabled={!activeOrganizationId || isOrgLoading}
+              onClick={startNewSetlist}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New Setlist
+            </Button>
+          )}
         </div>
 
         {orgLoadError && (
@@ -387,275 +609,116 @@ export function SetlistBuilder() {
           <p className="text-sm text-destructive">{setlistsError}</p>
         )}
 
-        <div className="grid grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Song Library</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="relative mb-2">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  placeholder="Search songs..."
-                  value={librarySearch}
-                  onChange={(e) => setLibrarySearch(e.target.value)}
-                />
-              </div>
-              {filteredLibrarySongs.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-8 text-center">
-                  No songs in your library yet. Add songs first.
-                </p>
-              ) : (
-                <>
-                  <div className="divide-y rounded-lg border max-h-[480px] overflow-y-auto">
-                    {libraryPagination.paginatedItems.map((song) => (
-                      <div
-                        key={song.id}
-                        className="flex items-center gap-2 px-3 py-2 hover:bg-accent transition-colors cursor-pointer text-sm"
-                        onClick={() => handleAddSongToSetlist(song.id)}
-                      >
-                        <span className="font-medium truncate flex-1">
-                          {song.title}
-                        </span>
-                        <span className="text-muted-foreground truncate max-w-[40%]">
-                          {song.artist}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <ListPagination
-                    page={libraryPagination.page}
-                    totalPages={libraryPagination.totalPages}
-                    totalItems={libraryPagination.totalItems}
-                    rangeStart={libraryPagination.rangeStart}
-                    rangeEnd={libraryPagination.rangeEnd}
-                    pageSize={libraryPagination.pageSize}
-                    onPageChange={libraryPagination.setPage}
-                    onPageSizeChange={libraryPagination.setPageSize}
-                  />
-                </>
-              )}
-            </CardContent>
-          </Card>
+        {isBuilderActive ? (
+          <div className="space-y-4">
+            <Button variant="ghost" size="sm" onClick={resetBuilder}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to setlists
+            </Button>
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-6 items-start">
+              {songLibraryPanel}
+              {setlistEditorPanel}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search setlists by name..."
+                value={savedSetlistsSearch}
+                onChange={(e) => setSavedSetlistsSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle>
-                  {editingSetlistId ? "Editing Setlist" : "Current Setlist"}
-                </CardTitle>
-                {(songOrder.length > 0 || editingSetlistId) && (
-                  <Button
-                    size="sm"
-                    onClick={handleSaveSetlist}
-                    disabled={!newSetlistName.trim() || isSaving}
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    {isSaving
-                      ? "Saving..."
-                      : editingSetlistId
-                        ? "Update"
-                        : "Save"}
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="setlist-name">Setlist Name</Label>
-                <Input
-                  id="setlist-name"
-                  value={newSetlistName}
-                  onChange={(e) => setNewSetlistName(e.target.value)}
-                  placeholder="Sunday Morning Worship - May 3"
-                />
-              </div>
-
-              <div className="space-y-2 rounded-lg border p-3">
-                <Label>Welcome slide</Label>
-                <p className="text-xs text-muted-foreground">
-                  Upload an image or video (max 20 MB) shown when you press
-                  Welcome in Live Mode.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={
-                      !activeOrganizationId ||
-                      isUploadingWelcomeSlide ||
-                      isSaving
-                    }
-                    asChild
-                  >
-                    <label className="cursor-pointer">
-                      <Upload className="w-4 h-4 mr-2" />
-                      {isUploadingWelcomeSlide
-                        ? "Uploading..."
-                        : welcomeSlide
-                          ? "Replace file"
-                          : "Upload file"}
-                      <input
-                        type="file"
-                        className="sr-only"
-                        accept={WELCOME_SLIDE_ACCEPT}
-                        onChange={(event) =>
-                          void handleWelcomeSlideUpload(event)
-                        }
-                      />
-                    </label>
-                  </Button>
-                  {welcomeSlide ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setWelcomeSlide(null)}
-                    >
-                      Remove
-                    </Button>
-                  ) : null}
-                </div>
-                {welcomeSlide?.type === "image" ? (
-                  <img
-                    src={welcomeSlide.url}
-                    alt="Welcome slide preview"
-                    className="w-full max-h-40 object-contain rounded border bg-muted/30"
-                  />
-                ) : null}
-                {welcomeSlide?.type === "video" ? (
-                  <video
-                    src={welcomeSlide.url}
-                    muted
-                    playsInline
-                    controls
-                    className="w-full max-h-40 object-contain rounded border bg-muted/30"
-                  />
-                ) : null}
-              </div>
-
-              {songOrder.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <p>Click songs from the library to add them</p>
-                  <p className="text-sm mt-1">Then drag to reorder</p>
-                </div>
-              ) : (
-                songOrder.map((songId, index) => (
-                  <DraggableSong
-                    key={`${songId}-${index}`}
-                    songId={songId}
-                    index={index}
-                    onMove={handleMoveSong}
-                    onRemove={handleRemoveSong}
-                  />
-                ))
-              )}
-
-              {songOrder.length > 0 && (
-                <div className="space-y-3 pt-4 border-t">
-                  <Label>Flow sections</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Assign songs to service flow blocks (Opening, Worship, etc.)
-                  </p>
-                  {FLOW_PRESETS.map((preset) => {
-                    const section = flowSections.find((s) => s.name === preset);
-                    return (
-                      <div
-                        key={preset}
-                        className="rounded-lg border p-3 space-y-2"
-                      >
-                        <p className="text-sm font-medium">{preset}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {songOrder.map((songId) => {
-                            const song = songs.find((s) => s.id === songId);
-                            if (!song) return null;
-                            const checked =
-                              section?.songIds.includes(songId) ?? false;
-                            return (
-                              <label
-                                key={`${preset}-${songId}`}
-                                className="flex items-center gap-1 text-xs border rounded px-2 py-1 cursor-pointer"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={(e) =>
-                                    toggleFlowSectionSong(
-                                      preset,
-                                      songId,
-                                      e.target.checked,
-                                    )
-                                  }
-                                />
-                                {song.title}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {editingSetlistId && (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={resetBuilder}
-                >
-                  Cancel editing
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Saved Setlists</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
             {setlists.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No saved setlists yet.
+              <div className="text-center py-12 text-muted-foreground">
+                <p>No saved setlists yet.</p>
+                <Button
+                  className="mt-4"
+                  variant="outline"
+                  disabled={!activeOrganizationId || isOrgLoading}
+                  onClick={startNewSetlist}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create your first setlist
+                </Button>
+              </div>
+            ) : filteredSavedSetlists.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">
+                No setlists match your search.
               </p>
             ) : (
-              <>
-                {setlistsPagination.paginatedItems.map((setlist) => (
-                  <div
-                    key={setlist.id}
-                    className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-semibold">{setlist.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {setlist.songs.length} songs
-                          {setlist.welcomeSlide ? " · Welcome slide" : ""}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditSetlist(setlist.id)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => void handleDeleteSetlist(setlist.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  {setlistsPagination.paginatedItems.map((setlist) => (
+                    <Card
+                      key={setlist.id}
+                      className="hover:shadow-lg transition-shadow cursor-pointer"
+                      onClick={() => handleEditSetlist(setlist.id)}
+                    >
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-4 flex-1">
+                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                              <ListMusic className="w-6 h-6 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-lg truncate">
+                                {setlist.name}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                {setlist.updatedAt
+                                  ? `Updated ${format(parseISO(setlist.updatedAt), "MMM d, yyyy")}`
+                                  : "—"}
+                              </p>
+                              {setlist.welcomeSlide ? (
+                                <div className="flex gap-2 mt-2 flex-wrap">
+                                  <Badge variant="secondary">
+                                    Welcome slide
+                                  </Badge>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4 shrink-0">
+                            <div className="text-right">
+                              <p className="text-sm text-muted-foreground">
+                                Songs
+                              </p>
+                              <p className="text-2xl font-bold">
+                                {setlist.songs.length}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditSetlist(setlist.id);
+                                }}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleDeleteSetlist(setlist.id);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
                 <ListPagination
                   page={setlistsPagination.page}
                   totalPages={setlistsPagination.totalPages}
@@ -666,10 +729,10 @@ export function SetlistBuilder() {
                   onPageChange={setlistsPagination.setPage}
                   onPageSizeChange={setlistsPagination.setPageSize}
                 />
-              </>
+              </div>
             )}
-          </CardContent>
-        </Card>
+          </>
+        )}
       </div>
     </DndProvider>
   );

@@ -15,6 +15,7 @@ export function setlistToDto(setlist: Setlist) {
     songs: setlist.songs,
     flowSections: setlist.flowSections,
     welcomeSlide: setlist.welcomeSlide,
+    updatedAt: setlist.updatedAt,
   };
 }
 
