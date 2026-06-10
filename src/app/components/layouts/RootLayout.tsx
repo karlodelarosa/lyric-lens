@@ -41,6 +41,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { OfflineBanner } from "../OfflineBanner";
 
 function getInitials(name: string) {
   return name
@@ -126,7 +127,9 @@ export function RootLayout() {
   }, [location.pathname, location.search, navigate]);
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background">
+      <OfflineBanner />
+      <div className="flex flex-1 min-h-0">
       {/* Sidebar */}
       <aside
         className={cn(
@@ -392,6 +395,7 @@ export function RootLayout() {
       <main className="flex-1 overflow-auto">
         <Outlet />
       </main>
+      </div>
     </div>
   );
 }

@@ -16,6 +16,15 @@ import { useAuth } from "./AuthContext";
 
 const ACTIVE_ORG_STORAGE_KEY = "lyric-lens-active-org-id";
 
+function isBrowserOnline() {
+  return typeof navigator === "undefined" ? true : navigator.onLine;
+}
+
+function getSavedOrganizationId() {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(ACTIVE_ORG_STORAGE_KEY);
+}
+
 type OrganizationContextValue = {
   organizations: OrganizationDto[];
   activeOrganization: OrganizationDto | null;
@@ -72,6 +81,17 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     refresh()
       .catch(() => {
+        const savedOrgId = getSavedOrganizationId();
+        if (savedOrgId) {
+          setActiveOrganizationIdState(savedOrgId);
+          setLoadError(
+            isBrowserOnline()
+              ? "Could not refresh organizations. Using your last selected organization."
+              : null,
+          );
+          return;
+        }
+
         setOrganizations([]);
         setActiveOrganizationIdState(null);
         setLoadError(

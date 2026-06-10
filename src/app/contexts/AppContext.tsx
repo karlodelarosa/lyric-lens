@@ -239,6 +239,7 @@ interface LiveState {
   lineHeight: number;
   fontWeight: 400 | 500 | 600 | 700 | 800 | 900;
   manualLyrics: string | null;
+  displayLyrics: string | null;
   useLineChunks: boolean;
   linesPerSlide: number;
   currentChunkIndex: number;
@@ -262,8 +263,12 @@ interface AppContextType {
   serviceFlowsLoading: boolean;
   serviceFlowsError: string | null;
   liveState: LiveState;
+  offlineSetlistIds: string[];
+  isUsingOfflineCache: boolean;
   refreshSongs: () => Promise<void>;
   refreshSetlists: () => Promise<void>;
+  refreshOfflineStatus: () => Promise<void>;
+  downloadSetlistForOffline: (setlistId: string) => Promise<void>;
   refreshSchedules: () => Promise<void>;
   refreshAnnouncements: () => Promise<void>;
   refreshServiceFlows: () => Promise<void>;
@@ -307,6 +312,14 @@ import {
   publishLiveState,
   readLiveStateFromStorage,
 } from "../lib/liveStateSync";
+import {
+  collectSongIdsFromSetlist,
+  getOfflineSetlistIds,
+  getOfflineSetlists,
+  getOfflineSongs,
+  isBrowserOnline,
+  saveSetlistOffline,
+} from "../lib/offlineCache";
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -381,6 +394,7 @@ function getDefaultLiveState(): LiveState {
     lineHeight: 1.5,
     fontWeight: 600,
     manualLyrics: null,
+    displayLyrics: null,
     useLineChunks: true,
     linesPerSlide: 2,
     currentChunkIndex: 0,
@@ -457,6 +471,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   const [liveState, setLiveState] = useState<LiveState>(getDefaultLiveState);
   const [liveStateHydrated, setLiveStateHydrated] = useState(false);
+  const [offlineSetlistIds, setOfflineSetlistIds] = useState<string[]>([]);
+  const [isUsingOfflineCache, setIsUsingOfflineCache] = useState(false);
   const liveStateChannelRef = React.useRef<ReturnType<
     typeof createLiveStateChannel
   > | null>(null);
@@ -470,51 +486,201 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const liveActivityRef = React.useRef(Date.now());
   const skipNextPublishRef = React.useRef(false);
 
+  const loadSongsFromOfflineCache = useCallback(async (orgId: string) => {
+    const cachedSongs = await getOfflineSongs(orgId);
+    setSongs(
+      cachedSongs.map((song) => ({
+        ...song,
+        sections: song.sections.map((section) => ({
+          ...section,
+          type: section.type as SongSectionType,
+        })),
+      })),
+    );
+    setIsUsingOfflineCache(true);
+    setSongsError(
+      cachedSongs.length === 0
+        ? "No offline songs available. Download a setlist while online."
+        : null,
+    );
+  }, []);
+
+  const loadSetlistsFromOfflineCache = useCallback(async (orgId: string) => {
+    const cachedSetlists = await getOfflineSetlists(orgId);
+    setSetlists(sortSetlistsByUpdatedAt(cachedSetlists));
+    setIsUsingOfflineCache(true);
+    setSetlistsError(
+      cachedSetlists.length === 0
+        ? "No offline setlists available. Download a setlist while online."
+        : null,
+    );
+  }, []);
+
+  const syncOfflineSetlistsFromState = useCallback(
+    async (orgId: string, nextSetlists: Setlist[], nextSongs: Song[]) => {
+      const offlineIds = await getOfflineSetlistIds(orgId);
+      if (offlineIds.length === 0) return;
+
+      const songsById = new Map(nextSongs.map((song) => [song.id, song]));
+
+      for (const setlistId of offlineIds) {
+        const setlist = nextSetlists.find((entry) => entry.id === setlistId);
+        if (!setlist) continue;
+
+        const requiredSongIds = collectSongIdsFromSetlist(setlist);
+        const setlistSongs = requiredSongIds
+          .map((songId) => songsById.get(songId))
+          .filter((song): song is Song => Boolean(song));
+
+        if (setlistSongs.length !== requiredSongIds.length) continue;
+
+        await saveSetlistOffline(orgId, setlist, setlistSongs);
+      }
+    },
+    [],
+  );
+
+  const refreshOfflineStatus = useCallback(async () => {
+    if (!activeOrganizationId) {
+      setOfflineSetlistIds([]);
+      return;
+    }
+
+    const ids = await getOfflineSetlistIds(activeOrganizationId);
+    setOfflineSetlistIds(ids);
+  }, [activeOrganizationId]);
+
   const refreshSongs = useCallback(async () => {
     if (!activeOrganizationId) {
       setSongs([]);
       setSongsError(null);
+      setIsUsingOfflineCache(false);
       return;
     }
 
     setSongsLoading(true);
     setSongsError(null);
 
+    if (!isBrowserOnline()) {
+      try {
+        await loadSongsFromOfflineCache(activeOrganizationId);
+      } catch (error) {
+        setSongs([]);
+        setSongsError(
+          error instanceof Error ? error.message : "Failed to load offline songs",
+        );
+      } finally {
+        setSongsLoading(false);
+      }
+      return;
+    }
+
     try {
       const { songs: loaded } = await getSongs(activeOrganizationId);
-      setSongs(loaded.map(mapSongDto));
+      const mappedSongs = loaded.map(mapSongDto);
+      setSongs(mappedSongs);
+      setIsUsingOfflineCache(false);
+      setSongsError(null);
     } catch (error) {
-      setSongs([]);
-      setSongsError(
-        error instanceof Error ? error.message : "Failed to load songs",
-      );
+      try {
+        await loadSongsFromOfflineCache(activeOrganizationId);
+      } catch {
+        setSongs([]);
+        setSongsError(
+          error instanceof Error ? error.message : "Failed to load songs",
+        );
+      }
     } finally {
       setSongsLoading(false);
     }
-  }, [activeOrganizationId]);
+  }, [activeOrganizationId, loadSongsFromOfflineCache]);
 
   const refreshSetlists = useCallback(async () => {
     if (!activeOrganizationId) {
       setSetlists([]);
       setSetlistsError(null);
+      setIsUsingOfflineCache(false);
       return;
     }
 
     setSetlistsLoading(true);
     setSetlistsError(null);
 
+    if (!isBrowserOnline()) {
+      try {
+        await loadSetlistsFromOfflineCache(activeOrganizationId);
+      } catch (error) {
+        setSetlists([]);
+        setSetlistsError(
+          error instanceof Error
+            ? error.message
+            : "Failed to load offline setlists",
+        );
+      } finally {
+        setSetlistsLoading(false);
+      }
+      return;
+    }
+
     try {
       const { setlists: loaded } = await getSetlists(activeOrganizationId);
-      setSetlists(sortSetlistsByUpdatedAt(loaded.map(mapSetlistDto)));
-    } catch (error) {
-      setSetlists([]);
-      setSetlistsError(
-        error instanceof Error ? error.message : "Failed to load setlists",
+      const mappedSetlists = sortSetlistsByUpdatedAt(loaded.map(mapSetlistDto));
+      setSetlists(mappedSetlists);
+      setIsUsingOfflineCache(false);
+      setSetlistsError(null);
+
+      const { songs: loadedSongs } = await getSongs(activeOrganizationId);
+      const mappedSongs = loadedSongs.map(mapSongDto);
+      await syncOfflineSetlistsFromState(
+        activeOrganizationId,
+        mappedSetlists,
+        mappedSongs,
       );
+      await refreshOfflineStatus();
+    } catch (error) {
+      try {
+        await loadSetlistsFromOfflineCache(activeOrganizationId);
+      } catch {
+        setSetlists([]);
+        setSetlistsError(
+          error instanceof Error ? error.message : "Failed to load setlists",
+        );
+      }
     } finally {
       setSetlistsLoading(false);
     }
-  }, [activeOrganizationId]);
+  }, [
+    activeOrganizationId,
+    loadSetlistsFromOfflineCache,
+    refreshOfflineStatus,
+    syncOfflineSetlistsFromState,
+  ]);
+
+  const downloadSetlistForOffline = useCallback(
+    async (setlistId: string) => {
+      if (!activeOrganizationId) {
+        throw new Error("Select an organization first");
+      }
+
+      const setlist = setlists.find((entry) => entry.id === setlistId);
+      if (!setlist) {
+        throw new Error("Setlist not found. Load setlists while online first.");
+      }
+
+      const requiredSongIds = collectSongIdsFromSetlist(setlist);
+      const setlistSongs = requiredSongIds
+        .map((songId) => songs.find((entry) => entry.id === songId))
+        .filter((song): song is Song => Boolean(song));
+
+      if (setlistSongs.length !== requiredSongIds.length) {
+        throw new Error("Load songs while online first");
+      }
+
+      await saveSetlistOffline(activeOrganizationId, setlist, setlistSongs);
+      await refreshOfflineStatus();
+    },
+    [activeOrganizationId, refreshOfflineStatus, setlists, songs],
+  );
 
   const refreshSchedules = useCallback(async () => {
     if (!activeOrganizationId) {
@@ -594,6 +760,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refreshSchedules();
     refreshAnnouncements();
     refreshServiceFlows();
+    void refreshOfflineStatus();
   }, [
     isOrgLoading,
     refreshSongs,
@@ -601,7 +768,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refreshSchedules,
     refreshAnnouncements,
     refreshServiceFlows,
+    refreshOfflineStatus,
   ]);
+
+  React.useEffect(() => {
+    const handleConnectivityChange = () => {
+      if (!activeOrganizationId) return;
+      void refreshSongs();
+      void refreshSetlists();
+      void refreshOfflineStatus();
+    };
+
+    window.addEventListener("online", handleConnectivityChange);
+    window.addEventListener("offline", handleConnectivityChange);
+
+    return () => {
+      window.removeEventListener("online", handleConnectivityChange);
+      window.removeEventListener("offline", handleConnectivityChange);
+    };
+  }, [activeOrganizationId, refreshOfflineStatus, refreshSetlists, refreshSongs]);
 
   React.useEffect(() => {
     const saved = readLiveStateFromStorage();
@@ -1131,8 +1316,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         serviceFlowsLoading,
         serviceFlowsError,
         liveState,
+        offlineSetlistIds,
+        isUsingOfflineCache,
         refreshSongs,
         refreshSetlists,
+        refreshOfflineStatus,
+        downloadSetlistForOffline,
         refreshSchedules,
         refreshAnnouncements,
         refreshServiceFlows,

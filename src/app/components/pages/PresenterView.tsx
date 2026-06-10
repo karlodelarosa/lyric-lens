@@ -47,7 +47,8 @@ export function PresenterView() {
       ? currentSectionChunks[currentChunkIndex]
       : currentSection.lyrics
     : undefined;
-  const liveLyrics = liveState.manualLyrics ?? sectionLyrics;
+  const liveLyrics =
+    liveState.manualLyrics ?? liveState.displayLyrics ?? sectionLyrics;
 
   const syncFullscreenState = useCallback(() => {
     setIsFullscreen(Boolean(getFullscreenElement()));
@@ -136,7 +137,9 @@ export function PresenterView() {
           : liveState.slideMode === "cue"
             ? Boolean(liveState.currentCueLabel)
             : liveState.slideMode === "lyrics" &&
-              (liveState.manualLyrics != null || currentSection);
+              (liveState.manualLyrics != null ||
+                liveState.displayLyrics != null ||
+                currentSection);
 
   const slideContent = hasSlideContent ? (
     <LiveSlideContent
@@ -151,7 +154,9 @@ export function PresenterView() {
       cueNotes={liveState.currentCueNotes}
       lyrics={
         liveState.slideMode === "lyrics" &&
-        (liveState.manualLyrics != null || currentSection)
+        (liveState.manualLyrics != null ||
+          liveState.displayLyrics != null ||
+          currentSection)
           ? (liveLyrics ?? "")
           : undefined
       }

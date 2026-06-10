@@ -16,6 +16,8 @@ import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import {
   ArrowLeft,
+  Check,
+  Download,
   Edit,
   GripVertical,
   ListMusic,
@@ -25,6 +27,13 @@ import {
   Search,
   Upload,
 } from "lucide-react";
+import { OfflineSetlistBadge } from "../OfflineSetlistBadge";
+import { useOnlineStatus } from "../../lib/useOnlineStatus";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "../ui/tooltip";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -32,6 +41,7 @@ import { Badge } from "../ui/badge";
 import { Label } from "../ui/label";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
+import { cn } from "../../lib/utils";
 
 interface DraggableSongProps {
   songId: string;
@@ -106,10 +116,13 @@ export function SetlistBuilder() {
     setlists,
     setlistsLoading,
     setlistsError,
+    offlineSetlistIds,
     addSetlist,
     updateSetlist,
     deleteSetlist,
+    downloadSetlistForOffline,
   } = useApp();
+  const isOnline = useOnlineStatus();
   const [editingSetlistId, setEditingSetlistId] = useState<string | null>(null);
   const [newSetlistName, setNewSetlistName] = useState("");
   const [songOrder, setSongOrder] = useState<string[]>([]);
@@ -339,6 +352,80 @@ export function SetlistBuilder() {
     }
   };
 
+  const handleDownloadSetlistForOffline = async (setlistId: string) => {
+    const isOfflineCached = offlineSetlistIds.includes(setlistId);
+    if (!isOnline && !isOfflineCached) {
+      toast.error("Go online to download this setlist for offline use");
+      return;
+    }
+
+    try {
+      await downloadSetlistForOffline(setlistId);
+      toast.success(
+        isOfflineCached
+          ? "Offline cache refreshed"
+          : "Setlist downloaded for offline use",
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to download setlist for offline use",
+      );
+    }
+  };
+
+  const renderDownloadButton = (setlistId: string, size: "icon" | "sm" = "icon") => {
+    const isOfflineCached = offlineSetlistIds.includes(setlistId);
+    const isDisabled = !isOnline && !isOfflineCached;
+    const tooltip = isOfflineCached
+      ? "Downloaded for offline"
+      : "Download for offline";
+
+    const button = (
+      <Button
+        variant={isOfflineCached ? "default" : "ghost"}
+        size={size}
+        className={
+          isOfflineCached
+            ? size === "icon"
+              ? "h-9 w-9 bg-emerald-600 hover:bg-emerald-700 text-white"
+              : "bg-emerald-600 hover:bg-emerald-700 text-white"
+            : size === "icon"
+              ? "h-9 w-9"
+              : undefined
+        }
+        disabled={isDisabled}
+        onClick={(event) => {
+          event.stopPropagation();
+          void handleDownloadSetlistForOffline(setlistId);
+        }}
+      >
+        {isOfflineCached ? (
+          <Check className="w-4 h-4" />
+        ) : (
+          <Download className="w-4 h-4" />
+        )}
+        {size === "sm" ? (
+          <span className="ml-2">
+            {isOfflineCached ? "Downloaded" : "Download for offline"}
+          </span>
+        ) : null}
+      </Button>
+    );
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className={isDisabled ? "inline-flex" : undefined}>
+            {button}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{tooltip}</TooltipContent>
+      </Tooltip>
+    );
+  };
+
   const songLibraryPanel = (
     <Card className="xl:sticky xl:top-6">
       <CardHeader className="pb-3">
@@ -394,15 +481,26 @@ export function SetlistBuilder() {
 
   const setlistEditorPanel = (
     <div className="space-y-4 xl:sticky xl:top-6">
-      <div className="flex justify-end">
-        <Button
-          size="sm"
-          onClick={() => void handleSaveSetlist()}
-          disabled={!newSetlistName.trim() || isSaving}
-        >
-          <Save className="w-4 h-4 mr-2" />
-          {isSaving ? "Saving..." : editingSetlistId ? "Update" : "Save"}
-        </Button>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          {editingSetlistId &&
+          offlineSetlistIds.includes(editingSetlistId) ? (
+            <OfflineSetlistBadge />
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {editingSetlistId
+            ? renderDownloadButton(editingSetlistId, "sm")
+            : null}
+          <Button
+            size="sm"
+            onClick={() => void handleSaveSetlist()}
+            disabled={!newSetlistName.trim() || isSaving}
+          >
+            <Save className="w-4 h-4 mr-2" />
+            {isSaving ? "Saving..." : editingSetlistId ? "Update" : "Save"}
+          </Button>
+        </div>
       </div>
       <div className="space-y-4">
         <div className="space-y-2">
@@ -646,72 +744,101 @@ export function SetlistBuilder() {
             ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-4">
-                  {setlistsPagination.paginatedItems.map((setlist) => (
-                    <Card
-                      key={setlist.id}
-                      className="hover:shadow-lg transition-shadow cursor-pointer"
-                      onClick={() => handleEditSetlist(setlist.id)}
-                    >
-                      <CardContent className="p-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-4 flex-1">
-                            <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-                              <ListMusic className="w-6 h-6 text-primary-foreground" />
+                  {setlistsPagination.paginatedItems.map((setlist) => {
+                    const isOfflineCached = offlineSetlistIds.includes(
+                      setlist.id,
+                    );
+
+                    return (
+                      <Card
+                        key={setlist.id}
+                        className={cn(
+                          "hover:shadow-lg transition-shadow cursor-pointer",
+                          isOfflineCached && "border-l-4 border-l-emerald-500",
+                        )}
+                        onClick={() => handleEditSetlist(setlist.id)}
+                      >
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-4 flex-1">
+                              <div
+                                className={cn(
+                                  "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
+                                  isOfflineCached
+                                    ? "bg-emerald-600"
+                                    : "bg-primary",
+                                )}
+                              >
+                                <ListMusic
+                                  className={cn(
+                                    "w-6 h-6",
+                                    isOfflineCached
+                                      ? "text-white"
+                                      : "text-primary-foreground",
+                                  )}
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-lg truncate">
+                                  {setlist.name}
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                  {setlist.updatedAt
+                                    ? `Updated ${format(parseISO(setlist.updatedAt), "MMM d, yyyy")}`
+                                    : "—"}
+                                </p>
+                                {setlist.welcomeSlide || isOfflineCached ? (
+                                  <div className="flex gap-2 mt-2 flex-wrap">
+                                    {isOfflineCached ? (
+                                      <OfflineSetlistBadge />
+                                    ) : null}
+                                    {setlist.welcomeSlide ? (
+                                      <Badge variant="secondary">
+                                        Welcome slide
+                                      </Badge>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                              </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-lg truncate">
-                                {setlist.name}
-                              </h3>
-                              <p className="text-sm text-muted-foreground">
-                                {setlist.updatedAt
-                                  ? `Updated ${format(parseISO(setlist.updatedAt), "MMM d, yyyy")}`
-                                  : "—"}
-                              </p>
-                              {setlist.welcomeSlide ? (
-                                <div className="flex gap-2 mt-2 flex-wrap">
-                                  <Badge variant="secondary">
-                                    Welcome slide
-                                  </Badge>
-                                </div>
-                              ) : null}
+                            <div className="flex items-center gap-4 shrink-0">
+                              <div className="text-right">
+                                <p className="text-sm text-muted-foreground">
+                                  Songs
+                                </p>
+                                <p className="text-2xl font-bold">
+                                  {setlist.songs.length}
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                {renderDownloadButton(setlist.id)}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditSetlist(setlist.id);
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleDeleteSetlist(setlist.id);
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-4 shrink-0">
-                            <div className="text-right">
-                              <p className="text-sm text-muted-foreground">
-                                Songs
-                              </p>
-                              <p className="text-2xl font-bold">
-                                {setlist.songs.length}
-                              </p>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditSetlist(setlist.id);
-                                }}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void handleDeleteSetlist(setlist.id);
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
                 <ListPagination
                   page={setlistsPagination.page}

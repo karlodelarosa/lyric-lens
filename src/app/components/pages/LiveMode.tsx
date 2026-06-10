@@ -54,6 +54,7 @@ import {
   requestPresenterFullscreen,
 } from "../../lib/presenterWindow";
 import { toast } from "sonner";
+import { useOnlineStatus } from "../../lib/useOnlineStatus";
 
 const fontOptions = [
   "Inter",
@@ -122,6 +123,7 @@ export function LiveMode() {
   const {
     songs,
     setlists,
+    offlineSetlistIds,
     liveState,
     updateLiveState,
     setCurrentSlide,
@@ -130,6 +132,7 @@ export function LiveMode() {
     showWelcomeSlide,
     clearScreen,
   } = useApp();
+  const isOnline = useOnlineStatus();
   const announcementSlides = liveState.currentAnnouncementSlides ?? [];
   const [manualLyricsInput, setManualLyricsInput] = useState("");
   const serviceFlowIdFromUrl = searchParams.get("serviceFlowId");
@@ -188,6 +191,21 @@ export function LiveMode() {
       : currentSection.lyrics
     : undefined;
   const liveLyrics = liveState.manualLyrics ?? sectionLyrics;
+
+  useEffect(() => {
+    if (liveState.slideMode !== "lyrics") return;
+
+    const nextDisplayLyrics = liveLyrics ?? null;
+    if (liveState.displayLyrics === nextDisplayLyrics) return;
+
+    updateLiveState({ displayLyrics: nextDisplayLyrics });
+  }, [
+    liveLyrics,
+    liveState.displayLyrics,
+    liveState.slideMode,
+    updateLiveState,
+  ]);
+
   const activeSegment =
     activeServiceFlow?.segments.find(
       (segment) => segment.id === liveState.currentSegmentId,
@@ -665,21 +683,33 @@ export function LiveMode() {
                 )}
               </div>
             ) : (
-              <Select
-                value={selectedSetlistId || ""}
-                onValueChange={setSelectedSetlistId}
-              >
-                <SelectTrigger className="w-64">
-                  <SelectValue placeholder="Select a setlist" />
-                </SelectTrigger>
-                <SelectContent>
-                  {setlists.map((setlist) => (
-                    <SelectItem key={setlist.id} value={setlist.id}>
-                      {setlist.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-1">
+                <Select
+                  value={selectedSetlistId || ""}
+                  onValueChange={setSelectedSetlistId}
+                >
+                  <SelectTrigger className="w-64">
+                    <SelectValue placeholder="Select a setlist" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {setlists.map((setlist) => (
+                      <SelectItem key={setlist.id} value={setlist.id}>
+                        {setlist.name}
+                        {!isOnline && offlineSetlistIds.includes(setlist.id)
+                          ? " (offline)"
+                          : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!isOnline &&
+                selectedSetlistId &&
+                !offlineSetlistIds.includes(selectedSetlistId) ? (
+                  <p className="text-xs text-destructive">
+                    Not available offline — download from Setlists
+                  </p>
+                ) : null}
+              </div>
             )}
           </div>
           <div className="flex items-center gap-2">
