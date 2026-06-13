@@ -232,6 +232,7 @@ interface LiveState {
     type: "color" | "gradient" | "image";
     value: string;
   };
+  textColor: string;
   backgroundVideoUrl: string | null;
   alignment: "left" | "center" | "right";
   verticalPosition: "top" | "center" | "bottom";
@@ -387,6 +388,7 @@ function getDefaultLiveState(): LiveState {
       type: "gradient",
       value: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
     },
+    textColor: "#ffffff",
     backgroundVideoUrl: null,
     alignment: "center",
     verticalPosition: "center",

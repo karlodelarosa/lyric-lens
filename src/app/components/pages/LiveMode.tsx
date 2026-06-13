@@ -55,6 +55,10 @@ import {
 } from "../../lib/presenterWindow";
 import { toast } from "sonner";
 import { useOnlineStatus } from "../../lib/useOnlineStatus";
+import {
+  getContrastingTextColor,
+  getLiveTextShadow,
+} from "../../lib/liveDisplayUtils";
 
 const fontOptions = [
   "Inter",
@@ -81,24 +85,29 @@ const backgroundPresets = [
     name: "Purple Gradient",
     type: "gradient",
     value: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    textColor: "#ffffff",
   },
   {
     name: "Blue Gradient",
     type: "gradient",
     value: "linear-gradient(135deg, #0093E9 0%, #80D0C7 100%)",
+    textColor: "#ffffff",
   },
   {
     name: "Sunset",
     type: "gradient",
     value: "linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 50%, #2BFF88 100%)",
+    textColor: "#ffffff",
   },
   {
     name: "Ocean",
     type: "gradient",
     value: "linear-gradient(135deg, #4158D0 0%, #C850C0 46%, #FFCC70 100%)",
+    textColor: "#ffffff",
   },
-  { name: "Dark", type: "color", value: "#1a1a1a" },
-  { name: "Black", type: "color", value: "#000000" },
+  { name: "White", type: "color", value: "#ffffff", textColor: "#000000" },
+  { name: "Dark", type: "color", value: "#1a1a1a", textColor: "#ffffff" },
+  { name: "Black", type: "color", value: "#000000", textColor: "#ffffff" },
 ];
 
 const getLyricChunks = (lyrics: string, linesPerSlide: number) => {
@@ -491,6 +500,7 @@ export function LiveMode() {
   const applyCustomColor = () => {
     updateLiveState({
       background: { type: "color", value: customColorInput },
+      textColor: getContrastingTextColor(customColorInput),
     });
   };
 
@@ -1038,9 +1048,10 @@ export function LiveMode() {
                                                   liveState.textTransform,
                                                 fontWeight:
                                                   liveState.fontWeight,
-                                                color: "white",
-                                                textShadow:
-                                                  "0 2px 8px rgba(0,0,0,0.5)",
+                                                color: liveState.textColor,
+                                                textShadow: getLiveTextShadow(
+                                                  liveState.textColor,
+                                                ),
                                                 whiteSpace: "pre-wrap",
                                               }}
                                             >
@@ -1120,8 +1131,8 @@ export function LiveMode() {
                                 : undefined,
                             textTransform: liveState.textTransform,
                             fontWeight: liveState.fontWeight,
-                            color: "white",
-                            textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+                            color: liveState.textColor,
+                            textShadow: getLiveTextShadow(liveState.textColor),
                             whiteSpace: "pre-wrap",
                           }}
                         />
@@ -1129,7 +1140,10 @@ export function LiveMode() {
                         {liveState.slideMode === "announcement" &&
                         announcementSlides.length === 0 &&
                         !liveState.currentAnnouncementBody ? (
-                          <div className="text-white/50 text-center relative z-[1]">
+                          <div
+                            className="text-center relative z-[1]"
+                            style={{ color: liveState.textColor, opacity: 0.5 }}
+                          >
                             <p className="text-xl">No announcement content</p>
                           </div>
                         ) : liveState.slideMode !== "blank" &&
@@ -1139,7 +1153,10 @@ export function LiveMode() {
                           !(
                             liveState.manualLyrics != null || currentSection
                           ) ? (
-                          <div className="text-white/50 text-center relative z-[1]">
+                          <div
+                            className="text-center relative z-[1]"
+                            style={{ color: liveState.textColor, opacity: 0.5 }}
+                          >
                             <Monitor className="w-16 h-16 mx-auto mb-4 opacity-50" />
                             <p className="text-xl">
                               {activeServiceFlow
@@ -1149,7 +1166,10 @@ export function LiveMode() {
                           </div>
                         ) : liveState.slideMode === "welcome" &&
                           !liveState.welcomeSlideUrl ? (
-                          <div className="text-white/50 text-center relative z-[1]">
+                          <div
+                            className="text-center relative z-[1]"
+                            style={{ color: liveState.textColor, opacity: 0.5 }}
+                          >
                             <p className="text-xl">
                               No welcome slide configured for this setlist
                             </p>
@@ -1631,9 +1651,10 @@ export function LiveMode() {
                   onClick={() =>
                     updateLiveState({
                       background: {
-                        type: preset.type as any,
+                        type: preset.type as "color" | "gradient",
                         value: preset.value,
                       },
+                      textColor: preset.textColor,
                     })
                   }
                   className={cn(
@@ -1641,8 +1662,10 @@ export function LiveMode() {
                     liveState.background.value === preset.value
                       ? "border-primary ring-2 ring-primary/50"
                       : "border-border hover:border-primary/50",
+                    preset.value === "#ffffff" && "border-border",
                   )}
                   style={{ background: preset.value }}
+                  title={preset.name}
                 >
                   <span className="sr-only">{preset.name}</span>
                 </button>

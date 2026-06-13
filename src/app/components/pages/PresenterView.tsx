@@ -9,6 +9,7 @@ import {
   requestElementFullscreen,
   subscribePresenterChannel,
 } from "../../lib/presenterWindow";
+import { getLiveTextShadow } from "../../lib/liveDisplayUtils";
 
 const getLyricChunks = (lyrics: string, linesPerSlide: number) => {
   const safeLinesPerSlide = Math.max(1, Math.floor(linesPerSlide));
@@ -119,8 +120,8 @@ export function PresenterView() {
         : undefined,
     textTransform: liveState.textTransform,
     fontWeight: liveState.fontWeight,
-    color: "white",
-    textShadow: "0 4px 12px rgba(0,0,0,0.8)",
+    color: liveState.textColor,
+    textShadow: getLiveTextShadow(liveState.textColor),
     whiteSpace: "pre-wrap" as const,
   };
 
@@ -233,7 +234,10 @@ export function PresenterView() {
       {slideContent}
 
       {showWaiting && (
-        <div className="text-white/30 text-4xl text-center relative z-[1]">
+        <div
+          className="text-4xl text-center relative z-[1]"
+          style={{ color: liveState.textColor, opacity: 0.3 }}
+        >
           <p>Waiting for content...</p>
         </div>
       )}

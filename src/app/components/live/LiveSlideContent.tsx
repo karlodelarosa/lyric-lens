@@ -88,14 +88,21 @@ export function LiveSlideContent({
 
     return (
       <div
-        className={`max-w-4xl relative z-[1] text-white ${compact ? "px-6 py-4" : "px-12 py-8"}`}
+        className={`max-w-4xl relative z-[1] ${compact ? "px-6 py-4" : "px-12 py-8"}`}
         style={{
           fontFamily: textStyle.fontFamily,
           textAlign: textStyle.textAlign,
+          color: textStyle.color,
         }}
       >
         {announcementTitle && (
-          <h2 className="font-bold mb-4" style={{ fontSize: `${fontSize}px` }}>
+          <h2
+            className="font-bold mb-4"
+            style={{
+              fontSize: `${fontSize}px`,
+              textShadow: textStyle.textShadow,
+            }}
+          >
             {announcementTitle}
           </h2>
         )}
@@ -104,6 +111,8 @@ export function LiveSlideContent({
           style={{
             fontSize: `${Math.max(20, fontSize * 0.65)}px`,
             lineHeight: textStyle.lineHeight,
+            textShadow: textStyle.textShadow,
+            opacity: 0.9,
           }}
         >
           {announcementBody}
@@ -114,12 +123,24 @@ export function LiveSlideContent({
 
   if (slideMode === "cue") {
     return (
-      <div className="max-w-3xl relative z-[1] text-white text-center px-8">
-        <p className="font-semibold" style={{ fontSize: `${fontSize}px` }}>
+      <div
+        className="max-w-3xl relative z-[1] text-center px-8"
+        style={{ color: textStyle.color }}
+      >
+        <p
+          className="font-semibold"
+          style={{
+            fontSize: `${fontSize}px`,
+            textShadow: textStyle.textShadow,
+          }}
+        >
           {cueLabel}
         </p>
         {cueNotes && (
-          <p className="mt-4 text-white/80 whitespace-pre-wrap text-lg">
+          <p
+            className="mt-4 whitespace-pre-wrap text-lg"
+            style={{ opacity: 0.8, textShadow: textStyle.textShadow }}
+          >
             {cueNotes}
           </p>
         )}
