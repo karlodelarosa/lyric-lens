@@ -88,7 +88,7 @@ export function LiveSlideContent({
 
     return (
       <div
-        className={`max-w-4xl relative z-[1] ${compact ? "px-6 py-4" : "px-12 py-8"}`}
+        className={`max-w-max relative z-[1] ${compact ? "px-6 py-4" : "px-12 py-8"}`}
         style={{
           fontFamily: textStyle.fontFamily,
           textAlign: textStyle.textAlign,
@@ -151,7 +151,7 @@ export function LiveSlideContent({
   if (slideMode === "lyrics" && lyrics != null) {
     return (
       <div
-        className={`max-w-4xl relative z-[1] ${compact ? "px-6 py-4" : "px-12 py-8"}`}
+        className={`max-w-max relative z-[1] ${compact ? "px-6 py-4" : "px-12 py-8"}`}
         style={textStyle}
       >
         {lyrics}
