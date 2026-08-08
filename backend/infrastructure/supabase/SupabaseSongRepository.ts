@@ -12,12 +12,14 @@ const SONG_LIST_SELECT = `
   id,
   title,
   artist,
+  background_video_url,
   song_sections (
     id,
     section_type,
     section_number,
     content,
-    position
+    position,
+    intensity
   ),
   song_tag_links (
     song_tags (
@@ -90,6 +92,7 @@ export class SupabaseSongRepository implements SongRepository {
         title: input.title.trim(),
         artist: input.artist.trim() || null,
         created_by: createdBy,
+        background_video_url: input.backgroundVideoUrl?.trim() || null,
       })
       .select("id")
       .single();
@@ -106,6 +109,7 @@ export class SupabaseSongRepository implements SongRepository {
       section_number: section.number ?? null,
       content: section.lyrics.trim(),
       position: index,
+      intensity: section.intensity ?? null,
     }));
 
     const { error: sectionsError } = await this.client
@@ -170,6 +174,7 @@ export class SupabaseSongRepository implements SongRepository {
       .update({
         title: input.title.trim(),
         artist: input.artist.trim() || null,
+        background_video_url: input.backgroundVideoUrl?.trim() || null,
       })
       .eq("id", songId)
       .eq("organization_id", organizationId);
@@ -193,6 +198,7 @@ export class SupabaseSongRepository implements SongRepository {
       section_number: section.number ?? null,
       content: section.lyrics.trim(),
       position: index,
+      intensity: section.intensity ?? null,
     }));
 
     const { error: sectionsError } = await this.client

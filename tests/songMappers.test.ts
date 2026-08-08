@@ -17,7 +17,15 @@ describe("songMappers", () => {
       title: "Amazing Grace",
       artist: "Traditional",
       tags: ["hymn"],
-      sections: [{ type: "verse", number: 1, lyrics: "Amazing grace" }],
+      sections: [
+        {
+          type: "verse",
+          number: 1,
+          lyrics: "Amazing grace",
+          intensity: null,
+        },
+      ],
+      backgroundVideoUrl: null,
     });
   });
 

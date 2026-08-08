@@ -8,6 +8,7 @@ export interface OfflineSongSection {
   type: string;
   number?: number;
   lyrics: string;
+  intensity?: number | null;
 }
 
 export interface OfflineSong {
@@ -17,6 +18,7 @@ export interface OfflineSong {
   sections: OfflineSongSection[];
   tags: string[];
   usageCount: number;
+  backgroundVideoUrl: string | null;
 }
 
 export interface OfflineSetlist {

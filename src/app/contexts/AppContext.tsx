@@ -60,6 +60,7 @@ interface SongSection {
   type: SongSectionType;
   number?: number;
   lyrics: string;
+  intensity?: number | null;
 }
 
 interface Song {
@@ -69,6 +70,7 @@ interface Song {
   sections: SongSection[];
   tags: string[];
   usageCount: number;
+  backgroundVideoUrl: string | null;
 }
 
 export type NewSongInput = {
@@ -79,7 +81,9 @@ export type NewSongInput = {
     type: SongSectionType;
     number?: number;
     lyrics: string;
+    intensity?: number | null;
   }[];
+  backgroundVideoUrl?: string | null;
 };
 
 interface Setlist {
@@ -411,11 +415,13 @@ function mapSongDto(dto: SongDto): Song {
     artist: dto.artist,
     tags: dto.tags,
     usageCount: dto.usageCount,
+    backgroundVideoUrl: dto.backgroundVideoUrl ?? null,
     sections: dto.sections.map((section) => ({
       id: section.id,
       type: section.type as SongSectionType,
       number: section.number,
       lyrics: section.lyrics,
+      intensity: section.intensity ?? null,
     })),
   };
 }
@@ -910,7 +916,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         type: section.type,
         number: section.number,
         lyrics: section.lyrics,
+        intensity: section.intensity ?? null,
       })),
+      backgroundVideoUrl: song.backgroundVideoUrl ?? null,
     });
 
     setSongs((prev) => [...prev, mapSongDto(created)]);
@@ -929,7 +937,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         type: section.type,
         number: section.number,
         lyrics: section.lyrics,
+        intensity: section.intensity ?? null,
       })),
+      backgroundVideoUrl: song.backgroundVideoUrl ?? null,
     });
 
     setSongs((prev) =>

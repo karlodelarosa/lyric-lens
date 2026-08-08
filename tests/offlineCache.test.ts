@@ -25,6 +25,7 @@ const sampleSongs: OfflineSong[] = [
     sections: [{ id: "sec-a", type: "verse", lyrics: "Line one" }],
     tags: [],
     usageCount: 1,
+    backgroundVideoUrl: null,
   },
   {
     id: "song-b",
@@ -33,6 +34,7 @@ const sampleSongs: OfflineSong[] = [
     sections: [{ id: "sec-b", type: "chorus", lyrics: "Chorus" }],
     tags: [],
     usageCount: 2,
+    backgroundVideoUrl: null,
   },
 ];
 

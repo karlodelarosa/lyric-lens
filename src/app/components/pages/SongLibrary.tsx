@@ -11,9 +11,20 @@ import {
   LayoutGrid,
   List,
   Table2,
+  Video,
+  X,
 } from "lucide-react";
 import { usePagination } from "../../lib/usePagination";
 import { ListPagination } from "../ListPagination";
+import {
+  SONG_BACKGROUND_VIDEO_ACCEPT,
+  SONG_BACKGROUND_VIDEO_MAX_BYTES,
+  uploadSongBackgroundVideo,
+} from "@frontend/lib/api/songs";
+import {
+  DEFAULT_SECTION_INTENSITY,
+  getSectionIntensity,
+} from "../../lib/sectionIntensity";
 import {
   Table,
   TableBody,
@@ -56,16 +67,321 @@ const SECTION_TYPES: { value: SongSectionType; label: string }[] = [
   { value: "custom", label: "Custom" },
 ];
 
-function createEmptySection(
-  id: string,
-  number = "1",
-): {
+const INTENSITY_PRESETS = [
+  { value: "auto", label: "Auto" },
+  { value: "25", label: "Dim" },
+  { value: "50", label: "Medium" },
+  { value: "80", label: "Bright" },
+  { value: "100", label: "Peak" },
+] as const;
+
+type SectionFormState = {
   id: string;
   type: SongSectionType;
   number: string;
   lyrics: string;
-} {
-  return { id, type: "verse", number, lyrics: "" };
+  intensity: number | null;
+};
+
+function createEmptySection(id: string, number = "1"): SectionFormState {
+  return { id, type: "verse", number, lyrics: "", intensity: null };
+}
+
+function BackgroundVideoField({
+  value,
+  onChange,
+  isUploading,
+  fileInputRef,
+  onFileSelected,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  isUploading: boolean;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  onFileSelected: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Video className="w-4 h-4 text-muted-foreground" />
+        <Label>Background Video</Label>
+      </div>
+      {value ? (
+        <div className="relative w-full max-w-xs aspect-video overflow-hidden rounded-md border bg-black">
+          <video
+            key={value}
+            src={value}
+            muted
+            loop
+            autoPlay
+            playsInline
+            className="w-full h-full object-cover"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="absolute top-1 right-1 h-6 w-6"
+            onClick={() => onChange("")}
+            title="Remove background video"
+          >
+            <X className="w-3 h-3" />
+          </Button>
+        </div>
+      ) : null}
+      <div className="flex gap-2">
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="https://your-cdn.com/loop.mp4"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+        >
+          {isUploading ? "Uploading..." : "Upload"}
+        </Button>
+      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={SONG_BACKGROUND_VIDEO_ACCEPT}
+        className="hidden"
+        onChange={onFileSelected}
+      />
+      <p className="text-xs text-muted-foreground">
+        One looping video plays behind this song&apos;s lyrics live. Set each
+        section&apos;s intensity below to control how brightly it shines.
+      </p>
+    </div>
+  );
+}
+
+function SongSectionsEditor({
+  sections,
+  setSections,
+  onAddSection,
+  requireFirstLyrics,
+}: {
+  sections: SectionFormState[];
+  setSections: React.Dispatch<React.SetStateAction<SectionFormState[]>>;
+  onAddSection: () => void;
+  requireFirstLyrics: boolean;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <Label>Song Sections</Label>
+        <Button type="button" variant="outline" size="sm" onClick={onAddSection}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Section
+        </Button>
+      </div>
+      <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
+        {sections.map((section, index) => (
+          <Card key={section.id}>
+            <CardContent className="p-4 space-y-3">
+              <div className="grid grid-cols-4 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Type</Label>
+                  <Select
+                    value={section.type}
+                    onValueChange={(value) =>
+                      setSections((prev) =>
+                        prev.map((s) =>
+                          s.id === section.id
+                            ? { ...s, type: value as SongSectionType }
+                            : s,
+                        ),
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SECTION_TYPES.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Number</Label>
+                  <Input
+                    value={section.number}
+                    onChange={(e) =>
+                      setSections((prev) =>
+                        prev.map((s) =>
+                          s.id === section.id
+                            ? { ...s, number: e.target.value }
+                            : s,
+                        ),
+                      )
+                    }
+                    placeholder="1"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Video intensity</Label>
+                  <Select
+                    value={
+                      section.intensity === null
+                        ? "auto"
+                        : String(section.intensity)
+                    }
+                    onValueChange={(value) =>
+                      setSections((prev) =>
+                        prev.map((s) =>
+                          s.id === section.id
+                            ? {
+                                ...s,
+                                intensity:
+                                  value === "auto" ? null : Number(value),
+                              }
+                            : s,
+                        ),
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INTENSITY_PRESETS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                          {option.value === "auto"
+                            ? ` (${DEFAULT_SECTION_INTENSITY[section.type]}%)`
+                            : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    disabled={sections.length === 1}
+                    onClick={() =>
+                      setSections((prev) =>
+                        prev.filter((s) => s.id !== section.id),
+                      )
+                    }
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </div>
+              <Textarea
+                value={section.lyrics}
+                onChange={(e) =>
+                  setSections((prev) =>
+                    prev.map((s) =>
+                      s.id === section.id
+                        ? { ...s, lyrics: e.target.value }
+                        : s,
+                    ),
+                  )
+                }
+                rows={5}
+                required={requireFirstLyrics && index === 0}
+                placeholder="Enter section lyrics..."
+                className="font-mono"
+              />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SongFormBody({
+  idPrefix,
+  titleDefaultValue,
+  artistDefaultValue,
+  tagsDefaultValue,
+  backgroundVideoUrl,
+  setBackgroundVideoUrl,
+  isUploadingVideo,
+  fileInputRef,
+  onFileSelected,
+  sections,
+  setSections,
+  onAddSection,
+}: {
+  idPrefix: string;
+  titleDefaultValue?: string;
+  artistDefaultValue?: string;
+  tagsDefaultValue?: string;
+  backgroundVideoUrl: string;
+  setBackgroundVideoUrl: (value: string) => void;
+  isUploadingVideo: boolean;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  onFileSelected: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  sections: SectionFormState[];
+  setSections: React.Dispatch<React.SetStateAction<SectionFormState[]>>;
+  onAddSection: () => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-title`}>Song Title</Label>
+            <Input
+              id={`${idPrefix}-title`}
+              name="title"
+              required
+              placeholder="Amazing Grace"
+              defaultValue={titleDefaultValue}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-artist`}>Artist</Label>
+            <Input
+              id={`${idPrefix}-artist`}
+              name="artist"
+              required
+              placeholder="John Newton"
+              defaultValue={artistDefaultValue}
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}-tags`}>Tags (comma separated)</Label>
+          <Input
+            id={`${idPrefix}-tags`}
+            name="tags"
+            placeholder="worship, slow, classic"
+            defaultValue={tagsDefaultValue}
+          />
+        </div>
+        <BackgroundVideoField
+          value={backgroundVideoUrl}
+          onChange={setBackgroundVideoUrl}
+          isUploading={isUploadingVideo}
+          fileInputRef={fileInputRef}
+          onFileSelected={onFileSelected}
+        />
+      </div>
+      <div className="lg:border-l lg:pl-6 lg:col-span-2">
+        <SongSectionsEditor
+          sections={sections}
+          setSections={setSections}
+          requireFirstLyrics
+          onAddSection={onAddSection}
+        />
+      </div>
+    </div>
+  );
 }
 
 export function SongLibrary() {
@@ -94,6 +410,9 @@ export function SongLibrary() {
   const [sections, setSections] = useState(() => [
     createEmptySection(`${sectionIdPrefix}-0`),
   ]);
+  const [backgroundVideoUrl, setBackgroundVideoUrl] = useState("");
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
 
   const availableTags = useMemo(
     () =>
@@ -148,6 +467,7 @@ export function SongLibrary() {
         type: section.type,
         number: section.number ? Number(section.number) : undefined,
         lyrics: section.lyrics.trim(),
+        intensity: section.intensity,
       }))
       .filter((section) => section.lyrics.length > 0);
 
@@ -163,11 +483,13 @@ export function SongLibrary() {
           .map((t) => t.trim())
           .filter(Boolean),
         sections: validSections,
+        backgroundVideoUrl: backgroundVideoUrl.trim() || null,
       });
 
       setIsAddingNew(false);
       nextSectionId.current = 1;
       setSections([createEmptySection(`${sectionIdPrefix}-0`)]);
+      setBackgroundVideoUrl("");
       toast.success("Song added");
     } catch {
       toast.error("Failed to add song");
@@ -187,8 +509,10 @@ export function SongLibrary() {
         type: section.type,
         number: section.number ? String(section.number) : String(index + 1),
         lyrics: section.lyrics,
+        intensity: section.intensity ?? null,
       })),
     );
+    setBackgroundVideoUrl(target.backgroundVideoUrl ?? "");
   };
 
   const handleUpdateSong = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -201,6 +525,7 @@ export function SongLibrary() {
         type: section.type,
         number: section.number ? Number(section.number) : undefined,
         lyrics: section.lyrics.trim(),
+        intensity: section.intensity,
       }))
       .filter((section) => section.lyrics.length > 0);
 
@@ -216,6 +541,7 @@ export function SongLibrary() {
           .map((t) => t.trim())
           .filter(Boolean),
         sections: validSections,
+        backgroundVideoUrl: backgroundVideoUrl.trim() || null,
       });
       setEditingSongId(null);
       toast.success("Song updated");
@@ -223,6 +549,33 @@ export function SongLibrary() {
       toast.error("Failed to update song");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleVideoFileSelected = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !activeOrganizationId) return;
+
+    if (file.size > SONG_BACKGROUND_VIDEO_MAX_BYTES) {
+      toast.error("Video exceeds the 20 MB limit");
+      return;
+    }
+
+    setIsUploadingVideo(true);
+    try {
+      const { slide } = await uploadSongBackgroundVideo(
+        activeOrganizationId,
+        file,
+      );
+      setBackgroundVideoUrl(slide.url);
+      toast.success("Background video uploaded");
+    } catch {
+      toast.error("Failed to upload background video");
+    } finally {
+      setIsUploadingVideo(false);
     }
   };
 
@@ -278,7 +631,7 @@ export function SongLibrary() {
                 Add Song
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add New Song</DialogTitle>
                 <DialogDescription>
@@ -287,146 +640,25 @@ export function SongLibrary() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleAddSong} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Song Title</Label>
-                    <Input
-                      id="title"
-                      name="title"
-                      required
-                      placeholder="Amazing Grace"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="artist">Artist</Label>
-                    <Input
-                      id="artist"
-                      name="artist"
-                      required
-                      placeholder="John Newton"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tags">Tags (comma separated)</Label>
-                  <Input
-                    id="tags"
-                    name="tags"
-                    placeholder="worship, slow, classic"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label>Song Sections</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setSections((prev) => [
-                          ...prev,
-                          createEmptySection(
-                            `${sectionIdPrefix}-${nextSectionId.current++}`,
-                            String(prev.length + 1),
-                          ),
-                        ])
-                      }
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Section
-                    </Button>
-                  </div>
-                  <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                    {sections.map((section, index) => (
-                      <Card key={section.id}>
-                        <CardContent className="p-4 space-y-3">
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="space-y-1">
-                              <Label className="text-xs">Type</Label>
-                              <Select
-                                value={section.type}
-                                onValueChange={(value) =>
-                                  setSections((prev) =>
-                                    prev.map((s) =>
-                                      s.id === section.id
-                                        ? {
-                                            ...s,
-                                            type: value as SongSectionType,
-                                          }
-                                        : s,
-                                    ),
-                                  )
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {SECTION_TYPES.map((option) => (
-                                    <SelectItem
-                                      key={option.value}
-                                      value={option.value}
-                                    >
-                                      {option.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Number</Label>
-                              <Input
-                                value={section.number}
-                                onChange={(e) =>
-                                  setSections((prev) =>
-                                    prev.map((s) =>
-                                      s.id === section.id
-                                        ? { ...s, number: e.target.value }
-                                        : s,
-                                    ),
-                                  )
-                                }
-                                placeholder="1"
-                              />
-                            </div>
-                            <div className="flex items-end">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                className="w-full"
-                                disabled={sections.length === 1}
-                                onClick={() =>
-                                  setSections((prev) =>
-                                    prev.filter((s) => s.id !== section.id),
-                                  )
-                                }
-                              >
-                                Remove
-                              </Button>
-                            </div>
-                          </div>
-                          <Textarea
-                            value={section.lyrics}
-                            onChange={(e) =>
-                              setSections((prev) =>
-                                prev.map((s) =>
-                                  s.id === section.id
-                                    ? { ...s, lyrics: e.target.value }
-                                    : s,
-                                ),
-                              )
-                            }
-                            rows={5}
-                            required={index === 0}
-                            placeholder="Enter section lyrics..."
-                            className="font-mono"
-                          />
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
+                <SongFormBody
+                  idPrefix="new"
+                  backgroundVideoUrl={backgroundVideoUrl}
+                  setBackgroundVideoUrl={setBackgroundVideoUrl}
+                  isUploadingVideo={isUploadingVideo}
+                  fileInputRef={videoFileInputRef}
+                  onFileSelected={handleVideoFileSelected}
+                  sections={sections}
+                  setSections={setSections}
+                  onAddSection={() =>
+                    setSections((prev) => [
+                      ...prev,
+                      createEmptySection(
+                        `${sectionIdPrefix}-${nextSectionId.current++}`,
+                        String(prev.length + 1),
+                      ),
+                    ])
+                  }
+                />
                 <div className="flex justify-end gap-2">
                   <Button
                     type="button"
@@ -772,7 +1004,7 @@ export function SongLibrary() {
           if (!open) setEditingSongId(null);
         }}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
           {editingSongId && (
             <>
               <DialogHeader>
@@ -782,149 +1014,34 @@ export function SongLibrary() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleUpdateSong} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-title">Song Title</Label>
-                    <Input
-                      id="edit-title"
-                      name="title"
-                      required
-                      defaultValue={
-                        songs.find((s) => s.id === editingSongId)?.title
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-artist">Artist</Label>
-                    <Input
-                      id="edit-artist"
-                      name="artist"
-                      required
-                      defaultValue={
-                        songs.find((s) => s.id === editingSongId)?.artist
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-tags">Tags (comma separated)</Label>
-                  <Input
-                    id="edit-tags"
-                    name="tags"
-                    defaultValue={songs
-                      .find((s) => s.id === editingSongId)
-                      ?.tags.join(", ")}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label>Song Sections</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setSections((prev) => [
-                          ...prev,
-                          createEmptySection(
-                            `${sectionIdPrefix}-edit-${nextSectionId.current++}`,
-                            String(prev.length + 1),
-                          ),
-                        ])
-                      }
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Section
-                    </Button>
-                  </div>
-                  <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                    {sections.map((section, index) => (
-                      <Card key={section.id}>
-                        <CardContent className="p-4 space-y-3">
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="space-y-1">
-                              <Label className="text-xs">Type</Label>
-                              <Select
-                                value={section.type}
-                                onValueChange={(value) =>
-                                  setSections((prev) =>
-                                    prev.map((s) =>
-                                      s.id === section.id
-                                        ? {
-                                            ...s,
-                                            type: value as SongSectionType,
-                                          }
-                                        : s,
-                                    ),
-                                  )
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {SECTION_TYPES.map((option) => (
-                                    <SelectItem
-                                      key={option.value}
-                                      value={option.value}
-                                    >
-                                      {option.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Number</Label>
-                              <Input
-                                value={section.number}
-                                onChange={(e) =>
-                                  setSections((prev) =>
-                                    prev.map((s) =>
-                                      s.id === section.id
-                                        ? { ...s, number: e.target.value }
-                                        : s,
-                                    ),
-                                  )
-                                }
-                              />
-                            </div>
-                            <div className="flex items-end">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                className="w-full"
-                                disabled={sections.length === 1}
-                                onClick={() =>
-                                  setSections((prev) =>
-                                    prev.filter((s) => s.id !== section.id),
-                                  )
-                                }
-                              >
-                                Remove
-                              </Button>
-                            </div>
-                          </div>
-                          <Textarea
-                            value={section.lyrics}
-                            onChange={(e) =>
-                              setSections((prev) =>
-                                prev.map((s) =>
-                                  s.id === section.id
-                                    ? { ...s, lyrics: e.target.value }
-                                    : s,
-                                ),
-                              )
-                            }
-                            rows={5}
-                            required={index === 0}
-                            className="font-mono"
-                          />
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
+                <SongFormBody
+                  idPrefix="edit"
+                  titleDefaultValue={
+                    songs.find((s) => s.id === editingSongId)?.title
+                  }
+                  artistDefaultValue={
+                    songs.find((s) => s.id === editingSongId)?.artist
+                  }
+                  tagsDefaultValue={songs
+                    .find((s) => s.id === editingSongId)
+                    ?.tags.join(", ")}
+                  backgroundVideoUrl={backgroundVideoUrl}
+                  setBackgroundVideoUrl={setBackgroundVideoUrl}
+                  isUploadingVideo={isUploadingVideo}
+                  fileInputRef={videoFileInputRef}
+                  onFileSelected={handleVideoFileSelected}
+                  sections={sections}
+                  setSections={setSections}
+                  onAddSection={() =>
+                    setSections((prev) => [
+                      ...prev,
+                      createEmptySection(
+                        `${sectionIdPrefix}-edit-${nextSectionId.current++}`,
+                        String(prev.length + 1),
+                      ),
+                    ])
+                  }
+                />
                 <div className="flex justify-end gap-2">
                   <Button
                     type="button"
@@ -963,13 +1080,27 @@ export function SongLibrary() {
                     </Badge>
                   ))}
                 </div>
+                {song.backgroundVideoUrl ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Video className="w-4 h-4" />
+                    Background video configured — intensity shown per section
+                    below.
+                  </div>
+                ) : null}
                 <div className="space-y-4">
                   {song.sections.map((section) => (
                     <Card key={section.id}>
                       <CardHeader>
-                        <CardTitle className="text-sm uppercase text-muted-foreground">
-                          {section.type} {section.number || ""}
-                        </CardTitle>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-sm uppercase text-muted-foreground">
+                            {section.type} {section.number || ""}
+                          </CardTitle>
+                          {song.backgroundVideoUrl ? (
+                            <Badge variant="outline" className="text-xs">
+                              {getSectionIntensity(section)}% intensity
+                            </Badge>
+                          ) : null}
+                        </div>
                       </CardHeader>
                       <CardContent>
                         <p className="whitespace-pre-wrap font-mono text-sm leading-relaxed">

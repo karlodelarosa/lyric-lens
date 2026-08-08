@@ -3,6 +3,7 @@ import { useApp } from "../../contexts/AppContext";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { LiveSlideContent } from "../live/LiveSlideContent";
+import { VideoBackground } from "../live/VideoBackground";
 import {
   exitFullscreen,
   getFullscreenElement,
@@ -10,6 +11,7 @@ import {
   subscribePresenterChannel,
 } from "../../lib/presenterWindow";
 import { getLiveTextShadow } from "../../lib/liveDisplayUtils";
+import { getSectionIntensity } from "../../lib/sectionIntensity";
 
 const getLyricChunks = (lyrics: string, linesPerSlide: number) => {
   const safeLinesPerSlide = Math.max(1, Math.floor(linesPerSlide));
@@ -36,6 +38,14 @@ export function PresenterView() {
   const currentSection = currentSong?.sections.find(
     (sec) => sec.id === liveState.currentSectionId,
   );
+  const effectiveBackgroundVideoUrl =
+    (liveState.slideMode === "lyrics" && currentSong?.backgroundVideoUrl) ||
+    liveState.backgroundVideoUrl ||
+    null;
+  const effectiveBackgroundIntensity =
+    liveState.slideMode === "lyrics" && currentSection
+      ? getSectionIntensity(currentSection)
+      : 50;
   const currentSectionChunks = currentSection
     ? getLyricChunks(currentSection.lyrics, liveState.linesPerSlide)
     : [];
@@ -180,20 +190,11 @@ export function PresenterView() {
         background: liveState.background.value,
       }}
     >
-      {liveState.backgroundVideoUrl ? (
-        <>
-          <video
-            key={liveState.backgroundVideoUrl}
-            src={liveState.backgroundVideoUrl}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-black/30" />
-        </>
-      ) : null}
+      <VideoBackground
+        videoUrl={effectiveBackgroundVideoUrl}
+        intensity={effectiveBackgroundIntensity}
+      />
+
 
       <Button
         variant="ghost"

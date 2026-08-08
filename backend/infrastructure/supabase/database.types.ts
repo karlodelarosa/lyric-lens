@@ -382,6 +382,7 @@ export type Database = {
           content: string;
           created_at: string;
           id: string;
+          intensity: number | null;
           position: number;
           section_number: number | null;
           section_type: string;
@@ -391,6 +392,7 @@ export type Database = {
           content: string;
           created_at?: string;
           id?: string;
+          intensity?: number | null;
           position?: number;
           section_number?: number | null;
           section_type: string;
@@ -400,6 +402,7 @@ export type Database = {
           content?: string;
           created_at?: string;
           id?: string;
+          intensity?: number | null;
           position?: number;
           section_number?: number | null;
           section_type?: string;
@@ -477,6 +480,7 @@ export type Database = {
       songs: {
         Row: {
           artist: string | null;
+          background_video_url: string | null;
           created_at: string;
           created_by: string | null;
           id: string;
@@ -486,6 +490,7 @@ export type Database = {
         };
         Insert: {
           artist?: string | null;
+          background_video_url?: string | null;
           created_at?: string;
           created_by?: string | null;
           id?: string;
@@ -495,6 +500,7 @@ export type Database = {
         };
         Update: {
           artist?: string | null;
+          background_video_url?: string | null;
           created_at?: string;
           created_by?: string | null;
           id?: string;

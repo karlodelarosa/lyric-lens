@@ -12,11 +12,13 @@ export function songToDto(song: Song) {
     artist: song.artist,
     tags: song.tags,
     usageCount: song.usageCount,
+    backgroundVideoUrl: song.backgroundVideoUrl,
     sections: song.sections.map((section) => ({
       id: section.id,
       type: section.type,
       number: section.number,
       lyrics: section.lyrics,
+      intensity: section.intensity ?? null,
     })),
   };
 }
@@ -68,14 +70,31 @@ export function parseCreateSongBody(body: unknown): CreateSongInput | null {
           ? Number(numberValue)
           : undefined;
 
+    const intensityValue = sectionRecord.intensity;
+    const intensity =
+      typeof intensityValue === "number"
+        ? intensityValue
+        : typeof intensityValue === "string" && intensityValue.trim()
+          ? Number(intensityValue)
+          : null;
+
     sections.push({
       type,
       number: Number.isFinite(number) ? number : undefined,
       lyrics,
+      intensity:
+        intensity !== null && Number.isFinite(intensity)
+          ? Math.min(100, Math.max(0, Math.round(intensity)))
+          : null,
     });
   }
 
-  return { title, artist, tags, sections };
+  const backgroundVideoUrl =
+    typeof record.backgroundVideoUrl === "string"
+      ? record.backgroundVideoUrl.trim() || null
+      : null;
+
+  return { title, artist, tags, sections, backgroundVideoUrl };
 }
 
 export const parseUpdateSongBody = parseCreateSongBody;

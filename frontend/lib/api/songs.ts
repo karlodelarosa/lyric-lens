@@ -1,10 +1,11 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
+import { apiDelete, apiGet, apiPatch, apiPost, parseApiResponse } from "./client";
 
 export type SongSectionDto = {
   id: string;
   type: string;
   number?: number;
   lyrics: string;
+  intensity?: number | null;
 };
 
 export type SongDto = {
@@ -14,6 +15,7 @@ export type SongDto = {
   tags: string[];
   usageCount: number;
   sections: SongSectionDto[];
+  backgroundVideoUrl: string | null;
 };
 
 export type SongsResponse = {
@@ -28,7 +30,9 @@ export type CreateSongPayload = {
     type: string;
     number?: number;
     lyrics: string;
+    intensity?: number | null;
   }[];
+  backgroundVideoUrl?: string | null;
 };
 
 export type CreateSongResponse = {
@@ -73,4 +77,32 @@ export async function deleteSong(
   return apiDelete<{ ok: boolean }>(
     `/api/organizations/${organizationId}/songs/${songId}`,
   );
+}
+
+export const SONG_BACKGROUND_VIDEO_MAX_BYTES = 20 * 1024 * 1024;
+
+export const SONG_BACKGROUND_VIDEO_ACCEPT = "video/mp4,video/webm,video/quicktime";
+
+export type UploadSongBackgroundVideoResponse = {
+  slide: { url: string; type: "image" | "video" };
+  storagePath: string;
+};
+
+export async function uploadSongBackgroundVideo(
+  organizationId: string,
+  file: File,
+): Promise<UploadSongBackgroundVideoResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(
+    `/api/organizations/${organizationId}/songs/upload`,
+    {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    },
+  );
+
+  return parseApiResponse<UploadSongBackgroundVideoResponse>(response);
 }

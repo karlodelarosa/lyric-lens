@@ -11,6 +11,11 @@ import {
 } from "../../contexts/AppContext";
 import { ServiceFlowLivePanel } from "../live/ServiceFlowLivePanel";
 import { LiveSlideContent } from "../live/LiveSlideContent";
+import { VideoBackground } from "../live/VideoBackground";
+import {
+  getSectionIntensity,
+  getVideoBackgroundVisualStyle,
+} from "../../lib/sectionIntensity";
 import {
   ChevronRight,
   ChevronLeft,
@@ -187,6 +192,14 @@ export function LiveMode() {
   const currentSection = currentSong?.sections.find(
     (sec) => sec.id === liveState.currentSectionId,
   );
+  const effectiveBackgroundVideoUrl =
+    (liveState.slideMode === "lyrics" && currentSong?.backgroundVideoUrl) ||
+    liveState.backgroundVideoUrl ||
+    null;
+  const effectiveBackgroundIntensity =
+    liveState.slideMode === "lyrics" && currentSection
+      ? getSectionIntensity(currentSection)
+      : 50;
   const currentSectionChunks = currentSection
     ? getLyricChunks(currentSection.lyrics, liveState.linesPerSlide)
     : [];
@@ -1016,8 +1029,18 @@ export function LiveMode() {
                                               liveState.background.value,
                                           }}
                                         >
-                                          {liveState.backgroundVideoUrl ? (
-                                            <div className="absolute inset-0 bg-black/50" />
+                                          {currentSong.backgroundVideoUrl ? (
+                                            <div
+                                              className="absolute inset-0 pointer-events-none bg-black"
+                                              style={{
+                                                opacity:
+                                                  getVideoBackgroundVisualStyle(
+                                                    getSectionIntensity(
+                                                      section,
+                                                    ),
+                                                  ).scrimOpacity,
+                                              }}
+                                            />
                                           ) : null}
                                           <div
                                             className={cn(
@@ -1087,20 +1110,10 @@ export function LiveMode() {
                           background: liveState.background.value,
                         }}
                       >
-                        {liveState.backgroundVideoUrl ? (
-                          <>
-                            <video
-                              key={liveState.backgroundVideoUrl}
-                              src={liveState.backgroundVideoUrl}
-                              autoPlay
-                              muted
-                              loop
-                              playsInline
-                              className="absolute inset-0 w-full h-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-black/30" />
-                          </>
-                        ) : null}
+                        <VideoBackground
+                          videoUrl={effectiveBackgroundVideoUrl}
+                          intensity={effectiveBackgroundIntensity}
+                        />
 
                         <LiveSlideContent
                           slideMode={liveState.slideMode}
@@ -1691,7 +1704,7 @@ export function LiveMode() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Video className="w-4 h-4" />
-                <Label className="text-xs">Background Video URL</Label>
+                <Label className="text-xs">Fallback Background Video URL</Label>
               </div>
               <Input
                 value={videoUrlInput}
@@ -1721,8 +1734,10 @@ export function LiveMode() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Recommended: use a short looping MP4 hosted on a fast CDN for
-                smoother playback.
+                Songs with a background video configured in the Song Library
+                use that automatically, brightening for chorus/bridge and
+                dimming for verses. This URL is only used as a fallback for
+                songs without one, or for welcome/announcement/blank screens.
               </p>
             </div>
           </div>

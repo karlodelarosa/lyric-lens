@@ -16,12 +16,14 @@ export type SongSection = {
   type: SongSectionType;
   number?: number;
   lyrics: string;
+  intensity?: number | null;
 };
 
 export type CreateSongSectionInput = {
   type: SongSectionType;
   number?: number;
   lyrics: string;
+  intensity?: number | null;
 };
 
 export type CreateSongInput = {
@@ -29,6 +31,7 @@ export type CreateSongInput = {
   artist: string;
   tags: string[];
   sections: CreateSongSectionInput[];
+  backgroundVideoUrl?: string | null;
 };
 
 export type UpdateSongInput = CreateSongInput;
@@ -39,6 +42,7 @@ type SongSectionRow = {
   section_number: number | null;
   content: string;
   position: number;
+  intensity: number | null;
 };
 
 type SongTagLinkRow = {
@@ -49,6 +53,7 @@ export type SongListRow = {
   id: string;
   title: string;
   artist: string | null;
+  background_video_url: string | null;
   song_sections: SongSectionRow[] | null;
   song_tag_links: SongTagLinkRow[] | null;
 };
@@ -61,6 +66,7 @@ export class Song {
     readonly sections: SongSection[],
     readonly tags: string[],
     readonly usageCount: number,
+    readonly backgroundVideoUrl: string | null = null,
   ) {}
 
   static fromListRow(row: SongListRow): Song {
@@ -72,6 +78,7 @@ export class Song {
         type: section.section_type as SongSectionType,
         number: section.section_number ?? undefined,
         lyrics: section.content,
+        intensity: section.intensity,
       }));
 
     const tags = (row.song_tag_links ?? [])
@@ -79,7 +86,15 @@ export class Song {
       .filter((name): name is string => Boolean(name))
       .sort((a, b) => a.localeCompare(b));
 
-    return new Song(row.id, row.title, row.artist ?? "", sections, tags, 0);
+    return new Song(
+      row.id,
+      row.title,
+      row.artist ?? "",
+      sections,
+      tags,
+      0,
+      row.background_video_url ?? null,
+    );
   }
 
   static withUsageCount(song: Song, usageCount: number): Song {
@@ -90,6 +105,7 @@ export class Song {
       song.sections,
       song.tags,
       usageCount,
+      song.backgroundVideoUrl,
     );
   }
 }
