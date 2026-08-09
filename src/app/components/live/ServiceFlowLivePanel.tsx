@@ -1,9 +1,17 @@
 import { cn } from "../../lib/utils";
+import { formatCountdown } from "../../lib/liveDisplayUtils";
 import type {
   Announcement,
   ServiceFlow,
   ServiceFlowSegment,
 } from "../../contexts/AppContext";
+
+type LivePanelSong = {
+  id: string;
+  title: string;
+  artist: string;
+  sections: { id: string; type: string; number?: number; lyrics: string }[];
+};
 
 type ServiceFlowLivePanelProps = {
   serviceFlow: ServiceFlow;
@@ -15,16 +23,14 @@ type ServiceFlowLivePanelProps = {
   ) => void;
   onSelectSong: (songId: string) => void;
   onSelectSection: (songId: string, sectionId: string) => void;
+  onStartCountdown: () => void;
   currentSongId: string | null;
   currentSectionId: string | null;
   currentAnnouncementId: string | null;
   currentAnnouncementSlideIndex: number;
-  setlistSongs: {
-    id: string;
-    title: string;
-    artist: string;
-    sections: { id: string; type: string; number?: number; lyrics: string }[];
-  }[];
+  currentCountdownStatus: "armed" | "running" | "paused" | "done" | null;
+  setlistSongs: LivePanelSong[];
+  songs: LivePanelSong[];
 };
 
 export function ServiceFlowLivePanel({
@@ -34,11 +40,14 @@ export function ServiceFlowLivePanel({
   onSelectAnnouncement,
   onSelectSong,
   onSelectSection,
+  onStartCountdown,
   currentSongId,
   currentSectionId,
   currentAnnouncementId,
   currentAnnouncementSlideIndex,
+  currentCountdownStatus,
   setlistSongs,
+  songs,
 }: ServiceFlowLivePanelProps) {
   const activeSegment =
     serviceFlow.segments.find((segment) => segment.id === activeSegmentId) ??
@@ -207,6 +216,116 @@ export function ServiceFlowLivePanel({
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {activeSegment?.kind === "song" &&
+        (() => {
+          const song = songs.find((s) => s.id === activeSegment.songId);
+          if (!song) {
+            return (
+              <p className="text-sm text-muted-foreground">
+                No song selected for this segment yet.
+              </p>
+            );
+          }
+
+          return (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                Single song
+              </p>
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => onSelectSong(song.id)}
+                  className={cn(
+                    "w-full text-left p-3 rounded-lg border font-medium text-sm",
+                    currentSongId === song.id
+                      ? "bg-primary/20 border-primary"
+                      : "bg-card hover:bg-accent",
+                  )}
+                >
+                  {song.title}
+                </button>
+                <div className="ml-3 space-y-1">
+                  {song.sections.map((section) => (
+                    <button
+                      key={section.id}
+                      type="button"
+                      onClick={() => onSelectSection(song.id, section.id)}
+                      className={cn(
+                        "w-full text-left p-2 rounded text-xs",
+                        currentSongId === song.id &&
+                          currentSectionId === section.id
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-accent",
+                      )}
+                    >
+                      {section.type}
+                      {section.number ? ` ${section.number}` : ""}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+      {activeSegment?.kind === "welcome" && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">
+            Welcome media
+          </p>
+          {activeSegment.welcomeMedia ? (
+            <div className="w-full aspect-video overflow-hidden rounded-md border bg-black">
+              {activeSegment.welcomeMedia.type === "video" ? (
+                <video
+                  src={activeSegment.welcomeMedia.url}
+                  muted
+                  loop
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <img
+                  src={activeSegment.welcomeMedia.url}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No media configured for this welcome segment yet.
+            </p>
+          )}
+        </div>
+      )}
+
+      {activeSegment?.kind === "countdown" && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">
+            Countdown
+          </p>
+          <p className="text-2xl font-bold tabular-nums">
+            {formatCountdown(activeSegment.countdownSeconds ?? 0)}
+          </p>
+          {currentCountdownStatus === "running" ||
+          currentCountdownStatus === "paused" ? (
+            <p className="text-xs text-muted-foreground">
+              Timer controls are in the bar below the live preview.
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={onStartCountdown}
+              className="w-full text-left p-3 rounded-lg border bg-card hover:bg-accent text-sm font-medium"
+            >
+              Start countdown
+            </button>
+          )}
         </div>
       )}
     </div>

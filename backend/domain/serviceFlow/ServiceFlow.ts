@@ -3,7 +3,26 @@ import {
   type AnnouncementSlide,
 } from "../announcement/AnnouncementSlide";
 
-export type ServiceFlowSegmentKind = "music" | "announcements" | "cue";
+export type ServiceFlowSegmentKind =
+  | "music"
+  | "announcements"
+  | "cue"
+  | "song"
+  | "welcome"
+  | "countdown";
+
+export type WelcomeMedia = {
+  url: string;
+  type: "image" | "video";
+};
+
+export function parseWelcomeMedia(value: unknown): WelcomeMedia | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  if (typeof record.url !== "string" || !record.url) return null;
+  if (record.type !== "image" && record.type !== "video") return null;
+  return { url: record.url, type: record.type };
+}
 
 export type ServiceFlowSegmentInput = {
   label: string;
@@ -11,6 +30,9 @@ export type ServiceFlowSegmentInput = {
   notes?: string | null;
   setlistId?: string | null;
   announcementIds?: string[];
+  songId?: string | null;
+  welcomeMedia?: WelcomeMedia | null;
+  countdownSeconds?: number | null;
 };
 
 export type CreateServiceFlowInput = {
@@ -46,6 +68,10 @@ export type ServiceFlowSegmentRow = {
   notes: string | null;
   setlist_id: string | null;
   setlists: { id: string; title: string } | null;
+  song_id: string | null;
+  songs: { id: string; title: string; artist: string | null } | null;
+  welcome_media: unknown;
+  countdown_seconds: number | null;
   service_flow_segment_announcements:
     | ServiceFlowSegmentAnnouncementRow[]
     | null;
@@ -55,6 +81,7 @@ export type ServiceFlowListRow = {
   id: string;
   title: string;
   description: string | null;
+  updated_at: string;
   service_flow_segments: { id: string }[] | null;
 };
 
@@ -82,6 +109,11 @@ export type ServiceFlowSegment = {
   notes: string | null;
   setlistId: string | null;
   setlistName: string | null;
+  songId: string | null;
+  songTitle: string | null;
+  songArtist: string | null;
+  welcomeMedia: WelcomeMedia | null;
+  countdownSeconds: number | null;
   announcements: ServiceFlowSegmentAnnouncement[];
 };
 
@@ -131,6 +163,11 @@ export class ServiceFlow {
       notes: row.notes,
       setlistId: row.setlist_id,
       setlistName: row.setlists?.title ?? null,
+      songId: row.song_id,
+      songTitle: row.songs?.title ?? null,
+      songArtist: row.songs?.artist ?? null,
+      welcomeMedia: parseWelcomeMedia(row.welcome_media),
+      countdownSeconds: row.countdown_seconds,
       announcements,
     };
   }
@@ -141,4 +178,5 @@ export type ServiceFlowListItem = {
   title: string;
   description: string | null;
   segmentCount: number;
+  updatedAt: string;
 };

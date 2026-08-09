@@ -3,6 +3,7 @@ import {
   Song,
   type CreateSongInput,
   type SongListRow,
+  type TrashedSongItem,
   type UpdateSongInput,
 } from "../../domain/song/Song";
 import type { SongRepository } from "../../domain/song/SongRepository";
@@ -36,6 +37,7 @@ export class SupabaseSongRepository implements SongRepository {
       .from("songs")
       .select(SONG_LIST_SELECT)
       .eq("organization_id", organizationId)
+      .is("deleted_at", null)
       .order("title");
 
     if (error) {
@@ -262,12 +264,61 @@ export class SupabaseSongRepository implements SongRepository {
   async delete(organizationId: string, songId: string): Promise<void> {
     const { error } = await this.client
       .from("songs")
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq("id", songId)
       .eq("organization_id", organizationId);
 
     if (error) {
       throw new Error("Failed to delete song");
+    }
+  }
+
+  async listTrashed(organizationId: string): Promise<TrashedSongItem[]> {
+    const { data, error } = await this.client
+      .from("songs")
+      .select("id, title, artist, deleted_at")
+      .eq("organization_id", organizationId)
+      .not("deleted_at", "is", null)
+      .order("deleted_at", { ascending: false });
+
+    if (error) {
+      throw new Error("Failed to load trashed songs");
+    }
+
+    return (data ?? [])
+      .filter(
+        (row): row is typeof row & { deleted_at: string } =>
+          row.deleted_at !== null,
+      )
+      .map((row) => ({
+        id: row.id,
+        title: row.title,
+        artist: row.artist ?? "",
+        deletedAt: row.deleted_at,
+      }));
+  }
+
+  async restore(organizationId: string, songId: string): Promise<void> {
+    const { error } = await this.client
+      .from("songs")
+      .update({ deleted_at: null })
+      .eq("id", songId)
+      .eq("organization_id", organizationId);
+
+    if (error) {
+      throw new Error("Failed to restore song");
+    }
+  }
+
+  async purge(organizationId: string, songId: string): Promise<void> {
+    const { error } = await this.client
+      .from("songs")
+      .delete()
+      .eq("id", songId)
+      .eq("organization_id", organizationId);
+
+    if (error) {
+      throw new Error("Failed to permanently delete song");
     }
   }
 }

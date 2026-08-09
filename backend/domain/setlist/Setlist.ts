@@ -22,6 +22,12 @@ export type UpdateSetlistInput = {
   welcomeSlide?: WelcomeSlide | null;
 };
 
+export type TrashedSetlistItem = {
+  id: string;
+  title: string;
+  deletedAt: string;
+};
+
 type SetlistSongRow = {
   song_id: string;
   position: number;

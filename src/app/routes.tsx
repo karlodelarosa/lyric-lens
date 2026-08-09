@@ -9,8 +9,10 @@ import { ServiceFlowBuilder } from "./components/pages/ServiceFlowBuilder";
 import { LiveMode } from "./components/pages/LiveMode";
 import { Website } from "./components/pages/Website";
 import { PresenterView } from "./components/pages/PresenterView";
+import { RemoteControl } from "./components/pages/RemoteControl";
 import { Profile } from "./components/pages/Profile";
 import { HowToUse } from "./components/pages/HowToUse";
+import { Trash } from "./components/pages/Trash";
 import { NotFound } from "./components/pages/NotFound";
 
 export const router = createBrowserRouter([
@@ -28,11 +30,16 @@ export const router = createBrowserRouter([
       { path: "how-to-use", Component: HowToUse },
       { path: "website", Component: Website },
       { path: "profile", Component: Profile },
+      { path: "trash", Component: Trash },
       { path: "*", Component: NotFound },
     ],
   },
   {
     path: "/presenter",
     Component: PresenterView,
+  },
+  {
+    path: "/remote/:code?",
+    Component: RemoteControl,
   },
 ]);

@@ -1,9 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePagination } from "../../lib/usePagination";
 import { ListPagination } from "../ListPagination";
 import { Link } from "react-router";
 import { useOrganization } from "@frontend/contexts/OrganizationContext";
-import { getServiceFlow } from "@frontend/lib/api/serviceFlows";
+import {
+  getServiceFlow,
+  SERVICE_FLOW_WELCOME_MEDIA_ACCEPT,
+  SERVICE_FLOW_WELCOME_MEDIA_MAX_BYTES,
+  uploadServiceFlowWelcomeMedia,
+} from "@frontend/lib/api/serviceFlows";
 import { useApp, type ServiceFlowSegmentKind } from "../../contexts/AppContext";
 import { buildLiveUrl } from "../../lib/liveStateSync";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
@@ -48,14 +53,23 @@ type EditableSegment = {
   notes: string;
   setlistId: string;
   announcementIds: string[];
+  songId: string;
+  welcomeMediaUrl: string;
+  welcomeMediaType: "image" | "video";
+  countdownValue: string;
+  countdownUnit: "seconds" | "minutes";
 };
 
 const SEGMENT_PRESETS: { label: string; kind: ServiceFlowSegmentKind }[] = [
   { label: "Opening Prayer", kind: "cue" },
   { label: "Remarks", kind: "cue" },
   { label: "Praise & Worship", kind: "music" },
+  { label: "Opening Song", kind: "song" },
+  { label: "Altar Call", kind: "song" },
   { label: "Offering", kind: "cue" },
   { label: "Announcements", kind: "announcements" },
+  { label: "Welcome", kind: "welcome" },
+  { label: "Countdown", kind: "countdown" },
   { label: "Sermon", kind: "cue" },
   { label: "Benediction", kind: "cue" },
 ];
@@ -68,6 +82,11 @@ function createSegment(partial?: Partial<EditableSegment>): EditableSegment {
     notes: partial?.notes ?? "",
     setlistId: partial?.setlistId ?? "",
     announcementIds: partial?.announcementIds ?? [],
+    songId: partial?.songId ?? "",
+    welcomeMediaUrl: partial?.welcomeMediaUrl ?? "",
+    welcomeMediaType: partial?.welcomeMediaType ?? "image",
+    countdownValue: partial?.countdownValue ?? "5",
+    countdownUnit: partial?.countdownUnit ?? "minutes",
   };
 }
 
@@ -79,6 +98,8 @@ interface DraggableSegmentProps {
   onRemove: (clientId: string) => void;
   setlists: { id: string; name: string }[];
   announcements: { id: string; title: string }[];
+  songs: { id: string; title: string; artist: string }[];
+  organizationId: string | null;
 }
 
 function DraggableSegment({
@@ -89,7 +110,42 @@ function DraggableSegment({
   onRemove,
   setlists,
   announcements,
+  songs,
+  organizationId,
 }: DraggableSegmentProps) {
+  const [isUploadingWelcomeMedia, setIsUploadingWelcomeMedia] =
+    useState(false);
+  const welcomeMediaFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleWelcomeMediaFileSelected = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !organizationId) return;
+
+    if (file.size > SERVICE_FLOW_WELCOME_MEDIA_MAX_BYTES) {
+      toast.error("File exceeds the 20 MB limit");
+      return;
+    }
+
+    setIsUploadingWelcomeMedia(true);
+    try {
+      const { slide } = await uploadServiceFlowWelcomeMedia(
+        organizationId,
+        file,
+      );
+      onChange(segment.clientId, {
+        welcomeMediaUrl: slide.url,
+        welcomeMediaType: slide.type,
+      });
+      toast.success("Welcome media uploaded");
+    } catch {
+      toast.error("Failed to upload welcome media");
+    } finally {
+      setIsUploadingWelcomeMedia(false);
+    }
+  };
   const [{ isDragging }, drag] = useDrag({
     type: "SEGMENT",
     item: { index },
@@ -147,6 +203,9 @@ function DraggableSegment({
                   setlistId: value === "music" ? segment.setlistId : "",
                   announcementIds:
                     value === "announcements" ? segment.announcementIds : [],
+                  songId: value === "song" ? segment.songId : "",
+                  welcomeMediaUrl:
+                    value === "welcome" ? segment.welcomeMediaUrl : "",
                 })
               }
             >
@@ -156,7 +215,10 @@ function DraggableSegment({
               <SelectContent>
                 <SelectItem value="cue">Cue (notes only)</SelectItem>
                 <SelectItem value="music">Music (setlist)</SelectItem>
+                <SelectItem value="song">Song (single)</SelectItem>
                 <SelectItem value="announcements">Announcements</SelectItem>
+                <SelectItem value="welcome">Welcome media</SelectItem>
+                <SelectItem value="countdown">Countdown</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -243,6 +305,147 @@ function DraggableSegment({
           )}
         </div>
       )}
+
+      {segment.kind === "song" && (
+        <div className="space-y-2">
+          <Label>Song</Label>
+          {songs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No songs in your library yet.{" "}
+              <Link to="/songs" className="underline">
+                Add some first
+              </Link>
+              .
+            </p>
+          ) : (
+            <Select
+              value={segment.songId || "none"}
+              onValueChange={(value) =>
+                onChange(segment.clientId, {
+                  songId: value === "none" ? "" : value,
+                })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select song" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No song</SelectItem>
+                {songs.map((song) => (
+                  <SelectItem key={song.id} value={song.id}>
+                    {song.title}
+                    {song.artist ? ` — ${song.artist}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Use this for a single opening song, altar call, or similar — no
+            setlist required.
+          </p>
+        </div>
+      )}
+
+      {segment.kind === "welcome" && (
+        <div className="space-y-2">
+          <Label>Welcome media (image or video loop)</Label>
+          {segment.welcomeMediaUrl ? (
+            <div className="relative w-full max-w-xs aspect-video overflow-hidden rounded-md border bg-black">
+              {segment.welcomeMediaType === "video" ? (
+                <video
+                  key={segment.welcomeMediaUrl}
+                  src={segment.welcomeMediaUrl}
+                  muted
+                  loop
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <img
+                  src={segment.welcomeMediaUrl}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
+          ) : null}
+          <div className="flex gap-2">
+            <Input
+              value={segment.welcomeMediaUrl}
+              onChange={(e) =>
+                onChange(segment.clientId, { welcomeMediaUrl: e.target.value })
+              }
+              placeholder="https://your-cdn.com/welcome.mp4"
+            />
+            <Select
+              value={segment.welcomeMediaType}
+              onValueChange={(value: "image" | "video") =>
+                onChange(segment.clientId, { welcomeMediaType: value })
+              }
+            >
+              <SelectTrigger className="w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="image">Image</SelectItem>
+                <SelectItem value="video">Video</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => welcomeMediaFileInputRef.current?.click()}
+              disabled={isUploadingWelcomeMedia}
+            >
+              {isUploadingWelcomeMedia ? "Uploading..." : "Upload"}
+            </Button>
+          </div>
+          <input
+            ref={welcomeMediaFileInputRef}
+            type="file"
+            accept={SERVICE_FLOW_WELCOME_MEDIA_ACCEPT}
+            className="hidden"
+            onChange={handleWelcomeMediaFileSelected}
+          />
+        </div>
+      )}
+
+      {segment.kind === "countdown" && (
+        <div className="space-y-2">
+          <Label>Countdown duration</Label>
+          <div className="flex gap-2 items-center">
+            <Input
+              type="number"
+              min={1}
+              className="w-24"
+              value={segment.countdownValue}
+              onChange={(e) =>
+                onChange(segment.clientId, { countdownValue: e.target.value })
+              }
+            />
+            <Select
+              value={segment.countdownUnit}
+              onValueChange={(value: "seconds" | "minutes") =>
+                onChange(segment.clientId, { countdownUnit: value })
+              }
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="seconds">Seconds</SelectItem>
+                <SelectItem value="minutes">Minutes</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Selecting this segment live arms the timer; the operator starts it
+            from Live Mode, and it auto-advances to the next segment at 0:00.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -256,6 +459,7 @@ export function ServiceFlowBuilder() {
   const {
     setlists,
     announcements,
+    songs,
     serviceFlowList,
     serviceFlowsLoading,
     serviceFlowsError,
@@ -299,15 +503,26 @@ export function ServiceFlowBuilder() {
       setFlowTitle(serviceFlow.title);
       setFlowDescription(serviceFlow.description ?? "");
       setSegments(
-        serviceFlow.segments.map((segment) =>
-          createSegment({
+        serviceFlow.segments.map((segment) => {
+          const countdownSeconds = segment.countdownSeconds ?? 300;
+          const useMinutes =
+            countdownSeconds >= 60 && countdownSeconds % 60 === 0;
+
+          return createSegment({
             label: segment.label,
             kind: segment.kind,
             notes: segment.notes ?? "",
             setlistId: segment.setlistId ?? "",
             announcementIds: segment.announcements.map((item) => item.id),
-          }),
-        ),
+            songId: segment.songId ?? "",
+            welcomeMediaUrl: segment.welcomeMedia?.url ?? "",
+            welcomeMediaType: segment.welcomeMedia?.type ?? "image",
+            countdownValue: String(
+              useMinutes ? countdownSeconds / 60 : countdownSeconds,
+            ),
+            countdownUnit: useMinutes ? "minutes" : "seconds",
+          });
+        }),
       );
     } catch (error) {
       toast.error(
@@ -374,17 +589,37 @@ export function ServiceFlowBuilder() {
   };
 
   const buildPayloadSegments = () =>
-    segments.map((segment) => ({
-      label: segment.label.trim(),
-      kind: segment.kind,
-      notes: segment.notes.trim() || null,
-      setlistId:
-        segment.kind === "music" && segment.setlistId
-          ? segment.setlistId
-          : null,
-      announcementIds:
-        segment.kind === "announcements" ? segment.announcementIds : [],
-    }));
+    segments.map((segment) => {
+      const countdownRaw = Number(segment.countdownValue);
+      const countdownSeconds =
+        segment.kind === "countdown" && Number.isFinite(countdownRaw) && countdownRaw > 0
+          ? Math.round(
+              countdownRaw * (segment.countdownUnit === "minutes" ? 60 : 1),
+            )
+          : null;
+
+      return {
+        label: segment.label.trim(),
+        kind: segment.kind,
+        notes: segment.notes.trim() || null,
+        setlistId:
+          segment.kind === "music" && segment.setlistId
+            ? segment.setlistId
+            : null,
+        announcementIds:
+          segment.kind === "announcements" ? segment.announcementIds : [],
+        songId:
+          segment.kind === "song" && segment.songId ? segment.songId : null,
+        welcomeMedia:
+          segment.kind === "welcome" && segment.welcomeMediaUrl
+            ? {
+                url: segment.welcomeMediaUrl,
+                type: segment.welcomeMediaType,
+              }
+            : null,
+        countdownSeconds,
+      };
+    });
 
   const handleSave = async () => {
     if (!flowTitle.trim()) {
@@ -400,6 +635,14 @@ export function ServiceFlowBuilder() {
     for (const segment of segments) {
       if (!segment.label.trim()) {
         toast.error("Every segment needs a label");
+        return;
+      }
+
+      if (
+        segment.kind === "countdown" &&
+        !(Number(segment.countdownValue) > 0)
+      ) {
+        toast.error(`"${segment.label}" needs a countdown duration above 0`);
         return;
       }
     }
@@ -579,8 +822,15 @@ export function ServiceFlowBuilder() {
                               <SelectContent>
                                 <SelectItem value="cue">Cue</SelectItem>
                                 <SelectItem value="music">Music</SelectItem>
+                                <SelectItem value="song">Song</SelectItem>
                                 <SelectItem value="announcements">
                                   Announcements
+                                </SelectItem>
+                                <SelectItem value="welcome">
+                                  Welcome media
+                                </SelectItem>
+                                <SelectItem value="countdown">
+                                  Countdown
                                 </SelectItem>
                               </SelectContent>
                             </Select>
@@ -619,6 +869,12 @@ export function ServiceFlowBuilder() {
                             id: a.id,
                             title: a.title,
                           }))}
+                          songs={songs.map((s) => ({
+                            id: s.id,
+                            title: s.title,
+                            artist: s.artist,
+                          }))}
+                          organizationId={activeOrganizationId}
                         />
                       ))}
                     </div>
@@ -646,7 +902,7 @@ export function ServiceFlowBuilder() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="lg:order-first">
             <CardHeader>
               <CardTitle>Saved flows</CardTitle>
             </CardHeader>

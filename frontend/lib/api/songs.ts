@@ -88,6 +88,40 @@ export type UploadSongBackgroundVideoResponse = {
   storagePath: string;
 };
 
+export type TrashedSongDto = {
+  id: string;
+  title: string;
+  artist: string;
+  deletedAt: string;
+};
+
+export async function getTrashedSongs(
+  organizationId: string,
+): Promise<{ songs: TrashedSongDto[] }> {
+  return apiGet<{ songs: TrashedSongDto[] }>(
+    `/api/organizations/${organizationId}/songs/trash`,
+  );
+}
+
+export async function restoreSong(
+  organizationId: string,
+  songId: string,
+): Promise<{ ok: boolean }> {
+  return apiPost<{ ok: boolean }>(
+    `/api/organizations/${organizationId}/songs/${songId}/restore`,
+    {},
+  );
+}
+
+export async function purgeSong(
+  organizationId: string,
+  songId: string,
+): Promise<{ ok: boolean }> {
+  return apiDelete<{ ok: boolean }>(
+    `/api/organizations/${organizationId}/songs/${songId}/purge`,
+  );
+}
+
 export async function uploadSongBackgroundVideo(
   organizationId: string,
   file: File,

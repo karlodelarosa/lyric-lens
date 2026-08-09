@@ -61,6 +61,29 @@ export function PresenterView() {
   const liveLyrics =
     liveState.manualLyrics ?? liveState.displayLyrics ?? sectionLyrics;
 
+  const [countdownDisplaySeconds, setCountdownDisplaySeconds] = useState<
+    number | null
+  >(null);
+
+  useEffect(() => {
+    const countdown = liveState.countdown;
+    if (!countdown || countdown.status !== "running" || !countdown.endAt) {
+      setCountdownDisplaySeconds(countdown?.remainingSeconds ?? null);
+      return;
+    }
+
+    const endAt = countdown.endAt;
+    const tick = () => {
+      setCountdownDisplaySeconds(
+        Math.max(0, Math.ceil((endAt - Date.now()) / 1000)),
+      );
+    };
+
+    tick();
+    const interval = window.setInterval(tick, 250);
+    return () => window.clearInterval(interval);
+  }, [liveState.countdown]);
+
   const syncFullscreenState = useCallback(() => {
     setIsFullscreen(Boolean(getFullscreenElement()));
   }, []);
@@ -147,10 +170,12 @@ export function PresenterView() {
             Boolean(liveState.currentAnnouncementBody)
           : liveState.slideMode === "cue"
             ? Boolean(liveState.currentCueLabel)
-            : liveState.slideMode === "lyrics" &&
-              (liveState.manualLyrics != null ||
-                liveState.displayLyrics != null ||
-                currentSection);
+            : liveState.slideMode === "countdown"
+              ? Boolean(liveState.countdown)
+              : liveState.slideMode === "lyrics" &&
+                (liveState.manualLyrics != null ||
+                  liveState.displayLyrics != null ||
+                  currentSection);
 
   const slideContent = hasSlideContent ? (
     <LiveSlideContent
@@ -171,6 +196,8 @@ export function PresenterView() {
           ? (liveLyrics ?? "")
           : undefined
       }
+      countdownRemainingSeconds={countdownDisplaySeconds}
+      countdownLabel={liveState.countdown?.label ?? null}
       textStyle={textStyle}
     />
   ) : null;
@@ -194,7 +221,6 @@ export function PresenterView() {
         videoUrl={effectiveBackgroundVideoUrl}
         intensity={effectiveBackgroundIntensity}
       />
-
 
       <Button
         variant="ghost"

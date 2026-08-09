@@ -1,12 +1,21 @@
 import type {
   Setlist,
   SetlistFlowSection,
+  TrashedSetlistItem,
   WelcomeSlide,
 } from "../../domain/setlist/Setlist";
 import type {
   CreateSetlistInput,
   UpdateSetlistInput,
 } from "../../domain/setlist/Setlist";
+
+export function trashedSetlistToDto(item: TrashedSetlistItem) {
+  return {
+    id: item.id,
+    title: item.title,
+    deletedAt: item.deletedAt,
+  };
+}
 
 export function setlistToDto(setlist: Setlist) {
   return {

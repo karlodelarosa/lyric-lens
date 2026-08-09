@@ -6,6 +6,7 @@ import { normalizeAnnouncement } from "@frontend/lib/api/announcementUtils";
 import { mapServiceFlowDto } from "../../contexts/AppContext";
 import {
   useApp,
+  type CountdownState,
   type ServiceFlow,
   type ServiceFlowSegment,
 } from "../../contexts/AppContext";
@@ -35,6 +36,11 @@ import {
   Sparkles,
   Eraser,
   Timer,
+  TimerReset,
+  Pause,
+  RotateCcw,
+  Smartphone,
+  Copy,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -61,9 +67,19 @@ import {
 import { toast } from "sonner";
 import { useOnlineStatus } from "../../lib/useOnlineStatus";
 import {
+  formatCountdown,
   getContrastingTextColor,
   getLiveTextShadow,
 } from "../../lib/liveDisplayUtils";
+import {
+  generateRemotePin,
+  joinRemoteChannel,
+  REMOTE_COMMAND_EVENT,
+  REMOTE_STATUS_EVENT,
+  type RemoteCommandPayload,
+  type RemoteStatusPayload,
+} from "../../lib/remoteControl";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 const fontOptions = [
   "Inter",
@@ -174,6 +190,15 @@ export function LiveMode() {
   const previewFrameRef = useRef<HTMLDivElement | null>(null);
   const loadedServiceFlowIdRef = useRef<string | null>(null);
   const presenterWindowRef = useRef<Window | null>(null);
+  const [quickCountdownValue, setQuickCountdownValue] = useState("5");
+  const [quickCountdownUnit, setQuickCountdownUnit] = useState<
+    "seconds" | "minutes"
+  >("minutes");
+  const [countdownDisplaySeconds, setCountdownDisplaySeconds] = useState<
+    number | null
+  >(null);
+  const [remotePin, setRemotePin] = useState<string | null>(null);
+  const remoteChannelRef = useRef<RealtimeChannel | null>(null);
 
   const selectedSetlist = setlists.find((sl) => sl.id === selectedSetlistId);
   const setlistSongs = (selectedSetlist?.songs || [])
@@ -200,6 +225,11 @@ export function LiveMode() {
     liveState.slideMode === "lyrics" && currentSection
       ? getSectionIntensity(currentSection)
       : 50;
+  const previewCountdownRemainingSeconds = liveState.countdown
+    ? liveState.countdown.status === "running"
+      ? (countdownDisplaySeconds ?? liveState.countdown.remainingSeconds)
+      : liveState.countdown.remainingSeconds
+    : null;
   const currentSectionChunks = currentSection
     ? getLyricChunks(currentSection.lyrics, liveState.linesPerSlide)
     : [];
@@ -280,6 +310,51 @@ export function LiveMode() {
         return;
       }
 
+      if (segment.kind === "song") {
+        const song = songs.find((s) => s.id === segment.songId);
+        const firstSection = song?.sections[0];
+        updateLiveState({
+          currentServiceFlowId: flow.id,
+          currentSegmentId: segment.id,
+          slideMode: "lyrics",
+          currentSetlistId: null,
+          currentSongId: song?.id ?? null,
+          currentSectionId: firstSection?.id ?? null,
+          manualLyrics: null,
+          currentChunkIndex: 0,
+        });
+        return;
+      }
+
+      if (segment.kind === "welcome") {
+        updateLiveState({
+          currentServiceFlowId: flow.id,
+          currentSegmentId: segment.id,
+          slideMode: "welcome",
+          welcomeSlideUrl: segment.welcomeMedia?.url ?? null,
+          welcomeSlideType: segment.welcomeMedia?.type ?? null,
+        });
+        return;
+      }
+
+      if (segment.kind === "countdown") {
+        const durationSeconds = segment.countdownSeconds ?? 60;
+        updateLiveState({
+          currentServiceFlowId: flow.id,
+          currentSegmentId: segment.id,
+          slideMode: "countdown",
+          countdown: {
+            status: "armed",
+            durationSeconds,
+            endAt: null,
+            remainingSeconds: durationSeconds,
+            label: segment.label,
+            autoAdvance: true,
+          },
+        });
+        return;
+      }
+
       updateLiveState({
         currentServiceFlowId: flow.id,
         currentSegmentId: segment.id,
@@ -296,7 +371,7 @@ export function LiveMode() {
         });
       }
     },
-    [setCurrentAnnouncement, setCurrentCue, updateLiveState],
+    [setCurrentAnnouncement, setCurrentCue, updateLiveState, songs],
   );
 
   const selectServiceFlowSegment = useCallback(
@@ -390,6 +465,127 @@ export function LiveMode() {
     const next = activeServiceFlow.segments[index + direction];
     if (next) selectServiceFlowSegment(next);
   };
+
+  const handleStartCountdown = (
+    durationSeconds: number,
+    label: string | null,
+    autoAdvance: boolean,
+  ) => {
+    if (durationSeconds <= 0) return;
+    updateLiveState({
+      slideMode: "countdown",
+      countdown: {
+        status: "running",
+        durationSeconds,
+        endAt: Date.now() + durationSeconds * 1000,
+        remainingSeconds: durationSeconds,
+        label,
+        autoAdvance,
+      },
+    });
+  };
+
+  const handleStartArmedCountdown = () => {
+    const countdown = liveState.countdown;
+    if (!countdown) return;
+    handleStartCountdown(
+      countdown.durationSeconds,
+      countdown.label,
+      countdown.autoAdvance,
+    );
+  };
+
+  const handleStartQuickCountdown = () => {
+    const raw = Number(quickCountdownValue);
+    if (!Number.isFinite(raw) || raw <= 0) {
+      toast.error("Enter a countdown duration above 0");
+      return;
+    }
+    const durationSeconds = Math.round(
+      raw * (quickCountdownUnit === "minutes" ? 60 : 1),
+    );
+    handleStartCountdown(durationSeconds, null, false);
+  };
+
+  const handleTogglePauseCountdown = () => {
+    const countdown = liveState.countdown;
+    if (!countdown) return;
+
+    if (countdown.status === "running") {
+      const remaining = countdown.endAt
+        ? Math.max(0, Math.ceil((countdown.endAt - Date.now()) / 1000))
+        : countdown.remainingSeconds;
+      updateLiveState({
+        countdown: {
+          ...countdown,
+          status: "paused",
+          endAt: null,
+          remainingSeconds: remaining,
+        },
+      });
+      return;
+    }
+
+    if (countdown.status === "paused") {
+      updateLiveState({
+        countdown: {
+          ...countdown,
+          status: "running",
+          endAt: Date.now() + countdown.remainingSeconds * 1000,
+        },
+      });
+    }
+  };
+
+  const handleRestartCountdown = () => {
+    const countdown = liveState.countdown;
+    if (!countdown) return;
+    updateLiveState({
+      countdown: {
+        ...countdown,
+        status: "running",
+        endAt: Date.now() + countdown.durationSeconds * 1000,
+        remainingSeconds: countdown.durationSeconds,
+      },
+    });
+  };
+
+  useEffect(() => {
+    const countdown = liveState.countdown;
+    if (!countdown || countdown.status !== "running" || !countdown.endAt) {
+      return;
+    }
+
+    const endAt = countdown.endAt;
+    const autoAdvance = countdown.autoAdvance;
+    let finished = false;
+
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+      setCountdownDisplaySeconds(remaining);
+
+      if (remaining <= 0 && !finished) {
+        finished = true;
+        updateLiveState({
+          countdown: {
+            ...countdown,
+            status: "done",
+            endAt: null,
+            remainingSeconds: 0,
+          },
+        });
+        if (autoAdvance) {
+          goToAdjacentSegment(1);
+        }
+      }
+    };
+
+    tick();
+    const interval = window.setInterval(tick, 250);
+    return () => window.clearInterval(interval);
+    // Only re-run when the running countdown actually changes (start/pause/resume/restart).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveState.countdown?.status, liveState.countdown?.endAt]);
 
   useEffect(() => {
     setVideoUrlInput(liveState.backgroundVideoUrl ?? "");
@@ -655,8 +851,10 @@ export function LiveMode() {
 
   const handleNextRef = useRef(handleNext);
   const handlePreviousRef = useRef(handlePrevious);
+  const handleClearScreenRef = useRef(handleClearScreen);
   handleNextRef.current = handleNext;
   handlePreviousRef.current = handlePrevious;
+  handleClearScreenRef.current = handleClearScreen;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -676,6 +874,122 @@ export function LiveMode() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isEditableTarget]);
+
+  const getRemoteStatus = (): {
+    title: string | null;
+    subtitle: string | null;
+  } => {
+    if (liveState.slideMode === "welcome") {
+      return { title: "Welcome slide", subtitle: null };
+    }
+    if (liveState.slideMode === "blank") {
+      return { title: "Screen cleared", subtitle: null };
+    }
+    if (liveState.slideMode === "announcement") {
+      return {
+        title: liveState.currentAnnouncementTitle ?? "Announcement",
+        subtitle:
+          announcementSlides.length > 0
+            ? `Slide ${liveState.currentChunkIndex + 1} / ${announcementSlides.length}`
+            : "Text announcement",
+      };
+    }
+    if (liveState.slideMode === "countdown") {
+      return {
+        title: liveState.countdown?.label ?? "Countdown",
+        subtitle: formatCountdown(previewCountdownRemainingSeconds ?? 0),
+      };
+    }
+    if (currentSong) {
+      return {
+        title: currentSong.title,
+        subtitle: currentSection
+          ? `${currentSection.type.charAt(0).toUpperCase()}${currentSection.type.slice(1)}${
+              currentSection.number ? ` ${currentSection.number}` : ""
+            }`
+          : null,
+      };
+    }
+    return { title: null, subtitle: null };
+  };
+
+  const handleEnableRemote = () => {
+    try {
+      const pin = generateRemotePin();
+      const channel = joinRemoteChannel(pin);
+      channel
+        .on(
+          "broadcast",
+          { event: REMOTE_COMMAND_EVENT },
+          ({ payload }: { payload: RemoteCommandPayload }) => {
+            if (payload.command === "next") handleNextRef.current();
+            else if (payload.command === "previous")
+              handlePreviousRef.current();
+            else if (payload.command === "clear")
+              handleClearScreenRef.current();
+          },
+        )
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            toast.error(
+              "Remote control connection failed — check your network.",
+            );
+          }
+        });
+      remoteChannelRef.current = channel;
+      setRemotePin(pin);
+    } catch {
+      toast.error("Remote control isn't available right now");
+    }
+  };
+
+  const handleDisableRemote = () => {
+    const channel = remoteChannelRef.current;
+    if (channel) {
+      const payload: RemoteStatusPayload = {
+        active: false,
+        title: null,
+        subtitle: null,
+      };
+      void channel.send({
+        type: "broadcast",
+        event: REMOTE_STATUS_EVENT,
+        payload,
+      });
+      void channel.unsubscribe();
+    }
+    remoteChannelRef.current = null;
+    setRemotePin(null);
+  };
+
+  useEffect(() => {
+    return () => {
+      remoteChannelRef.current?.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!remotePin || !remoteChannelRef.current) return;
+    const { title, subtitle } = getRemoteStatus();
+    const payload: RemoteStatusPayload = { active: true, title, subtitle };
+    void remoteChannelRef.current.send({
+      type: "broadcast",
+      event: REMOTE_STATUS_EVENT,
+      payload,
+    });
+    // getRemoteStatus reads liveState/currentSong/currentSection directly; the
+    // primitives below are what actually change its result.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    remotePin,
+    liveState.slideMode,
+    liveState.currentAnnouncementTitle,
+    liveState.currentChunkIndex,
+    liveState.countdown,
+    currentSong?.id,
+    currentSection?.id,
+    previewCountdownRemainingSeconds,
+  ]);
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -808,11 +1122,14 @@ export function LiveMode() {
                 }
                 onSelectSong={handleSongClick}
                 onSelectSection={handleSectionClick}
+                onStartCountdown={handleStartArmedCountdown}
                 currentSongId={liveState.currentSongId}
                 currentSectionId={liveState.currentSectionId}
                 currentAnnouncementId={liveState.currentAnnouncementId}
                 currentAnnouncementSlideIndex={liveState.currentChunkIndex}
+                currentCountdownStatus={liveState.countdown?.status ?? null}
                 setlistSongs={musicSetlistSongs}
+                songs={songs}
               />
             ) : (
               <>
@@ -1133,6 +1450,10 @@ export function LiveMode() {
                           }
                           compact={isCompactMode}
                           scaledFontSize={scaledPreviewFontSize}
+                          countdownRemainingSeconds={
+                            previewCountdownRemainingSeconds
+                          }
+                          countdownLabel={liveState.countdown?.label ?? null}
                           textStyle={{
                             fontFamily: liveState.fontFamily,
                             fontSize: `${scaledPreviewFontSize}px`,
@@ -1163,6 +1484,7 @@ export function LiveMode() {
                           liveState.slideMode !== "welcome" &&
                           liveState.slideMode !== "announcement" &&
                           liveState.slideMode !== "cue" &&
+                          liveState.slideMode !== "countdown" &&
                           !(
                             liveState.manualLyrics != null || currentSection
                           ) ? (
@@ -1283,6 +1605,56 @@ export function LiveMode() {
                         Text announcement
                       </p>
                     )}
+                  </div>
+                ) : liveState.slideMode === "countdown" ? (
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="font-semibold">
+                        {liveState.countdown?.label ?? "Countdown"}
+                      </p>
+                      <p className="text-sm text-muted-foreground tabular-nums">
+                        {formatCountdown(
+                          previewCountdownRemainingSeconds ?? 0,
+                        )}
+                        {liveState.countdown?.status === "paused"
+                          ? " · Paused"
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      {liveState.countdown?.status === "running" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleTogglePauseCountdown}
+                        >
+                          <Pause className="w-4 h-4 mr-1" />
+                          Pause
+                        </Button>
+                      ) : liveState.countdown?.status === "paused" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleTogglePauseCountdown}
+                        >
+                          <Play className="w-4 h-4 mr-1" />
+                          Resume
+                        </Button>
+                      ) : (
+                        <Button size="sm" onClick={handleStartArmedCountdown}>
+                          <Play className="w-4 h-4 mr-1" />
+                          Start
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleRestartCountdown}
+                      >
+                        <RotateCcw className="w-4 h-4 mr-1" />
+                        Restart
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   currentSong && (
@@ -1740,6 +2112,100 @@ export function LiveMode() {
                 songs without one, or for welcome/announcement/blank screens.
               </p>
             </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Smartphone className="w-4 h-4" />
+              <Label>Remote Control</Label>
+            </div>
+            {remotePin ? (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Open this on a phone to send Next / Previous / Clear:
+                </p>
+                <div className="flex items-center justify-center gap-2 rounded-lg border bg-background/80 py-3">
+                  <span className="text-2xl font-bold tracking-[0.3em] tabular-nums">
+                    {remotePin}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      const link = `${window.location.origin}/remote/${remotePin}`;
+                      void navigator.clipboard
+                        .writeText(link)
+                        .then(() => toast.success("Link copied"))
+                        .catch(() => toast.error("Failed to copy link"));
+                    }}
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy link
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleDisableRemote}
+                  >
+                    Disable
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  This code stops working once you disable it or leave this
+                  page.
+                </p>
+              </div>
+            ) : (
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={handleEnableRemote}
+              >
+                <Smartphone className="w-4 h-4 mr-2" />
+                Enable remote control
+              </Button>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <TimerReset className="w-4 h-4" />
+              <Label>Quick Countdown</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Start a countdown right now — for a spontaneous break, service
+              start, or anything not planned into a service flow.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                min={1}
+                value={quickCountdownValue}
+                onChange={(e) => setQuickCountdownValue(e.target.value)}
+                className="w-20"
+              />
+              <Select
+                value={quickCountdownUnit}
+                onValueChange={(value: "seconds" | "minutes") =>
+                  setQuickCountdownUnit(value)
+                }
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="seconds">Seconds</SelectItem>
+                  <SelectItem value="minutes">Minutes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button className="w-full" onClick={handleStartQuickCountdown}>
+              <Play className="w-4 h-4 mr-2" />
+              Flash countdown live
+            </Button>
           </div>
 
           <div className="space-y-3">

@@ -2,8 +2,18 @@ import type {
   CreateSongInput,
   Song,
   SongSectionType,
+  TrashedSongItem,
 } from "../../domain/song/Song";
 import { SONG_SECTION_TYPES } from "../../domain/song/Song";
+
+export function trashedSongToDto(item: TrashedSongItem) {
+  return {
+    id: item.id,
+    title: item.title,
+    artist: item.artist,
+    deletedAt: item.deletedAt,
+  };
+}
 
 export function songToDto(song: Song) {
   return {

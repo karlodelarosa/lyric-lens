@@ -177,6 +177,7 @@ export type Database = {
       };
       service_flow_segments: {
         Row: {
+          countdown_seconds: number | null;
           created_at: string;
           id: string;
           kind: Database["public"]["Enums"]["service_flow_segment_kind"];
@@ -185,9 +186,12 @@ export type Database = {
           position: number;
           service_flow_id: string;
           setlist_id: string | null;
+          song_id: string | null;
           updated_at: string;
+          welcome_media: Json | null;
         };
         Insert: {
+          countdown_seconds?: number | null;
           created_at?: string;
           id?: string;
           kind?: Database["public"]["Enums"]["service_flow_segment_kind"];
@@ -196,9 +200,12 @@ export type Database = {
           position?: number;
           service_flow_id: string;
           setlist_id?: string | null;
+          song_id?: string | null;
           updated_at?: string;
+          welcome_media?: Json | null;
         };
         Update: {
+          countdown_seconds?: number | null;
           created_at?: string;
           id?: string;
           kind?: Database["public"]["Enums"]["service_flow_segment_kind"];
@@ -207,7 +214,9 @@ export type Database = {
           position?: number;
           service_flow_id?: string;
           setlist_id?: string | null;
+          song_id?: string | null;
           updated_at?: string;
+          welcome_media?: Json | null;
         };
         Relationships: [
           {
@@ -222,6 +231,13 @@ export type Database = {
             columns: ["setlist_id"];
             isOneToOne: false;
             referencedRelation: "setlists";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "service_flow_segments_song_id_fkey";
+            columns: ["song_id"];
+            isOneToOne: false;
+            referencedRelation: "songs";
             referencedColumns: ["id"];
           },
         ];
@@ -307,6 +323,7 @@ export type Database = {
         Row: {
           created_at: string;
           created_by: string | null;
+          deleted_at: string | null;
           flow_sections: Json;
           welcome_slide: Json | null;
           id: string;
@@ -317,6 +334,7 @@ export type Database = {
         Insert: {
           created_at?: string;
           created_by?: string | null;
+          deleted_at?: string | null;
           flow_sections?: Json;
           welcome_slide?: Json | null;
           id?: string;
@@ -327,6 +345,7 @@ export type Database = {
         Update: {
           created_at?: string;
           created_by?: string | null;
+          deleted_at?: string | null;
           flow_sections?: Json;
           welcome_slide?: Json | null;
           id?: string;
@@ -483,6 +502,7 @@ export type Database = {
           background_video_url: string | null;
           created_at: string;
           created_by: string | null;
+          deleted_at: string | null;
           id: string;
           organization_id: string;
           title: string;
@@ -493,6 +513,7 @@ export type Database = {
           background_video_url?: string | null;
           created_at?: string;
           created_by?: string | null;
+          deleted_at?: string | null;
           id?: string;
           organization_id: string;
           title: string;
@@ -503,6 +524,7 @@ export type Database = {
           background_video_url?: string | null;
           created_at?: string;
           created_by?: string | null;
+          deleted_at?: string | null;
           id?: string;
           organization_id?: string;
           title?: string;
@@ -527,7 +549,13 @@ export type Database = {
       is_org_member: { Args: { org_id: string }; Returns: boolean };
     };
     Enums: {
-      service_flow_segment_kind: "music" | "announcements" | "cue";
+      service_flow_segment_kind:
+        | "music"
+        | "announcements"
+        | "cue"
+        | "song"
+        | "welcome"
+        | "countdown";
     };
     CompositeTypes: {
       [_ in never]: never;

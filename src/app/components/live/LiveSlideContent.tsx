@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { AnnouncementSlide, SlideMode } from "../../contexts/AppContext";
+import { formatCountdown } from "../../lib/liveDisplayUtils";
 
 type WelcomeSlideType = "image" | "video";
 
@@ -17,6 +18,8 @@ type LiveSlideContentProps = {
   textStyle: CSSProperties;
   compact?: boolean;
   scaledFontSize?: number;
+  countdownRemainingSeconds?: number | null;
+  countdownLabel?: string | null;
 };
 
 function renderMediaSlide(
@@ -57,6 +60,8 @@ export function LiveSlideContent({
   textStyle,
   compact = false,
   scaledFontSize,
+  countdownRemainingSeconds,
+  countdownLabel,
 }: LiveSlideContentProps) {
   const fontSize =
     scaledFontSize ??
@@ -144,6 +149,40 @@ export function LiveSlideContent({
             {cueNotes}
           </p>
         )}
+      </div>
+    );
+  }
+
+  if (slideMode === "countdown") {
+    const remaining = countdownRemainingSeconds ?? 0;
+    const isUrgent = remaining <= 5;
+
+    return (
+      <div
+        className="max-w-3xl relative z-[1] text-center px-8"
+        style={{ color: textStyle.color }}
+      >
+        {countdownLabel && (
+          <p
+            className="font-semibold mb-2 uppercase tracking-wide opacity-80"
+            style={{
+              fontSize: `${Math.max(16, fontSize * 0.35)}px`,
+              textShadow: textStyle.textShadow,
+            }}
+          >
+            {countdownLabel}
+          </p>
+        )}
+        <p
+          className={`font-bold tabular-nums ${isUrgent ? "animate-pulse text-red-500" : ""}`}
+          style={{
+            fontSize: `${fontSize * 2.4}px`,
+            textShadow: textStyle.textShadow,
+            color: isUrgent ? undefined : textStyle.color,
+          }}
+        >
+          {formatCountdown(remaining)}
+        </p>
       </div>
     );
   }

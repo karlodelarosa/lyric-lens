@@ -21,6 +21,7 @@ import {
   Eye,
   User,
   LogOut,
+  Trash2,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -85,6 +86,7 @@ export function RootLayout() {
   const secondaryNavigation = [
     { name: "How to use", href: "/how-to-use", icon: BookOpen },
     { name: "Website", href: "/website", icon: Globe },
+    { name: "Trash", href: "/trash", icon: Trash2 },
   ];
 
   const isActive = (href: string) => {

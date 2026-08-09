@@ -585,7 +585,6 @@ export function SongLibrary() {
     try {
       await deleteSong(songId);
       if (selectedSong === songId) setSelectedSong(null);
-      toast.success("Song deleted");
     } catch {
       toast.error("Failed to delete song");
     }

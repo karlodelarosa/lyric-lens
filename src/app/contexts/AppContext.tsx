@@ -5,6 +5,7 @@ import React, {
   useState,
   ReactNode,
 } from "react";
+import { toast } from "sonner";
 import { useOrganization } from "@frontend/contexts/OrganizationContext";
 import {
   createEvent as createEventApi,
@@ -17,6 +18,7 @@ import {
   createSetlist as createSetlistApi,
   deleteSetlist as deleteSetlistApi,
   getSetlists,
+  restoreSetlist as restoreSetlistApi,
   updateSetlist as updateSetlistApi,
   type SetlistDto,
 } from "@frontend/lib/api/setlists";
@@ -41,6 +43,7 @@ import {
   createSong as createSongApi,
   deleteSong as deleteSongApi,
   getSongs,
+  restoreSong as restoreSongApi,
   updateSong as updateSongApi,
   type SongDto,
 } from "@frontend/lib/api/songs";
@@ -172,7 +175,18 @@ export type UpdateAnnouncementInput = {
   slides?: AnnouncementSlide[];
 };
 
-export type ServiceFlowSegmentKind = "music" | "announcements" | "cue";
+export type ServiceFlowSegmentKind =
+  | "music"
+  | "announcements"
+  | "cue"
+  | "song"
+  | "welcome"
+  | "countdown";
+
+export type WelcomeMedia = {
+  url: string;
+  type: "image" | "video";
+};
 
 export type ServiceFlowSegment = {
   id: string;
@@ -182,6 +196,11 @@ export type ServiceFlowSegment = {
   notes: string | null;
   setlistId: string | null;
   setlistName: string | null;
+  songId: string | null;
+  songTitle: string | null;
+  songArtist: string | null;
+  welcomeMedia: WelcomeMedia | null;
+  countdownSeconds: number | null;
   announcements: Announcement[];
 };
 
@@ -190,6 +209,7 @@ export type ServiceFlowListItem = {
   title: string;
   description: string | null;
   segmentCount: number;
+  updatedAt: string;
 };
 
 export type ServiceFlow = {
@@ -211,7 +231,24 @@ export type UpdateServiceFlowInput = {
   segments?: ServiceFlowSegmentInput[];
 };
 
-export type SlideMode = "lyrics" | "announcement" | "cue" | "welcome" | "blank";
+export type SlideMode =
+  | "lyrics"
+  | "announcement"
+  | "cue"
+  | "welcome"
+  | "countdown"
+  | "blank";
+
+export type CountdownStatus = "armed" | "running" | "paused" | "done";
+
+export type CountdownState = {
+  status: CountdownStatus;
+  durationSeconds: number;
+  endAt: number | null;
+  remainingSeconds: number;
+  label: string | null;
+  autoAdvance: boolean;
+} | null;
 
 interface LiveState {
   isLive: boolean;
@@ -226,6 +263,7 @@ interface LiveState {
   currentCueNotes: string | null;
   welcomeSlideUrl: string | null;
   welcomeSlideType: "image" | "video" | null;
+  countdown: CountdownState;
   currentSetlistId: string | null;
   currentSongId: string | null;
   currentSectionId: string | null;
@@ -347,6 +385,7 @@ function mapServiceFlowListItemDto(
     title: dto.title,
     description: dto.description,
     segmentCount: dto.segmentCount,
+    updatedAt: dto.updatedAt,
   };
 }
 
@@ -363,6 +402,11 @@ export function mapServiceFlowDto(dto: ServiceFlowDto): ServiceFlow {
       notes: segment.notes,
       setlistId: segment.setlistId,
       setlistName: segment.setlistName,
+      songId: segment.songId,
+      songTitle: segment.songTitle,
+      songArtist: segment.songArtist,
+      welcomeMedia: segment.welcomeMedia,
+      countdownSeconds: segment.countdownSeconds,
       announcements: segment.announcements.map(mapAnnouncementDto),
     })),
   };
@@ -382,6 +426,7 @@ function getDefaultLiveState(): LiveState {
     currentCueNotes: null,
     welcomeSlideUrl: null,
     welcomeSlideType: null,
+    countdown: null,
     currentSetlistId: null,
     currentSongId: null,
     currentSectionId: null,
@@ -428,6 +473,16 @@ function mapSongDto(dto: SongDto): Song {
 
 function sortSetlistsByUpdatedAt(setlists: Setlist[]): Setlist[] {
   return [...setlists].sort((a, b) => {
+    const aTime = a.updatedAt ? Date.parse(a.updatedAt) : 0;
+    const bTime = b.updatedAt ? Date.parse(b.updatedAt) : 0;
+    return bTime - aTime;
+  });
+}
+
+function sortServiceFlowsByUpdatedAt(
+  items: ServiceFlowListItem[],
+): ServiceFlowListItem[] {
+  return [...items].sort((a, b) => {
     const aTime = a.updatedAt ? Date.parse(a.updatedAt) : 0;
     const bTime = b.updatedAt ? Date.parse(b.updatedAt) : 0;
     return bTime - aTime;
@@ -489,8 +544,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ? crypto.randomUUID()
       : `live-${Math.random().toString(36).slice(2)}`,
   );
-  const pendingPublishRef = React.useRef<LiveState | null>(null);
-  const publishRafRef = React.useRef<number | null>(null);
   const liveActivityRef = React.useRef(Date.now());
   const skipNextPublishRef = React.useRef(false);
 
@@ -750,7 +803,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const { serviceFlows: loaded } =
         await getServiceFlows(activeOrganizationId);
-      setServiceFlowList(loaded.map(mapServiceFlowListItemDto));
+      setServiceFlowList(
+        sortServiceFlowsByUpdatedAt(loaded.map(mapServiceFlowListItemDto)),
+      );
     } catch (error) {
       setServiceFlowList([]);
       setServiceFlowsError(
@@ -878,30 +933,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    pendingPublishRef.current = liveState;
-
-    if (publishRafRef.current != null) return;
-
-    publishRafRef.current = requestAnimationFrame(() => {
-      publishRafRef.current = null;
-      const state = pendingPublishRef.current;
-      if (!state) return;
-
-      publishLiveState(
-        liveStateChannelRef.current,
-        liveStateSourceIdRef.current,
-        state as unknown as Record<string, unknown>,
-      );
-    });
+    // Publish synchronously rather than batching via requestAnimationFrame —
+    // rAF is paused by the browser for backgrounded/unfocused tabs, which
+    // would silently stop propagating updates (e.g. from a remote-control
+    // command) to other windows until this tab regains focus.
+    publishLiveState(
+      liveStateChannelRef.current,
+      liveStateSourceIdRef.current,
+      liveState as unknown as Record<string, unknown>,
+    );
   }, [liveState, liveStateHydrated]);
-
-  React.useEffect(() => {
-    return () => {
-      if (publishRafRef.current != null) {
-        cancelAnimationFrame(publishRafRef.current);
-      }
-    };
-  }, []);
 
   const addSong = async (song: NewSongInput) => {
     if (!activeOrganizationId) {
@@ -952,8 +993,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw new Error("No organization selected");
     }
 
-    await deleteSongApi(activeOrganizationId, id);
+    const orgId = activeOrganizationId;
+    const deletedSong = songs.find((s) => s.id === id);
+
+    await deleteSongApi(orgId, id);
     setSongs((prev) => prev.filter((s) => s.id !== id));
+
+    toast.success(`"${deletedSong?.title ?? "Song"}" deleted`, {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          void restoreSongApi(orgId, id)
+            .then(() => refreshSongs())
+            .catch(() => toast.error("Failed to undo delete"));
+        },
+      },
+    });
   };
 
   const addSetlist = async (input: NewSetlistInput) => {
@@ -1013,8 +1068,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw new Error("No organization selected");
     }
 
-    await deleteSetlistApi(activeOrganizationId, id);
+    const orgId = activeOrganizationId;
+    const deletedSetlist = setlists.find((setlist) => setlist.id === id);
+
+    await deleteSetlistApi(orgId, id);
     setSetlists((prev) => prev.filter((setlist) => setlist.id !== id));
+
+    toast.success(`"${deletedSetlist?.name ?? "Setlist"}" deleted`, {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          void restoreSetlistApi(orgId, id)
+            .then(() => refreshSetlists())
+            .catch(() => toast.error("Failed to undo delete"));
+        },
+      },
+    });
   };
 
   const addSchedule = async (schedule: NewScheduleInput) => {
@@ -1120,15 +1189,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
 
     const mapped = mapServiceFlowDto(created);
-    setServiceFlowList((prev) => [
-      ...prev,
-      {
-        id: mapped.id,
-        title: mapped.title,
-        description: mapped.description,
-        segmentCount: mapped.segments.length,
-      },
-    ]);
+    setServiceFlowList((prev) =>
+      sortServiceFlowsByUpdatedAt([
+        ...prev,
+        {
+          id: mapped.id,
+          title: mapped.title,
+          description: mapped.description,
+          segmentCount: mapped.segments.length,
+          updatedAt: new Date().toISOString(),
+        },
+      ]),
+    );
 
     return mapped;
   };
@@ -1149,15 +1221,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const mapped = mapServiceFlowDto(updated);
     setServiceFlowList((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              id: mapped.id,
-              title: mapped.title,
-              description: mapped.description,
-              segmentCount: mapped.segments.length,
-            }
-          : item,
+      sortServiceFlowsByUpdatedAt(
+        prev.map((item) =>
+          item.id === id
+            ? {
+                id: mapped.id,
+                title: mapped.title,
+                description: mapped.description,
+                segmentCount: mapped.segments.length,
+                updatedAt: new Date().toISOString(),
+              }
+            : item,
+        ),
       ),
     );
 
@@ -1184,15 +1259,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
 
     const mapped = mapServiceFlowDto(duplicated);
-    setServiceFlowList((prev) => [
-      ...prev,
-      {
-        id: mapped.id,
-        title: mapped.title,
-        description: mapped.description,
-        segmentCount: mapped.segments.length,
-      },
-    ]);
+    setServiceFlowList((prev) =>
+      sortServiceFlowsByUpdatedAt([
+        ...prev,
+        {
+          id: mapped.id,
+          title: mapped.title,
+          description: mapped.description,
+          segmentCount: mapped.segments.length,
+          updatedAt: new Date().toISOString(),
+        },
+      ]),
+    );
 
     return mapped;
   };

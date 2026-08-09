@@ -3,6 +3,7 @@ import {
   Setlist,
   type CreateSetlistInput,
   type SetlistListRow,
+  type TrashedSetlistItem,
   type UpdateSetlistInput,
 } from "../../domain/setlist/Setlist";
 import type { SetlistRepository } from "../../domain/setlist/SetlistRepository";
@@ -49,6 +50,7 @@ export class SupabaseSetlistRepository implements SetlistRepository {
       .from("setlists")
       .select(select)
       .eq("organization_id", organizationId)
+      .is("deleted_at", null)
       .order("updated_at", { ascending: false });
   }
 
@@ -254,12 +256,60 @@ export class SupabaseSetlistRepository implements SetlistRepository {
   async delete(organizationId: string, setlistId: string): Promise<void> {
     const { error } = await this.client
       .from("setlists")
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq("id", setlistId)
       .eq("organization_id", organizationId);
 
     if (error) {
       throw new Error("Failed to delete setlist");
+    }
+  }
+
+  async listTrashed(organizationId: string): Promise<TrashedSetlistItem[]> {
+    const { data, error } = await this.client
+      .from("setlists")
+      .select("id, title, deleted_at")
+      .eq("organization_id", organizationId)
+      .not("deleted_at", "is", null)
+      .order("deleted_at", { ascending: false });
+
+    if (error) {
+      throw new Error("Failed to load trashed setlists");
+    }
+
+    return (data ?? [])
+      .filter(
+        (row): row is typeof row & { deleted_at: string } =>
+          row.deleted_at !== null,
+      )
+      .map((row) => ({
+        id: row.id,
+        title: row.title,
+        deletedAt: row.deleted_at,
+      }));
+  }
+
+  async restore(organizationId: string, setlistId: string): Promise<void> {
+    const { error } = await this.client
+      .from("setlists")
+      .update({ deleted_at: null })
+      .eq("id", setlistId)
+      .eq("organization_id", organizationId);
+
+    if (error) {
+      throw new Error("Failed to restore setlist");
+    }
+  }
+
+  async purge(organizationId: string, setlistId: string): Promise<void> {
+    const { error } = await this.client
+      .from("setlists")
+      .delete()
+      .eq("id", setlistId)
+      .eq("organization_id", organizationId);
+
+    if (error) {
+      throw new Error("Failed to permanently delete setlist");
     }
   }
 

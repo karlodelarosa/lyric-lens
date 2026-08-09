@@ -74,3 +74,36 @@ export async function deleteSetlist(
     `/api/organizations/${organizationId}/setlists/${setlistId}`,
   );
 }
+
+export type TrashedSetlistDto = {
+  id: string;
+  title: string;
+  deletedAt: string;
+};
+
+export async function getTrashedSetlists(
+  organizationId: string,
+): Promise<{ setlists: TrashedSetlistDto[] }> {
+  return apiGet<{ setlists: TrashedSetlistDto[] }>(
+    `/api/organizations/${organizationId}/setlists/trash`,
+  );
+}
+
+export async function restoreSetlist(
+  organizationId: string,
+  setlistId: string,
+): Promise<{ ok: boolean }> {
+  return apiPost<{ ok: boolean }>(
+    `/api/organizations/${organizationId}/setlists/${setlistId}/restore`,
+    {},
+  );
+}
+
+export async function purgeSetlist(
+  organizationId: string,
+  setlistId: string,
+): Promise<{ ok: boolean }> {
+  return apiDelete<{ ok: boolean }>(
+    `/api/organizations/${organizationId}/setlists/${setlistId}/purge`,
+  );
+}

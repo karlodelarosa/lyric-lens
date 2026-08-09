@@ -346,7 +346,6 @@ export function SetlistBuilder() {
     try {
       await deleteSetlist(setlistId);
       if (editingSetlistId === setlistId) resetBuilder();
-      toast.success("Setlist deleted");
     } catch {
       toast.error("Failed to delete setlist");
     }

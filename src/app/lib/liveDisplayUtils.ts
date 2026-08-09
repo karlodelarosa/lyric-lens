@@ -24,6 +24,19 @@ export function getContrastingTextColor(backgroundValue: string): string {
   return luminance > 0.55 ? "#000000" : "#ffffff";
 }
 
+export function formatCountdown(totalSeconds: number): string {
+  const safeSeconds = Math.max(0, Math.round(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+  const pad = (value: number) => String(value).padStart(2, "0");
+
+  if (hours > 0) {
+    return `${hours}:${pad(minutes)}:${pad(seconds)}`;
+  }
+  return `${pad(minutes)}:${pad(seconds)}`;
+}
+
 export function getLiveTextShadow(textColor: string): string | undefined {
   const normalized = textColor.toLowerCase();
   if (normalized === "#000000" || normalized === "black") {

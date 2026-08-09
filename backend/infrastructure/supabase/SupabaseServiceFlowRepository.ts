@@ -24,6 +24,10 @@ const SERVICE_FLOW_DETAIL_SELECT = `
     notes,
     setlist_id,
     setlists ( id, title ),
+    song_id,
+    songs ( id, title, artist ),
+    welcome_media,
+    countdown_seconds,
     service_flow_segment_announcements (
       announcement_id,
       position,
@@ -44,6 +48,10 @@ const SERVICE_FLOW_DETAIL_SELECT_LEGACY = `
     notes,
     setlist_id,
     setlists ( id, title ),
+    song_id,
+    songs ( id, title, artist ),
+    welcome_media,
+    countdown_seconds,
     service_flow_segment_announcements (
       announcement_id,
       position,
@@ -56,6 +64,7 @@ const SERVICE_FLOW_LIST_SELECT = `
   id,
   title,
   description,
+  updated_at,
   service_flow_segments ( id )
 `;
 
@@ -77,7 +86,7 @@ export class SupabaseServiceFlowRepository implements ServiceFlowRepository {
       .from("service_flows")
       .select(SERVICE_FLOW_LIST_SELECT)
       .eq("organization_id", organizationId)
-      .order("title");
+      .order("updated_at", { ascending: false });
 
     if (error) {
       throw new Error(`Failed to load service flows: ${error.message}`);
@@ -90,6 +99,7 @@ export class SupabaseServiceFlowRepository implements ServiceFlowRepository {
         title: listRow.title,
         description: listRow.description,
         segmentCount: listRow.service_flow_segments?.length ?? 0,
+        updatedAt: listRow.updated_at,
       };
     });
   }
@@ -224,6 +234,9 @@ export class SupabaseServiceFlowRepository implements ServiceFlowRepository {
         notes: segment.notes,
         setlistId: segment.setlistId,
         announcementIds: segment.announcements.map((item) => item.id),
+        songId: segment.songId,
+        welcomeMedia: segment.welcomeMedia,
+        countdownSeconds: segment.countdownSeconds,
       })),
     });
   }
@@ -274,6 +287,10 @@ export class SupabaseServiceFlowRepository implements ServiceFlowRepository {
   ) {
     const kind = segment.kind as ServiceFlowSegmentKind;
     const setlistId = kind === "music" ? (segment.setlistId ?? null) : null;
+    const songId = kind === "song" ? (segment.songId ?? null) : null;
+    const welcomeMedia = kind === "welcome" ? (segment.welcomeMedia ?? null) : null;
+    const countdownSeconds =
+      kind === "countdown" ? (segment.countdownSeconds ?? null) : null;
 
     const { data: segmentRow, error: segmentError } = await this.client
       .from("service_flow_segments")
@@ -284,6 +301,9 @@ export class SupabaseServiceFlowRepository implements ServiceFlowRepository {
         kind,
         notes: segment.notes?.trim() || null,
         setlist_id: setlistId,
+        song_id: songId,
+        welcome_media: welcomeMedia,
+        countdown_seconds: countdownSeconds,
       })
       .select("id")
       .single();

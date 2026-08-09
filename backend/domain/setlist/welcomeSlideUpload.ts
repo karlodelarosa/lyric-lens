@@ -87,7 +87,11 @@ export function buildWelcomeSlideStoragePath(
   );
 }
 
-export type PresentationMediaScope = "welcome" | "announcements" | "songs";
+export type PresentationMediaScope =
+  | "welcome"
+  | "announcements"
+  | "songs"
+  | "flow-welcome";
 
 export function buildPresentationMediaStoragePath(
   organizationId: string,

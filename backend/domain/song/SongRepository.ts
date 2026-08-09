@@ -1,4 +1,9 @@
-import type { CreateSongInput, Song, UpdateSongInput } from "./Song";
+import type {
+  CreateSongInput,
+  Song,
+  TrashedSongItem,
+  UpdateSongInput,
+} from "./Song";
 
 export interface SongRepository {
   listByOrganization(organizationId: string): Promise<Song[]>;
@@ -13,4 +18,7 @@ export interface SongRepository {
     input: UpdateSongInput,
   ): Promise<Song>;
   delete(organizationId: string, songId: string): Promise<void>;
+  listTrashed(organizationId: string): Promise<TrashedSongItem[]>;
+  restore(organizationId: string, songId: string): Promise<void>;
+  purge(organizationId: string, songId: string): Promise<void>;
 }

@@ -36,6 +36,13 @@ export type CreateSongInput = {
 
 export type UpdateSongInput = CreateSongInput;
 
+export type TrashedSongItem = {
+  id: string;
+  title: string;
+  artist: string;
+  deletedAt: string;
+};
+
 type SongSectionRow = {
   id: string;
   section_type: string;

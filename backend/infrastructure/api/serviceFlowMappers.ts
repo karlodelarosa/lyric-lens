@@ -1,6 +1,7 @@
 import type {
   ServiceFlow,
   ServiceFlowListItem,
+  WelcomeMedia,
 } from "../../domain/serviceFlow/ServiceFlow";
 import type {
   CreateServiceFlowInput,
@@ -8,19 +9,41 @@ import type {
   ServiceFlowSegmentKind,
   UpdateServiceFlowInput,
 } from "../../domain/serviceFlow/ServiceFlow";
+import { parseWelcomeMedia } from "../../domain/serviceFlow/ServiceFlow";
 import { announcementToDto } from "./announcementMappers";
 
 const SEGMENT_KINDS: ServiceFlowSegmentKind[] = [
   "music",
   "announcements",
   "cue",
+  "song",
+  "welcome",
+  "countdown",
 ];
+
+const MAX_COUNTDOWN_SECONDS = 21600;
 
 function parseSegmentKind(value: unknown): ServiceFlowSegmentKind | null {
   if (typeof value !== "string") return null;
   return SEGMENT_KINDS.includes(value as ServiceFlowSegmentKind)
     ? (value as ServiceFlowSegmentKind)
     : null;
+}
+
+function parseCountdownSeconds(value: unknown): number | null | undefined {
+  if (value === null) return null;
+  if (value === undefined) return undefined;
+
+  const seconds = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(seconds) || seconds <= 0) return undefined;
+
+  return Math.min(MAX_COUNTDOWN_SECONDS, Math.round(seconds));
+}
+
+function parseWelcomeMediaInput(value: unknown): WelcomeMedia | null | undefined {
+  if (value === null) return null;
+  if (value === undefined) return undefined;
+  return parseWelcomeMedia(value) ?? undefined;
 }
 
 function parseSegments(value: unknown): ServiceFlowSegmentInput[] | null {
@@ -56,12 +79,22 @@ function parseSegments(value: unknown): ServiceFlowSegmentInput[] | null {
         )
       : undefined;
 
+    const songId =
+      record.songId === null
+        ? null
+        : typeof record.songId === "string"
+          ? record.songId
+          : undefined;
+
     segments.push({
       label,
       kind,
       notes,
       setlistId,
       announcementIds,
+      songId,
+      welcomeMedia: parseWelcomeMediaInput(record.welcomeMedia),
+      countdownSeconds: parseCountdownSeconds(record.countdownSeconds),
     });
   }
 
@@ -74,6 +107,7 @@ export function serviceFlowListItemToDto(item: ServiceFlowListItem) {
     title: item.title,
     description: item.description,
     segmentCount: item.segmentCount,
+    updatedAt: item.updatedAt,
   };
 }
 
@@ -90,6 +124,11 @@ export function serviceFlowToDto(flow: ServiceFlow) {
       notes: segment.notes,
       setlistId: segment.setlistId,
       setlistName: segment.setlistName,
+      songId: segment.songId,
+      songTitle: segment.songTitle,
+      songArtist: segment.songArtist,
+      welcomeMedia: segment.welcomeMedia,
+      countdownSeconds: segment.countdownSeconds,
       announcements: segment.announcements.map((announcement) =>
         announcementToDto(announcement),
       ),
