@@ -17,6 +17,37 @@ export const DEFAULT_SECTION_INTENSITY: Record<SongSectionType, number> = {
   custom: 50,
 };
 
+/**
+ * Resolves which video plays behind the live lyrics: a section's own
+ * background wins, then the song's default, then the live "fallback" URL an
+ * operator can set for the current service. If none apply, callers should
+ * fall back to a solid black background rather than showing nothing.
+ */
+export function resolveBackgroundVideoUrl(params: {
+  isLyricsMode: boolean;
+  sectionBackgroundVideoUrl?: string | null;
+  songBackgroundVideoUrl?: string | null;
+  liveOverrideUrl?: string | null;
+  forceSolidBackground?: boolean;
+}): string | null {
+  const {
+    isLyricsMode,
+    sectionBackgroundVideoUrl,
+    songBackgroundVideoUrl,
+    liveOverrideUrl,
+    forceSolidBackground,
+  } = params;
+
+  if (forceSolidBackground) return null;
+
+  return (
+    (isLyricsMode && sectionBackgroundVideoUrl) ||
+    (isLyricsMode && songBackgroundVideoUrl) ||
+    liveOverrideUrl ||
+    null
+  );
+}
+
 export function getSectionIntensity(section: {
   type: SongSectionType;
   intensity?: number | null;

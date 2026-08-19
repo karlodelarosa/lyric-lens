@@ -146,8 +146,8 @@ export function RemoteControl() {
         )}
       </div>
 
-      <div className="flex-1 grid grid-rows-2 gap-3 p-4">
-        <div className="grid grid-cols-2 gap-3">
+      <div className="flex-1 flex flex-col gap-3 p-4 min-h-0">
+        <div className="flex-1 grid grid-rows-2 gap-3 min-h-0">
           <Button
             className="h-full text-lg"
             variant="outline"
@@ -163,8 +163,9 @@ export function RemoteControl() {
             <ChevronRight className="w-8 h-8" />
           </Button>
         </div>
+
         <Button
-          className="h-full text-lg"
+          className="h-12 py-4 text-lg flex-none"
           variant="outline"
           onClick={() => sendCommand("clear")}
         >

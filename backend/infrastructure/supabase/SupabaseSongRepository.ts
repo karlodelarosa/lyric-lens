@@ -20,7 +20,8 @@ const SONG_LIST_SELECT = `
     section_number,
     content,
     position,
-    intensity
+    intensity,
+    background_video_url
   ),
   song_tag_links (
     song_tags (
@@ -112,6 +113,7 @@ export class SupabaseSongRepository implements SongRepository {
       content: section.lyrics.trim(),
       position: index,
       intensity: section.intensity ?? null,
+      background_video_url: section.backgroundVideoUrl?.trim() || null,
     }));
 
     const { error: sectionsError } = await this.client
@@ -201,6 +203,7 @@ export class SupabaseSongRepository implements SongRepository {
       content: section.lyrics.trim(),
       position: index,
       intensity: section.intensity ?? null,
+      background_video_url: section.backgroundVideoUrl?.trim() || null,
     }));
 
     const { error: sectionsError } = await this.client

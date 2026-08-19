@@ -2,80 +2,97 @@
 
 :root {
   --font-size: 16px;
-  --background: #fafafa;
-  --foreground: oklch(0.145 0 0);
+  --font-sans: "Hanken Grotesk", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --font-display: "Bricolage Grotesque", "Hanken Grotesk", -apple-system,
+    sans-serif;
+
+  /* Daylight Stage — light counterpart to Stage-Lit */
+  --background: #f7f5fb;
+  --foreground: #1c1730;
   --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #7c3aed;
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #f3f4f6;
-  --accent-foreground: #030213;
-  --destructive: #ef4444;
+  --card-foreground: #1c1730;
+  --popover: #ffffff;
+  --popover-foreground: #1c1730;
+  --primary: #6d4fe0;
+  --primary-foreground: #ffffff;
+  --secondary: #eeeafb;
+  --secondary-foreground: #1c1730;
+  --muted: #efedf6;
+  --muted-foreground: #5f5a72;
+  --accent: #eee9fb;
+  --accent-foreground: #1c1730;
+  --destructive: #dc3f3f;
   --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.08);
+  --border: #e6e2f2;
   --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
+  --input-background: #f3f1fa;
+  --switch-background: #d8d3e8;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #7c3aed;
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.75rem;
+  --ring: #6d4fe0;
+  --chart-1: #6d4fe0;
+  --chart-2: #2563eb;
+  --chart-3: #0f9d68;
+  --chart-4: #b45f04;
+  --chart-5: #e0446b;
+  --radius: 0.875rem;
+  --shadow-glow: 0 0 20px -8px rgba(109, 79, 224, 0.32);
+  --shadow-card: 0 8px 20px -14px rgba(35, 20, 70, 0.14);
+  --shadow-hero: var(--shadow-card);
   --sidebar: #ffffff;
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #7c3aed;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: #f9fafb;
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: rgba(0, 0, 0, 0.08);
-  --sidebar-ring: #7c3aed;
+  --sidebar-foreground: #1c1730;
+  --sidebar-primary: #6d4fe0;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5f3fb;
+  --sidebar-accent-foreground: #1c1730;
+  --sidebar-border: #e6e2f2;
+  --sidebar-ring: #6d4fe0;
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #fafafa;
-  --card: #18181b;
-  --card-foreground: #fafafa;
-  --popover: #18181b;
-  --popover-foreground: #fafafa;
-  --primary: #a78bfa;
-  --primary-foreground: #18181b;
-  --secondary: #27272a;
-  --secondary-foreground: #fafafa;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
-  --accent: #27272a;
-  --accent-foreground: #fafafa;
+  /* Stage-Lit — near-black with a violet glow, built for the live-projector use case */
+  --background: #0a0a0d;
+  --foreground: #f4f3f7;
+  --card: #16151f;
+  --card-foreground: #f4f3f7;
+  --popover: #16151f;
+  --popover-foreground: #f4f3f7;
+  --primary: #9b7bff;
+  --primary-foreground: #ffffff;
+  --secondary: #1e1c29;
+  --secondary-foreground: #f4f3f7;
+  --muted: #1c1a24;
+  --muted-foreground: #a6a3b5;
+  --accent: #221f30;
+  --accent-foreground: #f4f3f7;
   --destructive: #ef4444;
-  --destructive-foreground: #fafafa;
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #a78bfa;
+  --destructive-foreground: #fef2f2;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.06);
+  --ring: #9b7bff;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: #a78bfa;
+  --chart-1: #9b7bff;
   --chart-2: #60a5fa;
   --chart-3: #34d399;
-  --chart-4: #f472b6;
-  --chart-5: #fb923c;
-  --sidebar: #18181b;
-  --sidebar-foreground: #fafafa;
-  --sidebar-primary: #a78bfa;
-  --sidebar-primary-foreground: #18181b;
-  --sidebar-accent: #27272a;
-  --sidebar-accent-foreground: #fafafa;
-  --sidebar-border: #27272a;
-  --sidebar-ring: #a78bfa;
+  --chart-4: #fbbf24;
+  --chart-5: #fb7185;
+  --shadow-glow: 0 0 0 1px rgba(155, 123, 255, 0.55),
+    0 0 26px -4px rgba(155, 123, 255, 0.6);
+  --shadow-card: inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 12px 32px -20px rgba(0, 0, 0, 0.55);
+  --shadow-hero: inset 0 0 0 1px rgba(155, 123, 255, 0.4),
+    0 0 30px -8px rgba(155, 123, 255, 0.4),
+    0 30px 60px -30px rgba(0, 0, 0, 0.6);
+  --sidebar: #0e0d13;
+  --sidebar-foreground: #f4f3f7;
+  --sidebar-primary: #9b7bff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1c1a24;
+  --sidebar-accent-foreground: #f4f3f7;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #9b7bff;
 }
 
 @theme inline {
@@ -117,6 +134,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --shadow-glow: var(--shadow-glow);
+  --shadow-card: var(--shadow-card);
 }
 
 @layer base {
@@ -125,7 +146,7 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
   }
 
   /**
@@ -138,27 +159,33 @@
   }
 
   h1 {
+    font-family: var(--font-display);
     font-size: var(--text-2xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
   }
 
   h2 {
+    font-family: var(--font-display);
     font-size: var(--text-xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
   }
 
   h3 {
+    font-family: var(--font-display);
     font-size: var(--text-lg);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-weight: 600;
+    line-height: 1.3;
   }
 
   h4 {
+    font-family: var(--font-display);
     font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-weight: 600;
+    line-height: 1.3;
   }
 
   label {
@@ -177,5 +204,55 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+}
+
+/*
+ * Stage-Lit atmosphere: a soft spotlight wash from above plus a vignette,
+ * dark mode only — Daylight Stage (light mode) stays flat on purpose.
+ * Apply `.stage-atmosphere` to a positioned ancestor; give its content a
+ * higher z-index so it stays crisp above the glow.
+ */
+.dark .stage-atmosphere::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 90% 60% at 50% -10%,
+    rgba(155, 123, 255, 0.16),
+    transparent 65%
+  );
+}
+
+.dark .stage-atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 50% -10%,
+    transparent 35%,
+    rgba(0, 0, 0, 0.5) 90%
+  );
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    box-shadow: var(--shadow-glow);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(155, 123, 255, 0.85),
+      0 0 34px 2px rgba(155, 123, 255, 0.85);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dark .live-pulse {
+    animation: live-pulse 3s ease-in-out infinite;
   }
 }

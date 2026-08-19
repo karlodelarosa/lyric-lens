@@ -43,6 +43,23 @@ import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { cn } from "../../lib/utils";
 
+const SETLIST_GRADIENTS = [
+  "from-violet-500 to-purple-700",
+  "from-blue-500 to-cyan-600",
+  "from-emerald-500 to-teal-600",
+  "from-amber-500 to-orange-600",
+  "from-fuchsia-500 to-pink-600",
+  "from-indigo-500 to-blue-700",
+];
+
+function getSetlistGradient(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  }
+  return SETLIST_GRADIENTS[hash % SETLIST_GRADIENTS.length];
+}
+
 interface DraggableSongProps {
   songId: string;
   index: number;
@@ -491,6 +508,17 @@ export function SetlistBuilder() {
           {editingSetlistId
             ? renderDownloadButton(editingSetlistId, "sm")
             : null}
+          {editingSetlistId ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              onClick={() => void handleDeleteSetlist(editingSetlistId)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete
+            </Button>
+          ) : null}
           <Button
             size="sm"
             onClick={() => void handleSaveSetlist()}
@@ -653,37 +681,59 @@ export function SetlistBuilder() {
     </div>
   );
 
-  return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="p-8 space-y-6">
-        <div className="flex items-center justify-between gap-4">
+  if (isBuilderActive) {
+    return (
+      <DndProvider backend={HTML5Backend}>
+        <div className="p-8 space-y-6">
           <div>
             <h1 className="text-3xl font-bold">
-              {isBuilderActive
-                ? editingSetlistId
-                  ? "Edit Setlist"
-                  : "Create Setlist"
-                : "Setlists"}
+              {editingSetlistId ? "Edit Setlist" : "Create Setlist"}
             </h1>
+            <p className="text-muted-foreground mt-1">
+              {editingSetlistId
+                ? "Update songs, flow sections, and welcome slide"
+                : "Name your setlist and add songs from the library"}
+            </p>
+          </div>
+
+          {orgLoadError && (
+            <p className="text-sm text-destructive">{orgLoadError}</p>
+          )}
+
+          <div className="space-y-4">
+            <Button variant="ghost" size="sm" onClick={resetBuilder}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to setlists
+            </Button>
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-6 items-start">
+              {songLibraryPanel}
+              {setlistEditorPanel}
+            </div>
+          </div>
+        </div>
+      </DndProvider>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="p-8 pb-4 shrink-0 space-y-4 border-b">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Setlists</h1>
             <p className="text-muted-foreground mt-1">
               {setlistsLoading
                 ? "Loading setlists..."
-                : isBuilderActive
-                  ? editingSetlistId
-                    ? "Update songs, flow sections, and welcome slide"
-                    : "Name your setlist and add songs from the library"
-                  : "Create and manage song sequences for services"}
+                : "Create and manage song sequences for services"}
             </p>
           </div>
-          {!isBuilderActive && (
-            <Button
-              disabled={!activeOrganizationId || isOrgLoading}
-              onClick={startNewSetlist}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              New Setlist
-            </Button>
-          )}
+          <Button
+            disabled={!activeOrganizationId || isOrgLoading}
+            onClick={startNewSetlist}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            New Setlist
+          </Button>
         </div>
 
         {orgLoadError && (
@@ -700,160 +750,171 @@ export function SetlistBuilder() {
           <p className="text-sm text-destructive">{setlistsError}</p>
         )}
 
-        {isBuilderActive ? (
-          <div className="space-y-4">
-            <Button variant="ghost" size="sm" onClick={resetBuilder}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to setlists
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search setlists by name..."
+            value={savedSetlistsSearch}
+            onChange={(e) => setSavedSetlistsSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-y-auto p-8 pt-4">
+        {setlists.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <p>No saved setlists yet.</p>
+            <Button
+              className="mt-4"
+              variant="outline"
+              disabled={!activeOrganizationId || isOrgLoading}
+              onClick={startNewSetlist}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create your first setlist
             </Button>
-            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-6 items-start">
-              {songLibraryPanel}
-              {setlistEditorPanel}
-            </div>
           </div>
+        ) : filteredSavedSetlists.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-8 text-center">
+            No setlists match your search.
+          </p>
         ) : (
-          <>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search setlists by name..."
-                value={savedSetlistsSearch}
-                onChange={(e) => setSavedSetlistsSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+          <div className="space-y-4">
+            <div className="columns-1 sm:columns-2 lg:columns-3 gap-6">
+              {setlistsPagination.paginatedItems.map((setlist) => {
+                const isOfflineCached = offlineSetlistIds.includes(
+                  setlist.id,
+                );
+                const resolvedSongs = setlist.songs
+                  .map((songId) => songs.find((s) => s.id === songId))
+                  .filter((s): s is (typeof songs)[number] => Boolean(s));
 
-            {setlists.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <p>No saved setlists yet.</p>
-                <Button
-                  className="mt-4"
-                  variant="outline"
-                  disabled={!activeOrganizationId || isOrgLoading}
-                  onClick={startNewSetlist}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create your first setlist
-                </Button>
-              </div>
-            ) : filteredSavedSetlists.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">
-                No setlists match your search.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-4">
-                  {setlistsPagination.paginatedItems.map((setlist) => {
-                    const isOfflineCached = offlineSetlistIds.includes(
-                      setlist.id,
-                    );
-
-                    return (
-                      <Card
-                        key={setlist.id}
-                        className={cn(
-                          "hover:shadow-lg transition-shadow cursor-pointer",
-                          isOfflineCached && "border-l-4 border-l-emerald-500",
+                return (
+                  <Card
+                    key={setlist.id}
+                    className={cn(
+                      "group hover:shadow-lg transition-shadow cursor-pointer overflow-hidden pt-0 gap-0 break-inside-avoid mb-6",
+                      isOfflineCached && "ring-1 ring-emerald-500/50",
+                    )}
+                    onClick={() => handleEditSetlist(setlist.id)}
+                  >
+                    <div className="relative aspect-video">
+                      {setlist.welcomeSlide?.type === "image" ? (
+                        <img
+                          src={setlist.welcomeSlide.url}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div
+                          className={cn(
+                            "w-full h-full bg-gradient-to-br flex items-center justify-center",
+                            getSetlistGradient(setlist.id),
+                          )}
+                        >
+                          <ListMusic className="w-10 h-10 text-white/40" />
+                        </div>
+                      )}
+                      <div className="absolute top-2 right-2 flex gap-1.5">
+                        {isOfflineCached ? <OfflineSetlistBadge /> : null}
+                        {setlist.welcomeSlide ? (
+                          <Badge className="bg-black/50 text-white border-0 backdrop-blur-sm">
+                            Welcome slide
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <div className="absolute bottom-2 left-2">
+                        <Badge className="bg-black/50 text-white border-0 backdrop-blur-sm">
+                          {setlist.songs.length}{" "}
+                          {setlist.songs.length === 1 ? "song" : "songs"}
+                        </Badge>
+                      </div>
+                      <div className="absolute inset-0 flex items-start justify-end gap-1.5 p-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity bg-gradient-to-b from-black/40 via-transparent to-transparent">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon"
+                              className="h-9 w-9 bg-black/50 hover:bg-black/70 text-white"
+                              disabled={!isOnline && !isOfflineCached}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleDownloadSetlistForOffline(
+                                  setlist.id,
+                                );
+                              }}
+                            >
+                              {isOfflineCached ? (
+                                <Check className="w-4 h-4" />
+                              ) : (
+                                <Download className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {isOfflineCached
+                              ? "Downloaded for offline"
+                              : "Download for offline"}
+                          </TooltipContent>
+                        </Tooltip>
+                        <Button
+                          size="icon"
+                          className="h-9 w-9 bg-black/50 hover:bg-black/70 text-white"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditSetlist(setlist.id);
+                          }}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <CardContent className="p-4 space-y-3">
+                      <div>
+                        <h3 className="font-semibold truncate">
+                          {setlist.name}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          {setlist.updatedAt
+                            ? `Updated ${format(parseISO(setlist.updatedAt), "MMM d, yyyy")}`
+                            : "—"}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        {resolvedSongs.length === 0 ? (
+                          <p className="text-xs text-muted-foreground italic">
+                            No songs yet
+                          </p>
+                        ) : (
+                          resolvedSongs.map((song, index) => (
+                            <p
+                              key={song.id}
+                              className="text-xs text-muted-foreground truncate"
+                            >
+                              {index + 1}. {song.title}
+                              {song.artist ? ` (${song.artist})` : ""}
+                            </p>
+                          ))
                         )}
-                        onClick={() => handleEditSetlist(setlist.id)}
-                      >
-                        <CardContent className="p-6">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-4 flex-1">
-                              <div
-                                className={cn(
-                                  "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
-                                  isOfflineCached
-                                    ? "bg-emerald-600"
-                                    : "bg-primary",
-                                )}
-                              >
-                                <ListMusic
-                                  className={cn(
-                                    "w-6 h-6",
-                                    isOfflineCached
-                                      ? "text-white"
-                                      : "text-primary-foreground",
-                                  )}
-                                />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-lg truncate">
-                                  {setlist.name}
-                                </h3>
-                                <p className="text-sm text-muted-foreground">
-                                  {setlist.updatedAt
-                                    ? `Updated ${format(parseISO(setlist.updatedAt), "MMM d, yyyy")}`
-                                    : "—"}
-                                </p>
-                                {setlist.welcomeSlide || isOfflineCached ? (
-                                  <div className="flex gap-2 mt-2 flex-wrap">
-                                    {isOfflineCached ? (
-                                      <OfflineSetlistBadge />
-                                    ) : null}
-                                    {setlist.welcomeSlide ? (
-                                      <Badge variant="secondary">
-                                        Welcome slide
-                                      </Badge>
-                                    ) : null}
-                                  </div>
-                                ) : null}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4 shrink-0">
-                              <div className="text-right">
-                                <p className="text-sm text-muted-foreground">
-                                  Songs
-                                </p>
-                                <p className="text-2xl font-bold">
-                                  {setlist.songs.length}
-                                </p>
-                              </div>
-                              <div className="flex gap-2">
-                                {renderDownloadButton(setlist.id)}
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditSetlist(setlist.id);
-                                  }}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    void handleDeleteSetlist(setlist.id);
-                                  }}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-                <ListPagination
-                  page={setlistsPagination.page}
-                  totalPages={setlistsPagination.totalPages}
-                  totalItems={setlistsPagination.totalItems}
-                  rangeStart={setlistsPagination.rangeStart}
-                  rangeEnd={setlistsPagination.rangeEnd}
-                  pageSize={setlistsPagination.pageSize}
-                  onPageChange={setlistsPagination.setPage}
-                  onPageSizeChange={setlistsPagination.setPageSize}
-                />
-              </div>
-            )}
-          </>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+            <ListPagination
+              page={setlistsPagination.page}
+              totalPages={setlistsPagination.totalPages}
+              totalItems={setlistsPagination.totalItems}
+              rangeStart={setlistsPagination.rangeStart}
+              rangeEnd={setlistsPagination.rangeEnd}
+              pageSize={setlistsPagination.pageSize}
+              onPageChange={setlistsPagination.setPage}
+              onPageSizeChange={setlistsPagination.setPageSize}
+            />
+          </div>
         )}
       </div>
-    </DndProvider>
+    </div>
   );
 }

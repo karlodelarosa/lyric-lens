@@ -139,7 +139,7 @@ export function RootLayout() {
           isSidebarCollapsed ? "w-20" : "w-64",
         )}
       >
-        <div className="p-4 border-b">
+        <div className="p-5 border-b">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -216,7 +216,7 @@ export function RootLayout() {
         </div>
 
         <nav className="flex-1 p-4 flex flex-col gap-1 min-h-0">
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {mainNavigation.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);
@@ -228,7 +228,7 @@ export function RootLayout() {
                     "flex items-center px-3 py-2.5 rounded-lg transition-all duration-200",
                     isSidebarCollapsed ? "justify-center" : "gap-3",
                     active
-                      ? "bg-primary text-primary-foreground shadow-md"
+                      ? "bg-primary text-primary-foreground shadow-[var(--shadow-glow)]"
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                   )}
                   title={isSidebarCollapsed ? item.name : undefined}
@@ -260,8 +260,8 @@ export function RootLayout() {
                 "w-full cursor-pointer font-semibold transition-all",
                 "bg-primary hover:bg-primary/90",
                 "text-primary-foreground",
-                "shadow-md hover:shadow-lg hover:-translate-y-0.5",
-                "active:translate-y-0 active:shadow-md",
+                "shadow-[var(--shadow-glow)] hover:shadow-[0_0_36px_-6px_var(--primary)] hover:-translate-y-0.5",
+                "active:translate-y-0 active:shadow-[var(--shadow-glow)]",
                 "border border-primary-foreground/20",
                 isSidebarCollapsed
                   ? "h-12 w-12 rounded-xl"
@@ -394,7 +394,7 @@ export function RootLayout() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto lg:max-w-[1500px] lg:mx-auto">
         <Outlet />
       </main>
       </div>

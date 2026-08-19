@@ -28,8 +28,8 @@ export function LyricLensMark({
       {!mono && (
         <defs>
           <linearGradient id={gradId} x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#8b5cf6" />
-            <stop offset="1" stopColor="#6d28d9" />
+            <stop stopColor="#c3aeff" />
+            <stop offset="1" stopColor="#6d4fe0" />
           </linearGradient>
         </defs>
       )}
@@ -71,10 +71,9 @@ export function LyricLensLogo({
       <div className="leading-tight">
         <p
           className={cn(
-            "font-semibold tracking-tight",
+            "font-display font-semibold tracking-tight",
             mono ? "text-current" : "text-foreground",
           )}
-          style={{ fontFamily: "Montserrat, sans-serif" }}
         >
           Lyric Lens
         </p>

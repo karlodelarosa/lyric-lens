@@ -48,17 +48,17 @@ export function LoginForm() {
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(150deg, #4c1d95 0%, #6d28d9 45%, #7c3aed 100%)",
+              "linear-gradient(150deg, #14101f 0%, #3d2a85 50%, #6d4fe0 100%)",
           }}
         />
         {/* soft light bloom */}
         <div
           className="absolute -top-24 -right-24 w-[28rem] h-[28rem] rounded-full opacity-40 blur-3xl"
-          style={{ background: "radial-gradient(circle, #c4b5fd, transparent 70%)" }}
+          style={{ background: "radial-gradient(circle, #c3aeff, transparent 70%)" }}
         />
         <div
           className="absolute -bottom-32 -left-16 w-[26rem] h-[26rem] rounded-full opacity-25 blur-3xl"
-          style={{ background: "radial-gradient(circle, #a78bfa, transparent 70%)" }}
+          style={{ background: "radial-gradient(circle, #9b7bff, transparent 70%)" }}
         />
         {/* faint grid texture */}
         <div
@@ -75,10 +75,7 @@ export function LoginForm() {
         </div>
 
         <div className="relative z-10 max-w-md">
-          <h1
-            className="text-4xl font-bold leading-tight tracking-tight"
-            style={{ fontFamily: "Montserrat, sans-serif" }}
-          >
+          <h1 className="font-display text-4xl font-bold leading-tight tracking-tight">
             Every lyric, in perfect focus.
           </h1>
           <p className="mt-4 text-base text-white/75 leading-relaxed">
@@ -119,10 +116,7 @@ export function LoginForm() {
                 <LyricLensMark className="w-7 h-7" />
               </div>
             </div>
-            <h2
-              className="text-2xl font-bold tracking-tight text-foreground"
-              style={{ fontFamily: "Montserrat, sans-serif" }}
-            >
+            <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
               Welcome back
             </h2>
             <p className="text-sm text-muted-foreground mt-1.5">
@@ -187,7 +181,7 @@ export function LoginForm() {
               type="submit"
               disabled={isLoading}
               size="lg"
-              className="w-full h-11 group transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+              className="w-full h-11 group transition-all duration-200 shadow-[var(--shadow-glow)] hover:scale-[1.01] active:scale-[0.99]"
             >
               {isLoading ? (
                 "Signing in…"

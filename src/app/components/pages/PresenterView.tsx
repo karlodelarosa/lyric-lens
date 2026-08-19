@@ -11,7 +11,10 @@ import {
   subscribePresenterChannel,
 } from "../../lib/presenterWindow";
 import { getLiveTextShadow } from "../../lib/liveDisplayUtils";
-import { getSectionIntensity } from "../../lib/sectionIntensity";
+import {
+  getSectionIntensity,
+  resolveBackgroundVideoUrl,
+} from "../../lib/sectionIntensity";
 
 const getLyricChunks = (lyrics: string, linesPerSlide: number) => {
   const safeLinesPerSlide = Math.max(1, Math.floor(linesPerSlide));
@@ -38,10 +41,13 @@ export function PresenterView() {
   const currentSection = currentSong?.sections.find(
     (sec) => sec.id === liveState.currentSectionId,
   );
-  const effectiveBackgroundVideoUrl =
-    (liveState.slideMode === "lyrics" && currentSong?.backgroundVideoUrl) ||
-    liveState.backgroundVideoUrl ||
-    null;
+  const effectiveBackgroundVideoUrl = resolveBackgroundVideoUrl({
+    isLyricsMode: liveState.slideMode === "lyrics",
+    sectionBackgroundVideoUrl: currentSection?.backgroundVideoUrl,
+    songBackgroundVideoUrl: currentSong?.backgroundVideoUrl,
+    liveOverrideUrl: liveState.backgroundVideoUrl,
+    forceSolidBackground: liveState.forceSolidBackground,
+  });
   const effectiveBackgroundIntensity =
     liveState.slideMode === "lyrics" && currentSection
       ? getSectionIntensity(currentSection)

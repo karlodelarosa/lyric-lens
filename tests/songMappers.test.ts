@@ -23,6 +23,7 @@ describe("songMappers", () => {
           number: 1,
           lyrics: "Amazing grace",
           intensity: null,
+          backgroundVideoUrl: null,
         },
       ],
       backgroundVideoUrl: null,

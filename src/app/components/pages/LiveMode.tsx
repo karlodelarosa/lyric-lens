@@ -13,9 +13,10 @@ import {
 import { ServiceFlowLivePanel } from "../live/ServiceFlowLivePanel";
 import { LiveSlideContent } from "../live/LiveSlideContent";
 import { VideoBackground } from "../live/VideoBackground";
+import { LyricSlideThumbnail } from "../live/LyricSlideThumbnail";
 import {
   getSectionIntensity,
-  getVideoBackgroundVisualStyle,
+  resolveBackgroundVideoUrl,
 } from "../../lib/sectionIntensity";
 import {
   ChevronRight,
@@ -41,6 +42,8 @@ import {
   RotateCcw,
   Smartphone,
   Copy,
+  GitBranch,
+  ListMusic,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -148,7 +151,7 @@ const getLyricChunks = (lyrics: string, linesPerSlide: number) => {
 };
 
 export function LiveMode() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { activeOrganizationId } = useOrganization();
   const {
     songs,
@@ -161,6 +164,8 @@ export function LiveMode() {
     setCurrentCue,
     showWelcomeSlide,
     clearScreen,
+    serviceFlowList,
+    serviceFlowsLoading,
   } = useApp();
   const isOnline = useOnlineStatus();
   const announcementSlides = liveState.currentAnnouncementSlides ?? [];
@@ -169,6 +174,14 @@ export function LiveMode() {
   const [activeServiceFlow, setActiveServiceFlow] =
     useState<ServiceFlow | null>(null);
   const [isLoadingServiceFlow, setIsLoadingServiceFlow] = useState(false);
+  const [liveSourceMode, setLiveSourceMode] = useState<"flow" | "setlist">(
+    () =>
+      serviceFlowIdFromUrl
+        ? "flow"
+        : searchParams.get("setlistId")
+          ? "setlist"
+          : "flow",
+  );
   const initialSetlistId =
     searchParams.get("setlistId") || setlists[0]?.id || null;
   const [selectedSetlistId, setSelectedSetlistId] = useState<string | null>(
@@ -217,10 +230,13 @@ export function LiveMode() {
   const currentSection = currentSong?.sections.find(
     (sec) => sec.id === liveState.currentSectionId,
   );
-  const effectiveBackgroundVideoUrl =
-    (liveState.slideMode === "lyrics" && currentSong?.backgroundVideoUrl) ||
-    liveState.backgroundVideoUrl ||
-    null;
+  const effectiveBackgroundVideoUrl = resolveBackgroundVideoUrl({
+    isLyricsMode: liveState.slideMode === "lyrics",
+    sectionBackgroundVideoUrl: currentSection?.backgroundVideoUrl,
+    songBackgroundVideoUrl: currentSong?.backgroundVideoUrl,
+    liveOverrideUrl: liveState.backgroundVideoUrl,
+    forceSolidBackground: liveState.forceSolidBackground,
+  });
   const effectiveBackgroundIntensity =
     liveState.slideMode === "lyrics" && currentSection
       ? getSectionIntensity(currentSection)
@@ -464,6 +480,21 @@ export function LiveMode() {
 
     const next = activeServiceFlow.segments[index + direction];
     if (next) selectServiceFlowSegment(next);
+  };
+
+  const handleSelectServiceFlow = (id: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("serviceFlowId", id);
+    next.delete("setlistId");
+    setSearchParams(next, { replace: true });
+  };
+
+  const handleChangeFlow = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("serviceFlowId");
+    setSearchParams(next, { replace: true });
+    setActiveServiceFlow(null);
+    loadedServiceFlowIdRef.current = null;
   };
 
   const handleStartCountdown = (
@@ -992,33 +1023,78 @@ export function LiveMode() {
   ]);
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-background relative stage-atmosphere">
       {/* Top Bar */}
-      <div className="border-b bg-card/50 backdrop-blur-sm p-4">
+      <div className="border-b bg-card/50 backdrop-blur-sm p-4 relative z-[1]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
               <div
                 className={cn(
                   "w-3 h-3 rounded-full",
-                  liveState.isLive ? "bg-red-500 animate-pulse" : "bg-gray-400",
+                  liveState.isLive ? "bg-red-500 live-pulse" : "bg-gray-400",
                 )}
               />
               <span className="font-semibold">
                 {liveState.isLive ? "LIVE" : "Not Live"}
               </span>
             </div>
-            {activeServiceFlow ? (
-              <div className="text-sm">
-                <span className="text-muted-foreground">Flow: </span>
-                <span className="font-medium">{activeServiceFlow.title}</span>
-                {activeSegment && (
-                  <span className="text-muted-foreground">
-                    {" "}
-                    · {activeSegment.label}
+
+            <Tabs
+              value={liveSourceMode}
+              onValueChange={(value) =>
+                setLiveSourceMode(value as "flow" | "setlist")
+              }
+            >
+              <TabsList>
+                <TabsTrigger value="flow" className="gap-1.5">
+                  <GitBranch className="w-3.5 h-3.5" />
+                  Service Flow
+                </TabsTrigger>
+                <TabsTrigger value="setlist" className="gap-1.5">
+                  <ListMusic className="w-3.5 h-3.5" />
+                  Setlist
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {liveSourceMode === "flow" ? (
+              activeServiceFlow ? (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-medium">
+                    {activeServiceFlow.title}
                   </span>
-                )}
-              </div>
+                  {activeSegment && (
+                    <span className="text-muted-foreground">
+                      · {activeSegment.label}
+                    </span>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={handleChangeFlow}>
+                    Change
+                  </Button>
+                </div>
+              ) : (
+                <Select value="" onValueChange={handleSelectServiceFlow}>
+                  <SelectTrigger className="w-64">
+                    <SelectValue
+                      placeholder={
+                        isLoadingServiceFlow || serviceFlowsLoading
+                          ? "Loading service flows..."
+                          : serviceFlowList.length === 0
+                            ? "No service flows yet"
+                            : "Select a service flow"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {serviceFlowList.map((flow) => (
+                      <SelectItem key={flow.id} value={flow.id}>
+                        {flow.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )
             ) : (
               <div className="space-y-1">
                 <Select
@@ -1050,7 +1126,7 @@ export function LiveMode() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {activeServiceFlow && (
+            {liveSourceMode === "flow" && activeServiceFlow && (
               <>
                 <Button
                   variant="outline"
@@ -1096,7 +1172,7 @@ export function LiveMode() {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative z-[1]">
         {/* Left Panel - Song Navigator */}
         <div
           className={cn(
@@ -1105,32 +1181,41 @@ export function LiveMode() {
           )}
         >
           <div className="p-4 space-y-2">
-            {isLoadingServiceFlow ? (
-              <p className="text-sm text-muted-foreground">
-                Loading service flow...
-              </p>
-            ) : activeServiceFlow ? (
-              <ServiceFlowLivePanel
-                serviceFlow={activeServiceFlow}
-                activeSegmentId={liveState.currentSegmentId}
-                onSelectSegment={selectServiceFlowSegment}
-                onSelectAnnouncement={(announcement, slideIndex) =>
-                  setCurrentAnnouncement(
-                    normalizeAnnouncement(announcement),
-                    slideIndex,
-                  )
-                }
-                onSelectSong={handleSongClick}
-                onSelectSection={handleSectionClick}
-                onStartCountdown={handleStartArmedCountdown}
-                currentSongId={liveState.currentSongId}
-                currentSectionId={liveState.currentSectionId}
-                currentAnnouncementId={liveState.currentAnnouncementId}
-                currentAnnouncementSlideIndex={liveState.currentChunkIndex}
-                currentCountdownStatus={liveState.countdown?.status ?? null}
-                setlistSongs={musicSetlistSongs}
-                songs={songs}
-              />
+            {liveSourceMode === "flow" ? (
+              isLoadingServiceFlow ? (
+                <p className="text-sm text-muted-foreground">
+                  Loading service flow...
+                </p>
+              ) : activeServiceFlow ? (
+                <ServiceFlowLivePanel
+                  serviceFlow={activeServiceFlow}
+                  activeSegmentId={liveState.currentSegmentId}
+                  onSelectSegment={selectServiceFlowSegment}
+                  onSelectAnnouncement={(announcement, slideIndex) =>
+                    setCurrentAnnouncement(
+                      normalizeAnnouncement(announcement),
+                      slideIndex,
+                    )
+                  }
+                  onSelectSong={handleSongClick}
+                  onSelectSection={handleSectionClick}
+                  onStartCountdown={handleStartArmedCountdown}
+                  currentSongId={liveState.currentSongId}
+                  currentSectionId={liveState.currentSectionId}
+                  currentAnnouncementId={liveState.currentAnnouncementId}
+                  currentAnnouncementSlideIndex={liveState.currentChunkIndex}
+                  currentCountdownStatus={liveState.countdown?.status ?? null}
+                  setlistSongs={musicSetlistSongs}
+                  songs={songs}
+                />
+              ) : (
+                <div className="flex flex-col items-center text-center gap-2 py-10 px-2 text-muted-foreground">
+                  <GitBranch className="w-8 h-8 opacity-50" />
+                  <p className="text-sm">
+                    Select a service flow above to run your service.
+                  </p>
+                </div>
+              )
             ) : (
               <>
                 <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-4">
@@ -1242,6 +1327,7 @@ export function LiveMode() {
         </div>
 
         {/* Center Panel - Live Control */}
+
         <div className="flex-1 flex flex-col">
           {/* Preview/Manual Tabs */}
           <div className={cn("flex-1 min-h-0", isCompactMode ? "p-3" : "p-6")}>
@@ -1260,7 +1346,7 @@ export function LiveMode() {
               </div>
 
               <TabsContent value="preview" className="h-[calc(100%-44px)]">
-                <Card className="h-full min-h-0">
+                <Card className="h-full min-h-0 shadow-[var(--shadow-hero)]">
                   <CardHeader className="border-b">
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2">
@@ -1321,89 +1407,53 @@ export function LiveMode() {
                                     </span>
                                   </div>
                                   <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
-                                    {chunks.map((chunk, chunkIndex) => {
-                                      const isActiveSlide =
-                                        isSectionActive &&
-                                        currentChunkIndex === chunkIndex;
-                                      return (
-                                        <button
-                                          key={`${section.id}-${chunkIndex}`}
-                                          onClick={() =>
-                                            handleChunkClick(
-                                              currentSong.id,
-                                              section.id,
-                                              chunkIndex,
-                                            )
-                                          }
-                                          className={cn(
-                                            "relative aspect-video overflow-hidden rounded-md border text-left",
-                                            isActiveSlide
-                                              ? "border-primary ring-2 ring-primary/50"
-                                              : "border-border hover:border-primary/40",
-                                          )}
-                                          style={{
-                                            background:
-                                              liveState.background.value,
-                                          }}
-                                        >
-                                          {currentSong.backgroundVideoUrl ? (
-                                            <div
-                                              className="absolute inset-0 pointer-events-none bg-black"
-                                              style={{
-                                                opacity:
-                                                  getVideoBackgroundVisualStyle(
-                                                    getSectionIntensity(
-                                                      section,
-                                                    ),
-                                                  ).scrimOpacity,
-                                              }}
-                                            />
-                                          ) : null}
-                                          <div
-                                            className={cn(
-                                              "relative z-[1] h-full p-3 flex",
-                                              liveState.verticalPosition ===
-                                                "top" && "items-start",
-                                              liveState.verticalPosition ===
-                                                "center" && "items-center",
-                                              liveState.verticalPosition ===
-                                                "bottom" && "items-end",
-                                            )}
-                                          >
-                                            <div
-                                              className="w-full"
-                                              style={{
-                                                fontFamily:
-                                                  liveState.fontFamily,
-                                                fontSize: `${Math.max(10, Math.round(scaledPreviewFontSize * 0.36))}px`,
-                                                textAlign: liveState.alignment,
-                                                lineHeight:
-                                                  liveState.lineHeight,
-                                                paddingTop:
-                                                  liveState.verticalPosition ===
-                                                  "top"
-                                                    ? `${liveState.topPadding}px`
-                                                    : undefined,
-                                                textTransform:
-                                                  liveState.textTransform,
-                                                fontWeight:
-                                                  liveState.fontWeight,
-                                                color: liveState.textColor,
-                                                textShadow: getLiveTextShadow(
-                                                  liveState.textColor,
-                                                ),
-                                                whiteSpace: "pre-wrap",
-                                              }}
-                                            >
-                                              {chunk}
-                                            </div>
-                                          </div>
-                                          <span className="absolute top-2 right-2 z-[2] rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white">
-                                            {chunkIndex + 1}
-                                          </span>
-                                        </button>
-                                      );
-                                    })}
+                                    {chunks.map((chunk, chunkIndex) => (
+                                      <LyricSlideThumbnail
+                                        key={`${section.id}-${chunkIndex}`}
+                                        chunkText={chunk}
+                                        chunkIndex={chunkIndex}
+                                        isActive={
+                                          isSectionActive &&
+                                          currentChunkIndex === chunkIndex
+                                        }
+                                        onClick={() =>
+                                          handleChunkClick(
+                                            currentSong.id,
+                                            section.id,
+                                            chunkIndex,
+                                          )
+                                        }
+                                        backgroundValue={
+                                          liveState.background.value
+                                        }
+                                        hasBackgroundVideo={
+                                          !liveState.forceSolidBackground &&
+                                          Boolean(
+                                            section.backgroundVideoUrl ||
+                                              currentSong.backgroundVideoUrl,
+                                          )
+                                        }
+                                        sectionIntensity={getSectionIntensity(
+                                          section,
+                                        )}
+                                        verticalPosition={
+                                          liveState.verticalPosition
+                                        }
+                                        fontFamily={liveState.fontFamily}
+                                        fontSize={Math.max(
+                                          10,
+                                          Math.round(
+                                            scaledPreviewFontSize * 0.36,
+                                          ),
+                                        )}
+                                        alignment={liveState.alignment}
+                                        lineHeight={liveState.lineHeight}
+                                        topPadding={liveState.topPadding}
+                                        textTransform={liveState.textTransform}
+                                        fontWeight={liveState.fontWeight}
+                                        textColor={liveState.textColor}
+                                      />
+                                    ))}
                                   </div>
                                 </div>
                               );
@@ -1512,6 +1562,55 @@ export function LiveMode() {
                         ) : null}
                       </div>
                     )}
+
+                    {!isSlidePreviewMode &&
+                      liveState.slideMode === "lyrics" &&
+                      currentSong &&
+                      currentSection &&
+                      currentSectionChunks.length > 1 && (
+                        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                          {currentSectionChunks.map((chunk, chunkIndex) => (
+                            <LyricSlideThumbnail
+                              key={`${currentSection.id}-${chunkIndex}`}
+                              chunkText={chunk}
+                              chunkIndex={chunkIndex}
+                              isActive={currentChunkIndex === chunkIndex}
+                              onClick={() =>
+                                handleChunkClick(
+                                  currentSong.id,
+                                  currentSection.id,
+                                  chunkIndex,
+                                )
+                              }
+                              backgroundValue={liveState.background.value}
+                              hasBackgroundVideo={
+                                !liveState.forceSolidBackground &&
+                                Boolean(
+                                  currentSection.backgroundVideoUrl ||
+                                    currentSong.backgroundVideoUrl,
+                                )
+                              }
+                              sectionIntensity={getSectionIntensity(
+                                currentSection,
+                              )}
+                              verticalPosition={liveState.verticalPosition}
+                              fontFamily={liveState.fontFamily}
+                              fontSize={Math.max(
+                                9,
+                                Math.round(scaledPreviewFontSize * 0.16),
+                              )}
+                              alignment={liveState.alignment}
+                              lineHeight={liveState.lineHeight}
+                              topPadding={liveState.topPadding}
+                              textTransform={liveState.textTransform}
+                              fontWeight={liveState.fontWeight}
+                              textColor={liveState.textColor}
+                              className="w-[110px] h-[62px]"
+                            />
+                          ))}
+                        </div>
+                      )}
+
                     <p className="mt-2 text-xs text-muted-foreground">
                       {isSlidePreviewMode
                         ? "Click any slide thumbnail to push it live."
@@ -2073,7 +2172,28 @@ export function LiveMode() {
               </p>
             </div>
 
-            <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div>
+                <Label className="font-medium">Force solid background</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Override any song or section video with the solid
+                  color/gradient above, for this service.
+                </p>
+              </div>
+              <Switch
+                checked={liveState.forceSolidBackground}
+                onCheckedChange={(checked) =>
+                  updateLiveState({ forceSolidBackground: checked })
+                }
+              />
+            </div>
+
+            <div
+              className={cn(
+                "space-y-2",
+                liveState.forceSolidBackground && "opacity-50",
+              )}
+            >
               <div className="flex items-center gap-2">
                 <Video className="w-4 h-4" />
                 <Label className="text-xs">Fallback Background Video URL</Label>
@@ -2082,10 +2202,12 @@ export function LiveMode() {
                 value={videoUrlInput}
                 onChange={(e) => setVideoUrlInput(e.target.value)}
                 placeholder="https://your-cdn.com/background.mp4"
+                disabled={liveState.forceSolidBackground}
               />
               <div className="flex gap-2">
                 <Button
                   size="sm"
+                  disabled={liveState.forceSolidBackground}
                   onClick={() =>
                     updateLiveState({
                       backgroundVideoUrl: videoUrlInput.trim() || null,
@@ -2097,6 +2219,7 @@ export function LiveMode() {
                 <Button
                   size="sm"
                   variant="outline"
+                  disabled={liveState.forceSolidBackground}
                   onClick={() => {
                     setVideoUrlInput("");
                     updateLiveState({ backgroundVideoUrl: null });
@@ -2110,6 +2233,8 @@ export function LiveMode() {
                 use that automatically, brightening for chorus/bridge and
                 dimming for verses. This URL is only used as a fallback for
                 songs without one, or for welcome/announcement/blank screens.
+                {liveState.forceSolidBackground &&
+                  " Disabled while solid background is forced."}
               </p>
             </div>
           </div>

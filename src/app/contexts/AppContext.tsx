@@ -64,6 +64,7 @@ interface SongSection {
   number?: number;
   lyrics: string;
   intensity?: number | null;
+  backgroundVideoUrl?: string | null;
 }
 
 interface Song {
@@ -85,6 +86,7 @@ export type NewSongInput = {
     number?: number;
     lyrics: string;
     intensity?: number | null;
+    backgroundVideoUrl?: string | null;
   }[];
   backgroundVideoUrl?: string | null;
 };
@@ -276,6 +278,7 @@ interface LiveState {
   };
   textColor: string;
   backgroundVideoUrl: string | null;
+  forceSolidBackground: boolean;
   alignment: "left" | "center" | "right";
   verticalPosition: "top" | "center" | "bottom";
   topPadding: number;
@@ -439,6 +442,7 @@ function getDefaultLiveState(): LiveState {
     },
     textColor: "#ffffff",
     backgroundVideoUrl: null,
+    forceSolidBackground: false,
     alignment: "center",
     verticalPosition: "center",
     topPadding: 24,
@@ -467,6 +471,7 @@ function mapSongDto(dto: SongDto): Song {
       number: section.number,
       lyrics: section.lyrics,
       intensity: section.intensity ?? null,
+      backgroundVideoUrl: section.backgroundVideoUrl ?? null,
     })),
   };
 }
@@ -958,6 +963,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         number: section.number,
         lyrics: section.lyrics,
         intensity: section.intensity ?? null,
+        backgroundVideoUrl: section.backgroundVideoUrl ?? null,
       })),
       backgroundVideoUrl: song.backgroundVideoUrl ?? null,
     });
@@ -979,6 +985,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         number: section.number,
         lyrics: section.lyrics,
         intensity: section.intensity ?? null,
+        backgroundVideoUrl: section.backgroundVideoUrl ?? null,
       })),
       backgroundVideoUrl: song.backgroundVideoUrl ?? null,
     });

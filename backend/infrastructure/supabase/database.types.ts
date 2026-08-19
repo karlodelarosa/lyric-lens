@@ -398,6 +398,7 @@ export type Database = {
       };
       song_sections: {
         Row: {
+          background_video_url: string | null;
           content: string;
           created_at: string;
           id: string;
@@ -408,6 +409,7 @@ export type Database = {
           song_id: string;
         };
         Insert: {
+          background_video_url?: string | null;
           content: string;
           created_at?: string;
           id?: string;
@@ -418,6 +420,7 @@ export type Database = {
           song_id: string;
         };
         Update: {
+          background_video_url?: string | null;
           content?: string;
           created_at?: string;
           id?: string;

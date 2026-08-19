@@ -81,10 +81,18 @@ type SectionFormState = {
   number: string;
   lyrics: string;
   intensity: number | null;
+  backgroundVideoUrl: string;
 };
 
 function createEmptySection(id: string, number = "1"): SectionFormState {
-  return { id, type: "verse", number, lyrics: "", intensity: null };
+  return {
+    id,
+    type: "verse",
+    number,
+    lyrics: "",
+    intensity: null,
+    backgroundVideoUrl: "",
+  };
 }
 
 function BackgroundVideoField({
@@ -152,8 +160,9 @@ function BackgroundVideoField({
         onChange={onFileSelected}
       />
       <p className="text-xs text-muted-foreground">
-        One looping video plays behind this song&apos;s lyrics live. Set each
-        section&apos;s intensity below to control how brightly it shines.
+        This video plays behind the song by default. Give a section its own
+        background below to override it for just that section — control how
+        brightly it shines with intensity.
       </p>
     </div>
   );
@@ -164,11 +173,15 @@ function SongSectionsEditor({
   setSections,
   onAddSection,
   requireFirstLyrics,
+  uploadingSectionId,
+  onUploadSectionVideo,
 }: {
   sections: SectionFormState[];
   setSections: React.Dispatch<React.SetStateAction<SectionFormState[]>>;
   onAddSection: () => void;
   requireFirstLyrics: boolean;
+  uploadingSectionId: string | null;
+  onUploadSectionVideo: (sectionId: string) => void;
 }) {
   return (
     <div className="space-y-3">
@@ -279,6 +292,58 @@ function SongSectionsEditor({
                   </Button>
                 </div>
               </div>
+              <div className="space-y-1">
+                <Label className="text-xs flex items-center gap-1.5">
+                  <Video className="w-3 h-3 text-muted-foreground" />
+                  Section background (optional)
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={section.backgroundVideoUrl}
+                    onChange={(e) =>
+                      setSections((prev) =>
+                        prev.map((s) =>
+                          s.id === section.id
+                            ? { ...s, backgroundVideoUrl: e.target.value }
+                            : s,
+                        ),
+                      )
+                    }
+                    placeholder="Falls back to the song background video"
+                    className="text-xs"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onUploadSectionVideo(section.id)}
+                    disabled={uploadingSectionId === section.id}
+                  >
+                    {uploadingSectionId === section.id
+                      ? "Uploading..."
+                      : "Upload"}
+                  </Button>
+                  {section.backgroundVideoUrl ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      title="Clear section background"
+                      onClick={() =>
+                        setSections((prev) =>
+                          prev.map((s) =>
+                            s.id === section.id
+                              ? { ...s, backgroundVideoUrl: "" }
+                              : s,
+                          ),
+                        )
+                      }
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
               <Textarea
                 value={section.lyrics}
                 onChange={(e) =>
@@ -316,6 +381,8 @@ function SongFormBody({
   sections,
   setSections,
   onAddSection,
+  uploadingSectionId,
+  onUploadSectionVideo,
 }: {
   idPrefix: string;
   titleDefaultValue?: string;
@@ -329,6 +396,8 @@ function SongFormBody({
   sections: SectionFormState[];
   setSections: React.Dispatch<React.SetStateAction<SectionFormState[]>>;
   onAddSection: () => void;
+  uploadingSectionId: string | null;
+  onUploadSectionVideo: (sectionId: string) => void;
 }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -378,6 +447,8 @@ function SongFormBody({
           setSections={setSections}
           requireFirstLyrics
           onAddSection={onAddSection}
+          uploadingSectionId={uploadingSectionId}
+          onUploadSectionVideo={onUploadSectionVideo}
         />
       </div>
     </div>
@@ -413,6 +484,11 @@ export function SongLibrary() {
   const [backgroundVideoUrl, setBackgroundVideoUrl] = useState("");
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const videoFileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingSectionId, setUploadingSectionId] = useState<string | null>(
+    null,
+  );
+  const sectionVideoFileInputRef = useRef<HTMLInputElement>(null);
+  const sectionUploadTargetId = useRef<string | null>(null);
 
   const availableTags = useMemo(
     () =>
@@ -468,6 +544,7 @@ export function SongLibrary() {
         number: section.number ? Number(section.number) : undefined,
         lyrics: section.lyrics.trim(),
         intensity: section.intensity,
+        backgroundVideoUrl: section.backgroundVideoUrl.trim() || null,
       }))
       .filter((section) => section.lyrics.length > 0);
 
@@ -510,6 +587,7 @@ export function SongLibrary() {
         number: section.number ? String(section.number) : String(index + 1),
         lyrics: section.lyrics,
         intensity: section.intensity ?? null,
+        backgroundVideoUrl: section.backgroundVideoUrl ?? "",
       })),
     );
     setBackgroundVideoUrl(target.backgroundVideoUrl ?? "");
@@ -526,6 +604,7 @@ export function SongLibrary() {
         number: section.number ? Number(section.number) : undefined,
         lyrics: section.lyrics.trim(),
         intensity: section.intensity,
+        backgroundVideoUrl: section.backgroundVideoUrl.trim() || null,
       }))
       .filter((section) => section.lyrics.length > 0);
 
@@ -579,6 +658,44 @@ export function SongLibrary() {
     }
   };
 
+  const handleUploadSectionVideo = (sectionId: string) => {
+    sectionUploadTargetId.current = sectionId;
+    sectionVideoFileInputRef.current?.click();
+  };
+
+  const handleSectionVideoFileSelected = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    const sectionId = sectionUploadTargetId.current;
+    if (!file || !activeOrganizationId || !sectionId) return;
+
+    if (file.size > SONG_BACKGROUND_VIDEO_MAX_BYTES) {
+      toast.error("Video exceeds the 20 MB limit");
+      return;
+    }
+
+    setUploadingSectionId(sectionId);
+    try {
+      const { slide } = await uploadSongBackgroundVideo(
+        activeOrganizationId,
+        file,
+      );
+      setSections((prev) =>
+        prev.map((s) =>
+          s.id === sectionId ? { ...s, backgroundVideoUrl: slide.url } : s,
+        ),
+      );
+      toast.success("Section background uploaded");
+    } catch {
+      toast.error("Failed to upload section background");
+    } finally {
+      setUploadingSectionId(null);
+      sectionUploadTargetId.current = null;
+    }
+  };
+
   const handleDeleteSong = async (songId: string) => {
     if (!confirm("Delete this song?")) return;
 
@@ -594,6 +711,13 @@ export function SongLibrary() {
 
   return (
     <div className="p-8 space-y-6">
+      <input
+        ref={sectionVideoFileInputRef}
+        type="file"
+        accept={SONG_BACKGROUND_VIDEO_ACCEPT}
+        className="hidden"
+        onChange={handleSectionVideoFileSelected}
+      />
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
@@ -646,6 +770,8 @@ export function SongLibrary() {
                   isUploadingVideo={isUploadingVideo}
                   fileInputRef={videoFileInputRef}
                   onFileSelected={handleVideoFileSelected}
+                  uploadingSectionId={uploadingSectionId}
+                  onUploadSectionVideo={handleUploadSectionVideo}
                   sections={sections}
                   setSections={setSections}
                   onAddSection={() =>
@@ -1003,7 +1129,7 @@ export function SongLibrary() {
           if (!open) setEditingSongId(null);
         }}
       >
-        <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-5xl max-h-[90vh]">
           {editingSongId && (
             <>
               <DialogHeader>
@@ -1029,6 +1155,8 @@ export function SongLibrary() {
                   isUploadingVideo={isUploadingVideo}
                   fileInputRef={videoFileInputRef}
                   onFileSelected={handleVideoFileSelected}
+                  uploadingSectionId={uploadingSectionId}
+                  onUploadSectionVideo={handleUploadSectionVideo}
                   sections={sections}
                   setSections={setSections}
                   onAddSection={() =>
@@ -1082,23 +1210,32 @@ export function SongLibrary() {
                 {song.backgroundVideoUrl ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Video className="w-4 h-4" />
-                    Background video configured — intensity shown per section
-                    below.
+                    Background video configured — sections with their own
+                    background override it live.
                   </div>
                 ) : null}
                 <div className="space-y-4">
                   {song.sections.map((section) => (
                     <Card key={section.id}>
                       <CardHeader>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-2">
                           <CardTitle className="text-sm uppercase text-muted-foreground">
                             {section.type} {section.number || ""}
                           </CardTitle>
-                          {song.backgroundVideoUrl ? (
-                            <Badge variant="outline" className="text-xs">
-                              {getSectionIntensity(section)}% intensity
-                            </Badge>
-                          ) : null}
+                          <div className="flex items-center gap-2">
+                            {section.backgroundVideoUrl ? (
+                              <Badge variant="outline" className="text-xs">
+                                <Video className="w-3 h-3 mr-1" />
+                                Own background
+                              </Badge>
+                            ) : null}
+                            {section.backgroundVideoUrl ||
+                            song.backgroundVideoUrl ? (
+                              <Badge variant="outline" className="text-xs">
+                                {getSectionIntensity(section)}% intensity
+                              </Badge>
+                            ) : null}
+                          </div>
                         </div>
                       </CardHeader>
                       <CardContent>

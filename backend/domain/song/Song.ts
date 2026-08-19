@@ -17,6 +17,7 @@ export type SongSection = {
   number?: number;
   lyrics: string;
   intensity?: number | null;
+  backgroundVideoUrl?: string | null;
 };
 
 export type CreateSongSectionInput = {
@@ -24,6 +25,7 @@ export type CreateSongSectionInput = {
   number?: number;
   lyrics: string;
   intensity?: number | null;
+  backgroundVideoUrl?: string | null;
 };
 
 export type CreateSongInput = {
@@ -50,6 +52,7 @@ type SongSectionRow = {
   content: string;
   position: number;
   intensity: number | null;
+  background_video_url: string | null;
 };
 
 type SongTagLinkRow = {
@@ -86,6 +89,7 @@ export class Song {
         number: section.section_number ?? undefined,
         lyrics: section.content,
         intensity: section.intensity,
+        backgroundVideoUrl: section.background_video_url,
       }));
 
     const tags = (row.song_tag_links ?? [])

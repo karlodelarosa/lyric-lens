@@ -1,10 +1,58 @@
+import {
+  Megaphone,
+  MessageSquare,
+  Music,
+  Music2,
+  Sparkles,
+  Timer,
+} from "lucide-react";
 import { cn } from "../../lib/utils";
 import { formatCountdown } from "../../lib/liveDisplayUtils";
 import type {
   Announcement,
   ServiceFlow,
   ServiceFlowSegment,
+  ServiceFlowSegmentKind,
 } from "../../contexts/AppContext";
+
+const SEGMENT_ICONS: Record<ServiceFlowSegmentKind, typeof Music> = {
+  music: Music,
+  announcements: Megaphone,
+  cue: MessageSquare,
+  song: Music2,
+  welcome: Sparkles,
+  countdown: Timer,
+};
+
+function SectionButton({
+  section,
+  isActive,
+  onClick,
+}: {
+  section: { type: string; number?: number; lyrics: string };
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  const firstLine = section.lyrics.split("\n")[0]?.trim();
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "w-full text-left p-2 rounded text-xs transition-shadow",
+        isActive
+          ? "bg-primary text-primary-foreground shadow-[var(--shadow-glow)]"
+          : "hover:bg-accent",
+      )}
+    >
+      <div className="opacity-80">
+        {section.type}
+        {section.number ? ` ${section.number}` : ""}
+      </div>
+      {firstLine ? <div className="truncate mt-0.5">{firstLine}</div> : null}
+    </button>
+  );
+}
 
 type LivePanelSong = {
   id: string;
@@ -63,24 +111,31 @@ export function ServiceFlowLivePanel({
       </div>
 
       <div className="space-y-1">
-        {serviceFlow.segments.map((segment) => (
-          <button
-            key={segment.id}
-            type="button"
-            onClick={() => onSelectSegment(segment)}
-            className={cn(
-              "w-full text-left p-3 rounded-lg border text-sm transition-colors",
-              activeSegment?.id === segment.id
-                ? "bg-primary/20 border-primary"
-                : "bg-card hover:bg-accent",
-            )}
-          >
-            <div className="font-medium">{segment.label}</div>
-            <div className="text-xs text-muted-foreground capitalize">
-              {segment.kind}
-            </div>
-          </button>
-        ))}
+        {serviceFlow.segments.map((segment) => {
+          const SegmentIcon = SEGMENT_ICONS[segment.kind];
+          const isActive = activeSegment?.id === segment.id;
+          return (
+            <button
+              key={segment.id}
+              type="button"
+              onClick={() => onSelectSegment(segment)}
+              className={cn(
+                "w-full flex items-start gap-2.5 text-left p-3 rounded-lg border text-sm transition-shadow",
+                isActive
+                  ? "bg-primary/20 border-primary shadow-[var(--shadow-glow)]"
+                  : "bg-card hover:bg-accent",
+              )}
+            >
+              <SegmentIcon className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
+              <div className="min-w-0">
+                <div className="font-medium">{segment.label}</div>
+                <div className="text-xs text-muted-foreground capitalize">
+                  {segment.kind}
+                </div>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {activeSegment?.kind === "cue" && (
@@ -187,9 +242,9 @@ export function ServiceFlowLivePanel({
                 type="button"
                 onClick={() => onSelectSong(song.id)}
                 className={cn(
-                  "w-full text-left p-3 rounded-lg border font-medium text-sm",
+                  "w-full text-left p-3 rounded-lg border font-medium text-sm transition-shadow",
                   currentSongId === song.id
-                    ? "bg-primary/20 border-primary"
+                    ? "bg-primary/20 border-primary shadow-[var(--shadow-glow)]"
                     : "bg-card hover:bg-accent",
                 )}
               >
@@ -197,21 +252,15 @@ export function ServiceFlowLivePanel({
               </button>
               <div className="ml-3 space-y-1">
                 {song.sections.map((section) => (
-                  <button
+                  <SectionButton
                     key={section.id}
-                    type="button"
-                    onClick={() => onSelectSection(song.id, section.id)}
-                    className={cn(
-                      "w-full text-left p-2 rounded text-xs",
+                    section={section}
+                    isActive={
                       currentSongId === song.id &&
-                        currentSectionId === section.id
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-accent",
-                    )}
-                  >
-                    {section.type}
-                    {section.number ? ` ${section.number}` : ""}
-                  </button>
+                      currentSectionId === section.id
+                    }
+                    onClick={() => onSelectSection(song.id, section.id)}
+                  />
                 ))}
               </div>
             </div>
@@ -240,9 +289,9 @@ export function ServiceFlowLivePanel({
                   type="button"
                   onClick={() => onSelectSong(song.id)}
                   className={cn(
-                    "w-full text-left p-3 rounded-lg border font-medium text-sm",
+                    "w-full text-left p-3 rounded-lg border font-medium text-sm transition-shadow",
                     currentSongId === song.id
-                      ? "bg-primary/20 border-primary"
+                      ? "bg-primary/20 border-primary shadow-[var(--shadow-glow)]"
                       : "bg-card hover:bg-accent",
                   )}
                 >
@@ -250,21 +299,15 @@ export function ServiceFlowLivePanel({
                 </button>
                 <div className="ml-3 space-y-1">
                   {song.sections.map((section) => (
-                    <button
+                    <SectionButton
                       key={section.id}
-                      type="button"
-                      onClick={() => onSelectSection(song.id, section.id)}
-                      className={cn(
-                        "w-full text-left p-2 rounded text-xs",
+                      section={section}
+                      isActive={
                         currentSongId === song.id &&
-                          currentSectionId === section.id
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-accent",
-                      )}
-                    >
-                      {section.type}
-                      {section.number ? ` ${section.number}` : ""}
-                    </button>
+                        currentSectionId === section.id
+                      }
+                      onClick={() => onSelectSection(song.id, section.id)}
+                    />
                   ))}
                 </div>
               </div>

@@ -6,6 +6,7 @@ export type SongSectionDto = {
   number?: number;
   lyrics: string;
   intensity?: number | null;
+  backgroundVideoUrl?: string | null;
 };
 
 export type SongDto = {
@@ -31,6 +32,7 @@ export type CreateSongPayload = {
     number?: number;
     lyrics: string;
     intensity?: number | null;
+    backgroundVideoUrl?: string | null;
   }[];
   backgroundVideoUrl?: string | null;
 };

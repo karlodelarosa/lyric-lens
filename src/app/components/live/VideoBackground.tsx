@@ -7,7 +7,9 @@ export function VideoBackground({
   videoUrl: string | null;
   intensity?: number;
 }) {
-  if (!videoUrl) return null;
+  if (!videoUrl) {
+    return null;
+  }
 
   const { filter, scrimOpacity, glowOpacity } =
     getVideoBackgroundVisualStyle(intensity);

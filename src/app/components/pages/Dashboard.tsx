@@ -8,6 +8,10 @@ import {
   ArrowRight,
   Plus,
   GitBranch,
+  Play,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -17,28 +21,100 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
-import { format } from "date-fns";
+import { Badge } from "../ui/badge";
+import { format, formatDistanceToNow } from "date-fns";
 
 export function Dashboard() {
   const { schedules, setlists, songs, serviceFlowList } = useApp();
 
   const upcomingSchedules = schedules
     .filter((s) => new Date(s.date) >= new Date())
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, 3);
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const recentSongs = [...songs]
-    .sort((a, b) => b.usageCount - a.usageCount)
+  const nextSchedule = upcomingSchedules[0];
+  const nextSetlist = nextSchedule
+    ? setlists.find((sl) => sl.id === nextSchedule.setlistId)
+    : undefined;
+  const nextIsReady = Boolean(nextSetlist && nextSetlist.songs.length > 0);
+
+  // Schedule is optional in practice — most services never get a schedule
+  // entry, they just go straight from setlist to live. When there's no
+  // upcoming schedule, fall back to the most recently touched ready setlist
+  // instead of a dead "nothing scheduled" prompt.
+  const latestReadySetlist = !nextSchedule
+    ? [...setlists]
+        .filter((sl) => sl.songs.length > 0)
+        .sort((a, b) => {
+          const aTime = a.updatedAt ? Date.parse(a.updatedAt) : 0;
+          const bTime = b.updatedAt ? Date.parse(b.updatedAt) : 0;
+          return bTime - aTime;
+        })[0]
+    : undefined;
+
+  const isScheduleReady = (schedule: (typeof upcomingSchedules)[number]) => {
+    const setlist = setlists.find((sl) => sl.id === schedule.setlistId);
+    return Boolean(setlist && setlist.songs.length > 0);
+  };
+
+  const songsNeedingLyrics = songs.filter(
+    (song) =>
+      song.sections.length === 0 ||
+      song.sections.every((section) => !section.lyrics.trim()),
+  );
+
+  const attentionItems = [
+    ...upcomingSchedules
+      .filter((s) => !isScheduleReady(s))
+      .slice(0, 3)
+      .map((s) => ({
+        key: `schedule-${s.id}`,
+        title: s.title,
+        description: `${format(new Date(s.date), "MMM d")} — needs a setlist`,
+        href: "/setlists",
+      })),
+    ...songsNeedingLyrics.slice(0, 3).map((song) => ({
+      key: `song-${song.id}`,
+      title: song.title,
+      description: `${song.artist || "Unknown artist"} — no lyrics yet`,
+      href: "/songs",
+    })),
+  ].slice(0, 5);
+
+  const recentWork = [
+    ...setlists.map((sl) => ({
+      key: `setlist-${sl.id}`,
+      title: sl.name,
+      kind: "Setlist",
+      updatedAt: sl.updatedAt,
+      href: "/setlists",
+    })),
+    ...serviceFlowList.map((flow) => ({
+      key: `flow-${flow.id}`,
+      title: flow.title,
+      kind: "Service Flow",
+      updatedAt: flow.updatedAt,
+      href: "/service-flows",
+    })),
+  ]
+    .filter(
+      (item): item is typeof item & { updatedAt: string } => !!item.updatedAt,
+    )
+    .sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    )
     .slice(0, 5);
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="px-10 py-10 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-end justify-between gap-6 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Welcome back to LiveLyrics
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-2">
+            {format(new Date(), "EEEE, MMMM d")}
+          </p>
+          <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground mt-1.5">
+            Welcome back to Lyric Lens
           </p>
         </div>
         <div className="flex gap-3">
@@ -63,235 +139,196 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-6">
-        <Card className="bg-primary/10 border-primary/20">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Songs</CardTitle>
-            <Music className="w-4 h-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{songs.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              In your library
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Setlists</CardTitle>
-            <List className="w-4 h-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{setlists.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Ready to present
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
-            <Calendar className="w-4 h-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{upcomingSchedules.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Scheduled events
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* Upcoming Schedules */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Upcoming Services</CardTitle>
-                <CardDescription>Your scheduled events</CardDescription>
-              </div>
+      {/* Hero: Next Service (or the last thing you were working on, if you don't use scheduling) */}
+      <div className="rounded-xl border bg-card shadow-[var(--shadow-hero)] p-8 flex items-center justify-between gap-6 flex-wrap">
+        {nextSchedule ? (
+          <>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                Next service · {format(new Date(nextSchedule.date), "EEEE, MMMM d")}
+              </p>
+              <h2 className="text-2xl font-bold tracking-tight mb-3">
+                {nextSchedule.title}
+              </h2>
+              {nextIsReady ? (
+                <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/15">
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                  Ready — {nextSetlist?.songs.length} songs
+                </Badge>
+              ) : (
+                <Badge className="bg-amber-500/15 text-amber-600 border-amber-500/30 hover:bg-amber-500/15">
+                  <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />
+                  Needs a setlist
+                </Badge>
+              )}
+            </div>
+            <div className="flex gap-3">
+              {nextIsReady ? (
+                <Link
+                  to={buildLiveUrl(nextSchedule.setlistId)}
+                  state={{ eventTitle: nextSchedule.title }}
+                >
+                  <Button size="lg" className="shadow-[var(--shadow-glow)]">
+                    <Play className="w-4 h-4 mr-2 fill-current" />
+                    Go Live
+                  </Button>
+                </Link>
+              ) : (
+                <Link to="/setlists">
+                  <Button size="lg">Build setlist</Button>
+                </Link>
+              )}
               <Link to="/schedule">
-                <Button variant="ghost" size="sm">
-                  View All
-                  <ArrowRight className="w-4 h-4 ml-2" />
+                <Button variant="outline" size="lg">
+                  View schedule
                 </Button>
               </Link>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {upcomingSchedules.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                No upcoming services scheduled
+          </>
+        ) : latestReadySetlist ? (
+          <>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                Your latest setlist
               </p>
+              <h2 className="text-2xl font-bold tracking-tight mb-3">
+                {latestReadySetlist.name}
+              </h2>
+              <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/15">
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                Ready — {latestReadySetlist.songs.length} songs
+              </Badge>
+            </div>
+            <div className="flex gap-3">
+              <Link
+                to={buildLiveUrl(latestReadySetlist.id)}
+                state={{ eventTitle: latestReadySetlist.name }}
+              >
+                <Button size="lg" className="shadow-[var(--shadow-glow)]">
+                  <Play className="w-4 h-4 mr-2 fill-current" />
+                  Go Live
+                </Button>
+              </Link>
+              <Link to="/setlists">
+                <Button variant="outline" size="lg">
+                  View all setlists
+                </Button>
+              </Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                Get started
+              </p>
+              <h2 className="text-2xl font-bold tracking-tight mb-1">
+                Nothing to present yet
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Build a setlist to see it here.
+              </p>
+            </div>
+            <Link to="/setlists">
+              <Button size="lg">
+                <Plus className="w-4 h-4 mr-2" />
+                Create a setlist
+              </Button>
+            </Link>
+          </>
+        )}
+      </div>
+
+      {/* Library snapshot */}
+      <div className="flex items-center gap-6 text-sm text-muted-foreground border-y py-3 flex-wrap">
+        <span className="flex items-center gap-1.5">
+          <Music className="w-3.5 h-3.5" />
+          {songs.length} songs in your library
+        </span>
+        <span className="flex items-center gap-1.5">
+          <List className="w-3.5 h-3.5" />
+          {setlists.length} setlists
+        </span>
+        <span className="flex items-center gap-1.5">
+          <Calendar className="w-3.5 h-3.5" />
+          {upcomingSchedules.length} upcoming services
+        </span>
+      </div>
+
+      {/* Needs Attention + Continue Where You Left Off */}
+      <div className="grid grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              Needs Attention
+            </CardTitle>
+            <CardDescription>
+              Gaps worth clearing before service
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {attentionItems.length === 0 ? (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-8">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                You&apos;re all caught up
+              </div>
             ) : (
-              upcomingSchedules.map((schedule) => {
-                const setlist = setlists.find(
-                  (sl) => sl.id === schedule.setlistId,
-                );
-                return (
-                  <div
-                    key={schedule.id}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card/50 hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex flex-col items-center justify-center">
-                        <div className="text-xs font-medium text-muted-foreground">
-                          {format(new Date(schedule.date), "MMM")}
-                        </div>
-                        <div className="text-lg font-bold">
-                          {format(new Date(schedule.date), "d")}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="font-medium">{schedule.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {setlist ? setlist.name : "No setlist assigned"}
-                        </p>
-                      </div>
-                    </div>
-                    <Link
-                      to={buildLiveUrl(schedule.setlistId)}
-                      state={{ eventTitle: schedule.title }}
-                    >
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={!schedule.setlistId}
-                      >
-                        Go Live
-                      </Button>
-                    </Link>
+              attentionItems.map((item) => (
+                <Link
+                  key={item.key}
+                  to={item.href}
+                  className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-card/50 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{item.title}</p>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {item.description}
+                    </p>
                   </div>
-                );
-              })
+                  <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                </Link>
+              ))
             )}
           </CardContent>
         </Card>
 
-        {/* Recently Used Songs */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Popular Songs</CardTitle>
-                <CardDescription>Most used in services</CardDescription>
-              </div>
-              <Link to="/songs">
-                <Button variant="ghost" size="sm">
-                  View All
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              Continue Where You Left Off
+            </CardTitle>
+            <CardDescription>Your most recently edited work</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {recentSongs.map((song, index) => (
-              <div
-                key={song.id}
-                className="flex items-center gap-3 p-3 rounded-lg border bg-card/50 hover:bg-accent/50 transition-colors"
-              >
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold">
-                  {index + 1}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">{song.title}</p>
-                  <p className="text-sm text-muted-foreground">{song.artist}</p>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {song.usageCount} uses
-                </div>
-              </div>
-            ))}
+          <CardContent className="space-y-2">
+            {recentWork.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Nothing edited yet
+              </p>
+            ) : (
+              recentWork.map((item) => (
+                <Link
+                  key={item.key}
+                  to={item.href}
+                  className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-card/50 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{item.title}</p>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {item.kind} · edited{" "}
+                      {formatDistanceToNow(new Date(item.updatedAt), {
+                        addSuffix: true,
+                      })}
+                    </p>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                </Link>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
-
-      {/* Quick Actions */}
-      <Card className="bg-primary/5 border-primary/20">
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Jump into your workflow</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Link to="/live" className="group">
-            <div className="p-6 rounded-lg border bg-card hover:bg-accent transition-all duration-200 cursor-pointer">
-              <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Calendar className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <h3 className="font-semibold mb-1">Go to Live Mode</h3>
-              <p className="text-sm text-muted-foreground">
-                Start presenting lyrics
-              </p>
-            </div>
-          </Link>
-          <Link to="/setlists" className="group">
-            <div className="p-6 rounded-lg border bg-card hover:bg-accent transition-all duration-200 cursor-pointer">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <List className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="font-semibold mb-1">Build Setlist</h3>
-              <p className="text-sm text-muted-foreground">
-                Create song sequences
-              </p>
-            </div>
-          </Link>
-          <Link to="/songs" className="group">
-            <div className="p-6 rounded-lg border bg-card hover:bg-accent transition-all duration-200 cursor-pointer">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Music className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="font-semibold mb-1">Manage Songs</h3>
-              <p className="text-sm text-muted-foreground">
-                Add or edit lyrics
-              </p>
-            </div>
-          </Link>
-          <Link to="/service-flows" className="group">
-            <div className="p-6 rounded-lg border bg-card hover:bg-accent transition-all duration-200 cursor-pointer">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <GitBranch className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="font-semibold mb-1">Service Flows</h3>
-              <p className="text-sm text-muted-foreground">
-                {serviceFlowList.length} saved flow
-                {serviceFlowList.length === 1 ? "" : "s"}
-              </p>
-            </div>
-          </Link>
-        </CardContent>
-      </Card>
-
-      {serviceFlowList.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Service Flows</CardTitle>
-            <CardDescription>Go live with a full run-of-show</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {serviceFlowList.slice(0, 5).map((flow) => (
-              <div
-                key={flow.id}
-                className="flex items-center justify-between gap-3 p-3 rounded-lg border"
-              >
-                <div>
-                  <p className="font-medium">{flow.title}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {flow.segmentCount} segments
-                  </p>
-                </div>
-                <Link to={buildLiveUrl({ serviceFlowId: flow.id })}>
-                  <Button size="sm">Go Live</Button>
-                </Link>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

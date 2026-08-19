@@ -9,6 +9,7 @@ export interface OfflineSongSection {
   number?: number;
   lyrics: string;
   intensity?: number | null;
+  backgroundVideoUrl?: string | null;
 }
 
 export interface OfflineSong {

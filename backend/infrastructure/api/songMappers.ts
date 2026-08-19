@@ -29,6 +29,7 @@ export function songToDto(song: Song) {
       number: section.number,
       lyrics: section.lyrics,
       intensity: section.intensity ?? null,
+      backgroundVideoUrl: section.backgroundVideoUrl ?? null,
     })),
   };
 }
@@ -88,6 +89,11 @@ export function parseCreateSongBody(body: unknown): CreateSongInput | null {
           ? Number(intensityValue)
           : null;
 
+    const sectionBackgroundVideoUrl =
+      typeof sectionRecord.backgroundVideoUrl === "string"
+        ? sectionRecord.backgroundVideoUrl.trim() || null
+        : null;
+
     sections.push({
       type,
       number: Number.isFinite(number) ? number : undefined,
@@ -96,6 +102,7 @@ export function parseCreateSongBody(body: unknown): CreateSongInput | null {
         intensity !== null && Number.isFinite(intensity)
           ? Math.min(100, Math.max(0, Math.round(intensity)))
           : null,
+      backgroundVideoUrl: sectionBackgroundVideoUrl,
     });
   }
 
