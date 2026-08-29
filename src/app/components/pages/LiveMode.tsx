@@ -642,6 +642,7 @@ export function LiveMode() {
   }, []);
 
   useEffect(() => {
+    if (liveState.slideMode !== "lyrics") return;
     if (!currentSectionChunks.length) return;
     const maxChunkIndex = currentSectionChunks.length - 1;
     if (liveState.currentChunkIndex > maxChunkIndex) {
@@ -654,6 +655,7 @@ export function LiveMode() {
     liveState.linesPerSlide,
     liveState.currentChunkIndex,
     liveState.useLineChunks,
+    liveState.slideMode,
     updateLiveState,
   ]);
 
@@ -1568,7 +1570,7 @@ export function LiveMode() {
                       currentSong &&
                       currentSection &&
                       currentSectionChunks.length > 1 && (
-                        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                        <div className="mt-3 grid grid-cols-[repeat(5,110px)] gap-2 overflow-x-auto pb-1">
                           {currentSectionChunks.map((chunk, chunkIndex) => (
                             <LyricSlideThumbnail
                               key={`${currentSection.id}-${chunkIndex}`}
