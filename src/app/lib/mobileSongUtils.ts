@@ -84,9 +84,7 @@ export function serializeMobileSongForm(
   const sections = form.sections
     .map((section) => ({
       type: section.type,
-      number: section.number.trim()
-        ? Number(section.number.trim())
-        : undefined,
+      number: section.number.trim() ? Number(section.number.trim()) : undefined,
       lyrics: section.lyrics.trim(),
       intensity: section.intensity,
       backgroundVideoUrl: section.backgroundVideoUrl,
