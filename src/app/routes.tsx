@@ -14,6 +14,7 @@ import { Profile } from "./components/pages/Profile";
 import { HowToUse } from "./components/pages/HowToUse";
 import { Trash } from "./components/pages/Trash";
 import { NotFound } from "./components/pages/NotFound";
+import { MobileSongLibrary } from "./components/pages/MobileSongLibrary";
 
 export const router = createBrowserRouter([
   {
@@ -33,6 +34,10 @@ export const router = createBrowserRouter([
       { path: "trash", Component: Trash },
       { path: "*", Component: NotFound },
     ],
+  },
+  {
+    path: "/mobile/songs",
+    Component: MobileSongLibrary,
   },
   {
     path: "/presenter",
