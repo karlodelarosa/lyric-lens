@@ -58,7 +58,7 @@ export type SongSectionType =
   | "tag"
   | "custom";
 
-interface SongSection {
+export interface SongSection {
   id: string;
   type: SongSectionType;
   number?: number;
@@ -67,7 +67,7 @@ interface SongSection {
   backgroundVideoUrl?: string | null;
 }
 
-interface Song {
+export interface Song {
   id: string;
   title: string;
   artist: string;
