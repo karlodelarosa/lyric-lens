@@ -224,6 +224,7 @@ export function PresenterView() {
       {!liveState.blackout && (
         <div
           className="absolute inset-x-0 top-0 overflow-hidden"
+          hidden={liveState.blackout}
           style={{
             height:
               liveState.slideMode === "lyrics" &&
@@ -276,28 +277,9 @@ export function PresenterView() {
         </div>
       )}
 
-      {!liveState.blackout &&
-        (liveState.slideMode === "lyrics" &&
-        liveState.narrowLyricsBackground ? (
-          <div
-            className="absolute inset-x-0 top-0 z-[1] flex justify-center overflow-hidden"
-            style={{
-              height: `${Math.min(100, Math.max(10, liveState.narrowLyricsBackgroundHeight ?? 30))}%`,
-              alignItems:
-                liveState.verticalPosition === "top"
-                  ? "flex-start"
-                  : liveState.verticalPosition === "bottom"
-                    ? "flex-end"
-                    : "center",
-            }}
-          >
-            {slideContent}
-          </div>
-        ) : (
-          slideContent
-        ))}
+      {!liveState.blackout && !liveState.clearText && slideContent}
 
-      {!liveState.blackout && showWaiting && (
+      {!liveState.blackout && !liveState.clearText && showWaiting && (
         <div
           className="text-4xl text-center relative z-[1]"
           style={{ color: liveState.textColor, opacity: 0.3 }}

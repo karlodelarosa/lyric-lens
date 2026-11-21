@@ -280,6 +280,7 @@ interface LiveState {
   backgroundVideoUrl: string | null;
   forceSolidBackground: boolean;
   blackout: boolean;
+  clearText: boolean;
   narrowLyricsBackground: boolean;
   narrowLyricsBackgroundHeight: number;
   alignment: "left" | "center" | "right";
@@ -447,6 +448,7 @@ function getDefaultLiveState(): LiveState {
     backgroundVideoUrl: null,
     forceSolidBackground: false,
     blackout: false,
+    clearText: false,
     narrowLyricsBackground: false,
     narrowLyricsBackgroundHeight: 30,
     alignment: "center",
@@ -1334,6 +1336,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLiveState((prev) => ({
       ...prev,
       slideMode: "lyrics",
+      clearText: false,
       currentSongId: songId,
       currentSectionId: sectionId,
       manualLyrics: null,
@@ -1356,6 +1359,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLiveState((prev) => ({
         ...prev,
         slideMode: "announcement",
+        clearText: false,
         currentAnnouncementId: announcement.id,
         currentAnnouncementTitle: announcement.title,
         currentAnnouncementBody: announcement.body,
@@ -1372,6 +1376,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLiveState((prev) => ({
       ...prev,
       slideMode: "cue",
+      clearText: false,
       currentCueLabel: label,
       currentCueNotes: notes,
       manualLyrics: null,
@@ -1384,6 +1389,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLiveState((prev) => ({
       ...prev,
       slideMode: "welcome",
+      clearText: false,
       welcomeSlideUrl: welcomeSlide.url,
       welcomeSlideType: welcomeSlide.type,
       manualLyrics: null,
@@ -1395,8 +1401,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     liveActivityRef.current = Date.now();
     setLiveState((prev) => ({
       ...prev,
-      slideMode: "blank",
-      manualLyrics: null,
+      clearText: true,
     }));
   }, []);
 

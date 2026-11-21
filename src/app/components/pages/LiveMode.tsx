@@ -313,6 +313,7 @@ export function LiveMode() {
           currentServiceFlowId: flow.id,
           currentSegmentId: segment.id,
           slideMode: "lyrics",
+          clearText: false,
           currentSetlistId: segment.setlistId,
         });
         return;
@@ -334,6 +335,7 @@ export function LiveMode() {
           currentServiceFlowId: flow.id,
           currentSegmentId: segment.id,
           slideMode: "lyrics",
+          clearText: false,
           currentSetlistId: null,
           currentSongId: song?.id ?? null,
           currentSectionId: firstSection?.id ?? null,
@@ -348,6 +350,7 @@ export function LiveMode() {
           currentServiceFlowId: flow.id,
           currentSegmentId: segment.id,
           slideMode: "welcome",
+          clearText: false,
           welcomeSlideUrl: segment.welcomeMedia?.url ?? null,
           welcomeSlideType: segment.welcomeMedia?.type ?? null,
         });
@@ -360,6 +363,7 @@ export function LiveMode() {
           currentServiceFlowId: flow.id,
           currentSegmentId: segment.id,
           slideMode: "countdown",
+          clearText: false,
           countdown: {
             status: "armed",
             durationSeconds,
@@ -716,6 +720,7 @@ export function LiveMode() {
 
   const handleSectionClick = (songId: string, sectionId: string) => {
     setCurrentSlide(songId, sectionId);
+    updateLiveState({ clearText: false });
     if (activeServiceFlow) {
       updateLiveState({ slideMode: "lyrics" });
     }
@@ -731,6 +736,7 @@ export function LiveMode() {
       currentSectionId: sectionId,
       currentChunkIndex: chunkIndex,
       manualLyrics: null,
+      clearText: false,
     });
   };
 
@@ -739,6 +745,7 @@ export function LiveMode() {
     const firstSection = song?.sections[0];
     if (!song || !firstSection) return;
     setCurrentSlide(song.id, firstSection.id);
+    updateLiveState({ clearText: false });
     if (activeServiceFlow) {
       updateLiveState({ slideMode: "lyrics" });
     }
@@ -766,6 +773,7 @@ export function LiveMode() {
       if (liveState.currentChunkIndex < announcementSlides.length - 1) {
         updateLiveState({
           currentChunkIndex: liveState.currentChunkIndex + 1,
+          clearText: false,
         });
       }
       return;
@@ -779,7 +787,10 @@ export function LiveMode() {
       currentSectionChunks.length > 0 &&
       liveState.currentChunkIndex < currentSectionChunks.length - 1
     ) {
-      updateLiveState({ currentChunkIndex: liveState.currentChunkIndex + 1 });
+      updateLiveState({
+        currentChunkIndex: liveState.currentChunkIndex + 1,
+        clearText: false,
+      });
       return;
     }
 
@@ -797,6 +808,7 @@ export function LiveMode() {
     ) {
       updateLiveState({
         currentChunkIndex: liveState.currentChunkIndex - 1,
+        clearText: false,
       });
       return;
     }
@@ -809,7 +821,10 @@ export function LiveMode() {
       currentSectionChunks.length > 0 &&
       liveState.currentChunkIndex > 0
     ) {
-      updateLiveState({ currentChunkIndex: liveState.currentChunkIndex - 1 });
+      updateLiveState({
+        currentChunkIndex: liveState.currentChunkIndex - 1,
+        clearText: false,
+      });
       return;
     }
 
@@ -824,6 +839,7 @@ export function LiveMode() {
           currentSongId: currentSong.id,
           currentSectionId: prevSection.id,
           manualLyrics: null,
+          clearText: false,
           currentChunkIndex: Math.max(prevSectionChunks.length - 1, 0),
         });
       } else {
@@ -1486,6 +1502,7 @@ export function LiveMode() {
                         {!liveState.blackout && (
                           <div
                             className="absolute inset-x-0 top-0 overflow-hidden"
+                            hidden={liveState.clearText}
                             style={{
                               height:
                                 liveState.slideMode === "lyrics" &&
@@ -1502,22 +1519,17 @@ export function LiveMode() {
                           </div>
                         )}
 
-                        {!liveState.blackout && (
+                        {!liveState.blackout && !liveState.clearText && (
                           <div
-                            className="absolute inset-x-0 top-0 z-[1] flex justify-center overflow-hidden"
-                            style={{
-                              height:
-                                liveState.slideMode === "lyrics" &&
-                                liveState.narrowLyricsBackground
-                                  ? `${Math.min(100, Math.max(10, liveState.narrowLyricsBackgroundHeight ?? 30))}%`
-                                  : "100%",
-                              alignItems:
-                                liveState.verticalPosition === "top"
-                                  ? "flex-start"
-                                  : liveState.verticalPosition === "bottom"
-                                    ? "flex-end"
-                                    : "center",
-                            }}
+                            className={cn(
+                              "absolute inset-0 z-[1] flex justify-center",
+                              liveState.verticalPosition === "top" &&
+                                "items-start",
+                              liveState.verticalPosition === "center" &&
+                                "items-center",
+                              liveState.verticalPosition === "bottom" &&
+                                "items-end",
+                            )}
                           >
                             <LiveSlideContent
                               slideMode={liveState.slideMode}
@@ -1567,7 +1579,7 @@ export function LiveMode() {
                           </div>
                         )}
 
-                        {!liveState.blackout &&
+                        {!liveState.blackout && !liveState.clearText &&
                         liveState.slideMode === "announcement" &&
                         announcementSlides.length === 0 &&
                         !liveState.currentAnnouncementBody ? (
@@ -1578,6 +1590,7 @@ export function LiveMode() {
                             <p className="text-xl">No announcement content</p>
                           </div>
                         ) : !liveState.blackout &&
+                          !liveState.clearText &&
                           liveState.slideMode !== "blank" &&
                           liveState.slideMode !== "welcome" &&
                           liveState.slideMode !== "announcement" &&
@@ -1598,6 +1611,7 @@ export function LiveMode() {
                             </p>
                           </div>
                         ) : !liveState.blackout &&
+                          !liveState.clearText &&
                           liveState.slideMode === "welcome" &&
                           !liveState.welcomeSlideUrl ? (
                           <div
