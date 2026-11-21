@@ -149,7 +149,18 @@ export function PresenterView() {
   }, [handleEnterFullscreen]);
 
   const textStyle = {
-    fontFamily: liveState.fontFamily,
+    fontFamily: [
+      "Inter",
+      "Montserrat",
+      "Georgia",
+      "Arial",
+      "Helvetica",
+      "Times New Roman",
+      "Courier New",
+      "Verdana",
+    ].includes(liveState.fontFamily)
+      ? liveState.fontFamily
+      : "Inter",
     fontSize: `${liveState.fontSize}px`,
     textAlign: liveState.alignment as "left" | "center" | "right",
     lineHeight: liveState.lineHeight,

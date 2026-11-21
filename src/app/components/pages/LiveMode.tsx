@@ -96,6 +96,9 @@ const fontOptions = [
   "Verdana",
 ];
 
+const getLiveFontFamily = (fontFamily: string) =>
+  fontOptions.includes(fontFamily) ? fontFamily : "Inter";
+
 const fontWeightOptions = [
   { label: "Regular (400)", value: "400" },
   { label: "Medium (500)", value: "500" },
@@ -1471,7 +1474,7 @@ export function LiveMode() {
                                         verticalPosition={
                                           liveState.verticalPosition
                                         }
-                                        fontFamily={liveState.fontFamily}
+                                        fontFamily={getLiveFontFamily(liveState.fontFamily)}
                                         fontSize={Math.max(
                                           10,
                                           Math.round(
@@ -1559,7 +1562,7 @@ export function LiveMode() {
                                 liveState.countdown?.label ?? null
                               }
                               textStyle={{
-                                fontFamily: liveState.fontFamily,
+                                fontFamily: getLiveFontFamily(liveState.fontFamily),
                                 fontSize: `${scaledPreviewFontSize}px`,
                                 textAlign: liveState.alignment,
                                 lineHeight: liveState.lineHeight,
@@ -1657,7 +1660,7 @@ export function LiveMode() {
                                 currentSection,
                               )}
                               verticalPosition={liveState.verticalPosition}
-                              fontFamily={liveState.fontFamily}
+                              fontFamily={getLiveFontFamily(liveState.fontFamily)}
                               fontSize={Math.max(
                                 9,
                                 Math.round(scaledPreviewFontSize * 0.16),
