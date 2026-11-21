@@ -36,6 +36,7 @@ import {
   Video,
   Sparkles,
   Eraser,
+  EyeOff,
   Timer,
   TimerReset,
   Pause,
@@ -709,6 +710,10 @@ export function LiveMode() {
     clearScreen();
   };
 
+  const handleToggleBlackout = () => {
+    updateLiveState({ blackout: !liveState.blackout });
+  };
+
   const handleSectionClick = (songId: string, sectionId: string) => {
     setCurrentSlide(songId, sectionId);
     if (activeServiceFlow) {
@@ -1163,6 +1168,15 @@ export function LiveMode() {
               Fill screen
             </Button>
             <Button
+              variant={liveState.blackout ? "destructive" : "outline"}
+              size="sm"
+              onClick={handleToggleBlackout}
+              aria-pressed={liveState.blackout}
+            >
+              <EyeOff className="w-4 h-4 mr-2" />
+              {liveState.blackout ? "End Blackout" : "Blackout"}
+            </Button>
+            <Button
               onClick={handleGoLive}
               size="lg"
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -1250,7 +1264,7 @@ export function LiveMode() {
                     onClick={handleClearScreen}
                   >
                     <Eraser className="w-4 h-4 mr-1" />
-                    Clear
+                    Clear text
                   </Button>
                 </div>
                 <div className="relative mb-3">
@@ -1432,7 +1446,7 @@ export function LiveMode() {
                                           !liveState.forceSolidBackground &&
                                           Boolean(
                                             section.backgroundVideoUrl ||
-                                              currentSong.backgroundVideoUrl,
+                                                currentSong.backgroundVideoUrl,
                                           )
                                         }
                                         sectionIntensity={getSectionIntensity(
@@ -1466,64 +1480,95 @@ export function LiveMode() {
                     ) : (
                       <div
                         ref={previewFrameRef}
-                        className={cn(
-                          "relative w-full mx-auto rounded-lg overflow-hidden shadow-2xl flex justify-center aspect-video",
-                          isCompactMode ? "max-h-[34vh]" : "max-h-[42vh]",
-                          liveState.verticalPosition === "top" && "items-start",
-                          liveState.verticalPosition === "center" &&
-                            "items-center",
-                          liveState.verticalPosition === "bottom" &&
-                            "items-end",
-                        )}
-                        style={{
-                          background: liveState.background.value,
-                        }}
+                        className="relative w-full mx-auto rounded-lg overflow-hidden shadow-2xl flex justify-center aspect-video"
+                        style={{ background: "#000000" }}
                       >
-                        <VideoBackground
-                          videoUrl={effectiveBackgroundVideoUrl}
-                          intensity={effectiveBackgroundIntensity}
-                        />
+                        {!liveState.blackout && (
+                          <div
+                            className="absolute inset-x-0 top-0 overflow-hidden"
+                            style={{
+                              height:
+                                liveState.slideMode === "lyrics" &&
+                                liveState.narrowLyricsBackground
+                                  ? `${Math.min(100, Math.max(10, liveState.narrowLyricsBackgroundHeight ?? 30))}%`
+                                  : "100%",
+                              background: liveState.background.value,
+                            }}
+                          >
+                            <VideoBackground
+                              videoUrl={effectiveBackgroundVideoUrl}
+                              intensity={effectiveBackgroundIntensity}
+                            />
+                          </div>
+                        )}
 
-                        <LiveSlideContent
-                          slideMode={liveState.slideMode}
-                          welcomeSlideUrl={liveState.welcomeSlideUrl}
-                          welcomeSlideType={liveState.welcomeSlideType}
-                          announcementTitle={previewAnnouncementTitle}
-                          announcementBody={previewAnnouncementBody}
-                          announcementSlides={announcementSlides}
-                          announcementSlideIndex={liveState.currentChunkIndex}
-                          cueLabel={liveState.currentCueLabel}
-                          cueNotes={liveState.currentCueNotes}
-                          lyrics={
-                            liveState.slideMode === "lyrics" &&
-                            (liveState.manualLyrics != null || currentSection)
-                              ? (liveLyrics ?? "")
-                              : undefined
-                          }
-                          compact={isCompactMode}
-                          scaledFontSize={scaledPreviewFontSize}
-                          countdownRemainingSeconds={
-                            previewCountdownRemainingSeconds
-                          }
-                          countdownLabel={liveState.countdown?.label ?? null}
-                          textStyle={{
-                            fontFamily: liveState.fontFamily,
-                            fontSize: `${scaledPreviewFontSize}px`,
-                            textAlign: liveState.alignment,
-                            lineHeight: liveState.lineHeight,
-                            paddingTop:
-                              liveState.verticalPosition === "top"
-                                ? `${liveState.topPadding}px`
-                                : undefined,
-                            textTransform: liveState.textTransform,
-                            fontWeight: liveState.fontWeight,
-                            color: liveState.textColor,
-                            textShadow: getLiveTextShadow(liveState.textColor),
-                            whiteSpace: "pre-wrap",
-                          }}
-                        />
+                        {!liveState.blackout && (
+                          <div
+                            className="absolute inset-x-0 top-0 z-[1] flex justify-center overflow-hidden"
+                            style={{
+                              height:
+                                liveState.slideMode === "lyrics" &&
+                                liveState.narrowLyricsBackground
+                                  ? `${Math.min(100, Math.max(10, liveState.narrowLyricsBackgroundHeight ?? 30))}%`
+                                  : "100%",
+                              alignItems:
+                                liveState.verticalPosition === "top"
+                                  ? "flex-start"
+                                  : liveState.verticalPosition === "bottom"
+                                    ? "flex-end"
+                                    : "center",
+                            }}
+                          >
+                            <LiveSlideContent
+                              slideMode={liveState.slideMode}
+                              welcomeSlideUrl={liveState.welcomeSlideUrl}
+                              welcomeSlideType={liveState.welcomeSlideType}
+                              announcementTitle={previewAnnouncementTitle}
+                              announcementBody={previewAnnouncementBody}
+                              announcementSlides={announcementSlides}
+                              announcementSlideIndex={
+                                liveState.currentChunkIndex
+                              }
+                              cueLabel={liveState.currentCueLabel}
+                              cueNotes={liveState.currentCueNotes}
+                              lyrics={
+                                liveState.slideMode === "lyrics" &&
+                                (liveState.manualLyrics != null ||
+                                  currentSection)
+                                  ? (liveLyrics ?? "")
+                                  : undefined
+                              }
+                              compact={isCompactMode}
+                              scaledFontSize={scaledPreviewFontSize}
+                              countdownRemainingSeconds={
+                                previewCountdownRemainingSeconds
+                              }
+                              countdownLabel={
+                                liveState.countdown?.label ?? null
+                              }
+                              textStyle={{
+                                fontFamily: liveState.fontFamily,
+                                fontSize: `${scaledPreviewFontSize}px`,
+                                textAlign: liveState.alignment,
+                                lineHeight: liveState.lineHeight,
+                                paddingTop:
+                                  liveState.verticalPosition === "top"
+                                    ? `${liveState.topPadding}px`
+                                    : undefined,
+                                textTransform: liveState.textTransform,
+                                fontWeight: liveState.fontWeight,
+                                color: liveState.textColor,
+                                textShadow: getLiveTextShadow(
+                                  liveState.textColor,
+                                ),
+                                whiteSpace: "pre-wrap",
+                              }}
+                            />
+                          </div>
+                        )}
 
-                        {liveState.slideMode === "announcement" &&
+                        {!liveState.blackout &&
+                        liveState.slideMode === "announcement" &&
                         announcementSlides.length === 0 &&
                         !liveState.currentAnnouncementBody ? (
                           <div
@@ -1532,7 +1577,8 @@ export function LiveMode() {
                           >
                             <p className="text-xl">No announcement content</p>
                           </div>
-                        ) : liveState.slideMode !== "blank" &&
+                        ) : !liveState.blackout &&
+                          liveState.slideMode !== "blank" &&
                           liveState.slideMode !== "welcome" &&
                           liveState.slideMode !== "announcement" &&
                           liveState.slideMode !== "cue" &&
@@ -1551,7 +1597,8 @@ export function LiveMode() {
                                 : "Select a song to begin"}
                             </p>
                           </div>
-                        ) : liveState.slideMode === "welcome" &&
+                        ) : !liveState.blackout &&
+                          liveState.slideMode === "welcome" &&
                           !liveState.welcomeSlideUrl ? (
                           <div
                             className="text-center relative z-[1]"
@@ -1589,7 +1636,7 @@ export function LiveMode() {
                                 !liveState.forceSolidBackground &&
                                 Boolean(
                                   currentSection.backgroundVideoUrl ||
-                                    currentSong.backgroundVideoUrl,
+                                  currentSong.backgroundVideoUrl,
                                 )
                               }
                               sectionIntensity={getSectionIntensity(
@@ -1686,9 +1733,10 @@ export function LiveMode() {
                   </div>
                 ) : liveState.slideMode === "blank" ? (
                   <div>
-                    <p className="font-semibold">Screen cleared</p>
+                    <p className="font-semibold">Text cleared</p>
                     <p className="text-sm text-muted-foreground">
-                      Background only — select a song or welcome to continue
+                      Background remains visible — select a song or welcome to
+                      continue
                     </p>
                   </div>
                 ) : liveState.slideMode === "announcement" ? (
@@ -1792,7 +1840,7 @@ export function LiveMode() {
                 </Button>
                 <Button variant="outline" size="lg" onClick={handleClearScreen}>
                   <Eraser className="w-5 h-5 mr-2" />
-                  Clear
+                  Clear text
                 </Button>
                 <Button
                   variant="outline"
@@ -2078,6 +2126,38 @@ export function LiveMode() {
             </div>
             <div className="flex items-center justify-between rounded-md border bg-background/80 p-3">
               <div className="space-y-0.5">
+                <Label className="text-sm">Narrow BG to Lyrics Only</Label>
+                <p className="text-xs text-muted-foreground">
+                  Show lyrics background in a top band; keep the rest black.
+                </p>
+              </div>
+              <Switch
+                checked={liveState.narrowLyricsBackground}
+                onCheckedChange={(checked) =>
+                  updateLiveState({ narrowLyricsBackground: checked })
+                }
+                aria-label="Narrow background to lyrics only"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">
+                Background Height:{" "}
+                {liveState.narrowLyricsBackgroundHeight ?? 30}%
+              </Label>
+              <Slider
+                value={[liveState.narrowLyricsBackgroundHeight ?? 30]}
+                onValueChange={([value]) =>
+                  updateLiveState({ narrowLyricsBackgroundHeight: value })
+                }
+                min={10}
+                max={100}
+                step={1}
+                disabled={!liveState.narrowLyricsBackground}
+                aria-label="Lyrics background height"
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-md border bg-background/80 p-3">
+              <div className="space-y-0.5">
                 <Label className="text-sm">Line chunks</Label>
                 <p className="text-xs text-muted-foreground">
                   Split each section into smaller slides.
@@ -2127,7 +2207,6 @@ export function LiveMode() {
           {/* Background */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Palette className="w-4 h-4" />
               <Label>Background</Label>
             </div>
             <div className="grid grid-cols-2 gap-2">

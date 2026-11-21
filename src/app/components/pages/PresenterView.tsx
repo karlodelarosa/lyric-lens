@@ -212,21 +212,33 @@ export function PresenterView() {
 
   return (
     <div
-      className={`w-screen h-screen flex justify-center overflow-hidden ${
+      className={`w-screen h-screen relative flex justify-center overflow-hidden ${
         liveState.verticalPosition === "top"
           ? "items-start"
           : liveState.verticalPosition === "bottom"
             ? "items-end"
             : "items-center"
       }`}
-      style={{
-        background: liveState.background.value,
-      }}
+      style={{ background: "#000000" }}
     >
-      <VideoBackground
-        videoUrl={effectiveBackgroundVideoUrl}
-        intensity={effectiveBackgroundIntensity}
-      />
+      {!liveState.blackout && (
+        <div
+          className="absolute inset-x-0 top-0 overflow-hidden"
+          style={{
+            height:
+              liveState.slideMode === "lyrics" &&
+              liveState.narrowLyricsBackground
+                ? `${Math.min(100, Math.max(10, liveState.narrowLyricsBackgroundHeight ?? 30))}%`
+                : "100%",
+            background: liveState.background.value,
+          }}
+        >
+          <VideoBackground
+            videoUrl={effectiveBackgroundVideoUrl}
+            intensity={effectiveBackgroundIntensity}
+          />
+        </div>
+      )}
 
       <Button
         variant="ghost"
@@ -264,9 +276,28 @@ export function PresenterView() {
         </div>
       )}
 
-      {slideContent}
+      {!liveState.blackout &&
+        (liveState.slideMode === "lyrics" &&
+        liveState.narrowLyricsBackground ? (
+          <div
+            className="absolute inset-x-0 top-0 z-[1] flex justify-center overflow-hidden"
+            style={{
+              height: `${Math.min(100, Math.max(10, liveState.narrowLyricsBackgroundHeight ?? 30))}%`,
+              alignItems:
+                liveState.verticalPosition === "top"
+                  ? "flex-start"
+                  : liveState.verticalPosition === "bottom"
+                    ? "flex-end"
+                    : "center",
+            }}
+          >
+            {slideContent}
+          </div>
+        ) : (
+          slideContent
+        ))}
 
-      {showWaiting && (
+      {!liveState.blackout && showWaiting && (
         <div
           className="text-4xl text-center relative z-[1]"
           style={{ color: liveState.textColor, opacity: 0.3 }}

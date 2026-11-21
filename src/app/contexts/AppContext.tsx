@@ -279,6 +279,9 @@ interface LiveState {
   textColor: string;
   backgroundVideoUrl: string | null;
   forceSolidBackground: boolean;
+  blackout: boolean;
+  narrowLyricsBackground: boolean;
+  narrowLyricsBackgroundHeight: number;
   alignment: "left" | "center" | "right";
   verticalPosition: "top" | "center" | "bottom";
   topPadding: number;
@@ -443,6 +446,9 @@ function getDefaultLiveState(): LiveState {
     textColor: "#ffffff",
     backgroundVideoUrl: null,
     forceSolidBackground: false,
+    blackout: false,
+    narrowLyricsBackground: false,
+    narrowLyricsBackgroundHeight: 30,
     alignment: "center",
     verticalPosition: "center",
     topPadding: 24,
