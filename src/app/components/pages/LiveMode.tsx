@@ -1931,7 +1931,7 @@ export function LiveMode() {
                     updateLiveState({ fontSize: value })
                   }
                   min={24}
-                  max={96}
+                  max={150}
                   step={2}
                 />
               </div>
