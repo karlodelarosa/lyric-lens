@@ -316,7 +316,6 @@ export function LiveMode() {
           currentServiceFlowId: flow.id,
           currentSegmentId: segment.id,
           slideMode: "lyrics",
-          clearText: false,
           currentSetlistId: segment.setlistId,
         });
         return;
@@ -338,7 +337,6 @@ export function LiveMode() {
           currentServiceFlowId: flow.id,
           currentSegmentId: segment.id,
           slideMode: "lyrics",
-          clearText: false,
           currentSetlistId: null,
           currentSongId: song?.id ?? null,
           currentSectionId: firstSection?.id ?? null,
@@ -353,7 +351,6 @@ export function LiveMode() {
           currentServiceFlowId: flow.id,
           currentSegmentId: segment.id,
           slideMode: "welcome",
-          clearText: false,
           welcomeSlideUrl: segment.welcomeMedia?.url ?? null,
           welcomeSlideType: segment.welcomeMedia?.type ?? null,
         });
@@ -366,7 +363,6 @@ export function LiveMode() {
           currentServiceFlowId: flow.id,
           currentSegmentId: segment.id,
           slideMode: "countdown",
-          clearText: false,
           countdown: {
             status: "armed",
             durationSeconds,
@@ -404,6 +400,15 @@ export function LiveMode() {
       applyServiceFlowSegment(activeServiceFlow, segment);
     },
     [activeServiceFlow, applyServiceFlowSegment],
+  );
+
+  const revealServiceFlowSegment = useCallback(
+    (segment: ServiceFlowSegment) => {
+      if (!activeServiceFlow) return;
+      applyServiceFlowSegment(activeServiceFlow, segment);
+      updateLiveState({ clearText: false });
+    },
+    [activeServiceFlow, applyServiceFlowSegment, updateLiveState],
   );
 
   useEffect(() => {
@@ -714,7 +719,11 @@ export function LiveMode() {
   };
 
   const handleClearScreen = () => {
-    clearScreen();
+    if (liveState.clearText) {
+      updateLiveState({ clearText: false });
+    } else {
+      clearScreen();
+    }
   };
 
   const handleToggleBlackout = () => {
@@ -723,7 +732,6 @@ export function LiveMode() {
 
   const handleSectionClick = (songId: string, sectionId: string) => {
     setCurrentSlide(songId, sectionId);
-    updateLiveState({ clearText: false });
     if (activeServiceFlow) {
       updateLiveState({ slideMode: "lyrics" });
     }
@@ -739,7 +747,6 @@ export function LiveMode() {
       currentSectionId: sectionId,
       currentChunkIndex: chunkIndex,
       manualLyrics: null,
-      clearText: false,
     });
   };
 
@@ -748,7 +755,6 @@ export function LiveMode() {
     const firstSection = song?.sections[0];
     if (!song || !firstSection) return;
     setCurrentSlide(song.id, firstSection.id);
-    updateLiveState({ clearText: false });
     if (activeServiceFlow) {
       updateLiveState({ slideMode: "lyrics" });
     }
@@ -776,7 +782,6 @@ export function LiveMode() {
       if (liveState.currentChunkIndex < announcementSlides.length - 1) {
         updateLiveState({
           currentChunkIndex: liveState.currentChunkIndex + 1,
-          clearText: false,
         });
       }
       return;
@@ -792,7 +797,6 @@ export function LiveMode() {
     ) {
       updateLiveState({
         currentChunkIndex: liveState.currentChunkIndex + 1,
-        clearText: false,
       });
       return;
     }
@@ -811,7 +815,6 @@ export function LiveMode() {
     ) {
       updateLiveState({
         currentChunkIndex: liveState.currentChunkIndex - 1,
-        clearText: false,
       });
       return;
     }
@@ -826,7 +829,6 @@ export function LiveMode() {
     ) {
       updateLiveState({
         currentChunkIndex: liveState.currentChunkIndex - 1,
-        clearText: false,
       });
       return;
     }
@@ -842,7 +844,6 @@ export function LiveMode() {
           currentSongId: currentSong.id,
           currentSectionId: prevSection.id,
           manualLyrics: null,
-          clearText: false,
           currentChunkIndex: Math.max(prevSectionChunks.length - 1, 0),
         });
       } else {
@@ -1226,6 +1227,7 @@ export function LiveMode() {
                   serviceFlow={activeServiceFlow}
                   activeSegmentId={liveState.currentSegmentId}
                   onSelectSegment={selectServiceFlowSegment}
+                  onRevealSegment={revealServiceFlowSegment}
                   onSelectAnnouncement={(announcement, slideIndex) =>
                     setCurrentAnnouncement(
                       normalizeAnnouncement(announcement),
@@ -1275,15 +1277,14 @@ export function LiveMode() {
                     Welcome
                   </Button>
                   <Button
-                    variant={
-                      liveState.slideMode === "blank" ? "default" : "outline"
-                    }
+                    variant={liveState.clearText ? "default" : "outline"}
                     size="sm"
                     className="flex-1"
                     onClick={handleClearScreen}
+                    aria-pressed={liveState.clearText}
                   >
                     <Eraser className="w-4 h-4 mr-1" />
-                    Clear text
+                    {liveState.clearText ? "Show text" : "Clear text"}
                   </Button>
                 </div>
                 <div className="relative mb-3">
@@ -1855,9 +1856,14 @@ export function LiveMode() {
                   <Sparkles className="w-5 h-5 mr-2" />
                   Welcome
                 </Button>
-                <Button variant="outline" size="lg" onClick={handleClearScreen}>
+                <Button
+                  variant={liveState.clearText ? "default" : "outline"}
+                  size="lg"
+                  onClick={handleClearScreen}
+                  aria-pressed={liveState.clearText}
+                >
                   <Eraser className="w-5 h-5 mr-2" />
-                  Clear text
+                  {liveState.clearText ? "Show text" : "Clear text"}
                 </Button>
                 <Button
                   variant="outline"

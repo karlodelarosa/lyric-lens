@@ -1336,7 +1336,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLiveState((prev) => ({
       ...prev,
       slideMode: "lyrics",
-      clearText: false,
       currentSongId: songId,
       currentSectionId: sectionId,
       manualLyrics: null,
@@ -1359,7 +1358,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLiveState((prev) => ({
         ...prev,
         slideMode: "announcement",
-        clearText: false,
         currentAnnouncementId: announcement.id,
         currentAnnouncementTitle: announcement.title,
         currentAnnouncementBody: announcement.body,
@@ -1376,7 +1374,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLiveState((prev) => ({
       ...prev,
       slideMode: "cue",
-      clearText: false,
       currentCueLabel: label,
       currentCueNotes: notes,
       manualLyrics: null,
@@ -1389,7 +1386,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLiveState((prev) => ({
       ...prev,
       slideMode: "welcome",
-      clearText: false,
       welcomeSlideUrl: welcomeSlide.url,
       welcomeSlideType: welcomeSlide.type,
       manualLyrics: null,

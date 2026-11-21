@@ -65,6 +65,7 @@ type ServiceFlowLivePanelProps = {
   serviceFlow: ServiceFlow;
   activeSegmentId: string | null;
   onSelectSegment: (segment: ServiceFlowSegment) => void;
+  onRevealSegment: (segment: ServiceFlowSegment) => void;
   onSelectAnnouncement: (
     announcement: Announcement,
     slideIndex?: number,
@@ -85,6 +86,7 @@ export function ServiceFlowLivePanel({
   serviceFlow,
   activeSegmentId,
   onSelectSegment,
+  onRevealSegment,
   onSelectAnnouncement,
   onSelectSong,
   onSelectSection,
@@ -119,6 +121,8 @@ export function ServiceFlowLivePanel({
               key={segment.id}
               type="button"
               onClick={() => onSelectSegment(segment)}
+              onDoubleClick={() => onRevealSegment(segment)}
+              title="Double-click to select and show text"
               className={cn(
                 "w-full flex items-start gap-2.5 text-left p-3 rounded-lg border text-sm transition-shadow",
                 isActive
